@@ -236,20 +236,20 @@ class _AssistantScreenState extends State<AssistantScreen> {
       child: Row(
         children: [
           ActionChip(
-            avatar: const Icon(Icons.psychology, size: 18),
-            label: const Text('反思提示'),
+            avatar: const Icon(Icons.psychology, size: 18, color: Colors.black87),
+            label: const Text('反思提示', style: TextStyle(color: Colors.black87)),
             onPressed: _showReflectionPrompt,
           ),
           const SizedBox(width: 8),
           ActionChip(
-            avatar: const Icon(Icons.mood, size: 18),
-            label: const Text('今日情绪'),
+            avatar: const Icon(Icons.mood, size: 18, color: Colors.black87),
+            label: const Text('今日情绪', style: TextStyle(color: Colors.black87)),
             onPressed: () => _sendMessage2('帮我回顾今天的情绪状态并给出建议'),
           ),
           const SizedBox(width: 8),
           ActionChip(
-            avatar: const Icon(Icons.lightbulb_outline, size: 18),
-            label: const Text('激励一下'),
+            avatar: const Icon(Icons.lightbulb_outline, size: 18, color: Colors.black87),
+            label: const Text('激励一下', style: TextStyle(color: Colors.black87)),
             onPressed: () => _sendMessage2('给我一句温暖的鼓励'),
           ),
         ],
