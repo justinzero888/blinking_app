@@ -92,9 +92,10 @@ class RoutineProvider extends ChangeNotifier {
     int? targetCount,
     String? unit,
     bool isCounter = false,
+    RoutineCategory? category,
   }) async {
     _error = null;
-    
+
     try {
       final routine = await _repository.create(
         name: name,
@@ -104,6 +105,7 @@ class RoutineProvider extends ChangeNotifier {
         targetCount: targetCount,
         unit: unit,
         isCounter: isCounter,
+        category: category,
       );
       if (routine.isActive && routine.reminderTime != null) {
         await _notificationService.scheduleRoutineReminder(routine);

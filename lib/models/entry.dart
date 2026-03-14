@@ -14,6 +14,7 @@ class Entry {
   final DateTime createdAt;
   final DateTime updatedAt;
   final Map<String, dynamic>? metadata; // For routine-specific data
+  final String? emotion; // Emoji string, e.g. '😊', null = not set
 
   Entry({
     required this.id,
@@ -24,6 +25,7 @@ class Entry {
     required this.createdAt,
     required this.updatedAt,
     this.metadata,
+    this.emotion,
   });
 
   Entry copyWith({
@@ -35,6 +37,8 @@ class Entry {
     DateTime? createdAt,
     DateTime? updatedAt,
     Map<String, dynamic>? metadata,
+    String? emotion,
+    bool clearEmotion = false,
   }) {
     return Entry(
       id: id ?? this.id,
@@ -45,6 +49,7 @@ class Entry {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       metadata: metadata ?? this.metadata,
+      emotion: clearEmotion ? null : (emotion ?? this.emotion),
     );
   }
 
@@ -58,6 +63,7 @@ class Entry {
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
       'metadata': metadata,
+      'emotion': emotion,
     };
   }
 
@@ -74,6 +80,7 @@ class Entry {
       createdAt: DateTime.parse(json['createdAt'] as String),
       updatedAt: DateTime.parse(json['updatedAt'] as String),
       metadata: json['metadata'] as Map<String, dynamic>?,
+      emotion: json['emotion'] as String?,
     );
   }
 }

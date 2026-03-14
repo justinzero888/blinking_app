@@ -7,6 +7,7 @@ class CalendarWidget extends StatelessWidget {
   final DateTime selectedDate;
   final DateTime focusedMonth;
   final Map<DateTime, int> entryCounts; // date -> count of entries
+  final Map<DateTime, String?> dayEmotions; // date -> dominant emotion emoji
   final Function(DateTime) onDateSelected;
   final Function(DateTime) onMonthChanged;
 
@@ -15,6 +16,7 @@ class CalendarWidget extends StatelessWidget {
     required this.selectedDate,
     required this.focusedMonth,
     required this.entryCounts,
+    this.dayEmotions = const {},
     required this.onDateSelected,
     required this.onMonthChanged,
   });
@@ -114,6 +116,8 @@ class CalendarWidget extends StatelessWidget {
     final isSelected = _isSameDay(day, selectedDate);
     final hasEntries = _hasEntries(day);
     final isCurrentMonth = day.month == focusedMonth.month;
+    final dayKey = DateTime(day.year, day.month, day.day);
+    final emotion = dayEmotions[dayKey];
 
     return GestureDetector(
       onTap: () => onDateSelected(day),
@@ -139,9 +143,12 @@ class CalendarWidget extends StatelessWidget {
                         ? Colors.black87
                         : Colors.grey,
                 fontWeight: isToday || isSelected ? FontWeight.bold : null,
+                fontSize: 12,
               ),
             ),
-            if (hasEntries)
+            if (emotion != null)
+              Text(emotion, style: const TextStyle(fontSize: 10))
+            else if (hasEntries)
               Container(
                 margin: const EdgeInsets.only(top: 2),
                 width: 4,

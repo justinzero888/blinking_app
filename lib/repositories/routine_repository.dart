@@ -55,6 +55,7 @@ class RoutineRepository {
     String? unit,
     bool isCounter = false,
     bool isActive = true,
+    RoutineCategory? category,
   }) async {
     final now = DateTime.now();
     final routine = Routine(
@@ -70,6 +71,7 @@ class RoutineRepository {
       completionLog: [],
       createdAt: now,
       updatedAt: now,
+      category: category,
     );
     await _storage.addRoutine(routine);
     return routine;

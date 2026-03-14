@@ -9,6 +9,7 @@ import '../providers/tag_provider.dart';
 import '../models/entry.dart';
 import '../models/media.dart';
 import '../core/services/file_service.dart';
+import '../core/config/emotions.dart';
 import 'package:open_filex/open_filex.dart';
 
 class AddEntryScreen extends StatefulWidget {
@@ -30,6 +31,7 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
   bool _isRecording = false;
   String? _audioPath;
   bool _recorderInitialized = false;
+  String? _selectedEmotion;
 
   @override
   void initState() {
@@ -42,6 +44,9 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
     if (widget.existingEntry != null) {
       _textController.text = widget.existingEntry!.content;
       _selectedTagIds.addAll(widget.existingEntry!.tagIds);
+      if (widget.existingEntry!.emotion != null) {
+        setState(() => _selectedEmotion = widget.existingEntry!.emotion);
+      }
       for (final url in widget.existingEntry!.mediaUrls) {
         // Resolve full path for display if it's a relative path
         String displayPath = url;
@@ -236,6 +241,8 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
           tagIds: _selectedTagIds.toList(),
           mediaUrls: persistentMediaUrls,
           updatedAt: DateTime.now(),
+          emotion: _selectedEmotion,
+          clearEmotion: _selectedEmotion == null,
         ),
       );
     } else {
@@ -244,6 +251,7 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
         content: _textController.text.trim(),
         tagIds: _selectedTagIds.toList(),
         mediaUrls: persistentMediaUrls,
+        emotion: _selectedEmotion,
       );
     }
 
@@ -342,6 +350,46 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
               ),
               const SizedBox(height: 16),
             ],
+
+            // Emotion picker
+            const Text(
+              '心情',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              height: 44,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                itemCount: kDefaultEmotions.length,
+                itemBuilder: (context, index) {
+                  final emoji = kDefaultEmotions[index];
+                  final isSelected = _selectedEmotion == emoji;
+                  return GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _selectedEmotion = isSelected ? null : emoji;
+                      });
+                    },
+                    child: Container(
+                      margin: const EdgeInsets.only(right: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? Theme.of(context).colorScheme.primaryContainer
+                            : Theme.of(context).colorScheme.surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(20),
+                        border: isSelected
+                            ? Border.all(color: Theme.of(context).colorScheme.primary, width: 2)
+                            : null,
+                      ),
+                      child: Text(emoji, style: const TextStyle(fontSize: 22)),
+                    ),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 16),
 
             // Tags
             const Text(

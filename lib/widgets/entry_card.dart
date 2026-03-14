@@ -57,6 +57,10 @@ class EntryCard extends StatelessWidget {
                 color: Colors.grey,
               ),
         ),
+        if (entry.emotion != null) ...[
+          const Spacer(),
+          Text(entry.emotion!, style: const TextStyle(fontSize: 18)),
+        ],
       ],
     );
   }

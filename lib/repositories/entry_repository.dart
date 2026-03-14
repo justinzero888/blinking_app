@@ -71,6 +71,7 @@ class EntryRepository {
     List<String> tagIds = const [],
     List<String> mediaUrls = const [],
     Map<String, dynamic>? metadata,
+    String? emotion,
   }) async {
     final now = DateTime.now();
     final entry = Entry(
@@ -82,6 +83,7 @@ class EntryRepository {
       createdAt: now,
       updatedAt: now,
       metadata: metadata,
+      emotion: emotion,
     );
     await _storage.addEntry(entry);
     return entry;

@@ -71,9 +71,10 @@ class EntryProvider extends ChangeNotifier {
     List<String> tagIds = const [],
     List<String> mediaUrls = const [],
     Map<String, dynamic>? metadata,
+    String? emotion,
   }) async {
     _error = null;
-    
+
     try {
       final entry = await _repository.create(
         type: type,
@@ -81,6 +82,7 @@ class EntryProvider extends ChangeNotifier {
         tagIds: tagIds,
         mediaUrls: mediaUrls,
         metadata: metadata,
+        emotion: emotion,
       );
       _entries.insert(0, entry); // Add to beginning
       notifyListeners();
@@ -188,5 +190,23 @@ class EntryProvider extends ChangeNotifier {
   /// Search entries
   Future<List<Entry>> search(String query) async {
     return _repository.search(query);
+  }
+
+  /// Get the dominant emotion for a given date.
+  /// Returns the most frequent non-null emotion among that day's entries,
+  /// or null if no entries have an emotion set.
+  String? getDayEmotion(DateTime date) {
+    final dayEntries = getEntriesForDate(date)
+        .where((e) => e.emotion != null)
+        .toList();
+    if (dayEntries.isEmpty) return null;
+
+    final counts = <String, int>{};
+    for (final e in dayEntries) {
+      counts[e.emotion!] = (counts[e.emotion!] ?? 0) + 1;
+    }
+    return counts.entries
+        .reduce((a, b) => a.value >= b.value ? a : b)
+        .key;
   }
 }

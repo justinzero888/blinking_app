@@ -49,6 +49,7 @@ class _HomeScreenState extends State<HomeScreen> {
             focusedMonth: _focusedMonth,
             selectedDate: _selectedDate,
             entryCounts: _getEntryCounts(),
+            dayEmotions: _getDayEmotions(),
             onDateSelected: _onDateSelected,
             onMonthChanged: _onMonthChanged,
           ),
@@ -75,6 +76,20 @@ class _HomeScreenState extends State<HomeScreen> {
       counts[date] = (counts[date] ?? 0) + 1;
     }
     return counts;
+  }
+
+  /// Get dominant emotion per date for calendar display
+  Map<DateTime, String?> _getDayEmotions() {
+    final entryProvider = context.read<EntryProvider>();
+    final datesWithEntries = entryProvider.getDatesWithEntries();
+    final Map<DateTime, String?> emotions = {};
+    for (final date in datesWithEntries) {
+      final emotion = entryProvider.getDayEmotion(date);
+      if (emotion != null) {
+        emotions[date] = emotion;
+      }
+    }
+    return emotions;
   }
 
   void _goToToday() {
@@ -115,12 +130,23 @@ class _HomeScreenState extends State<HomeScreen> {
       padding: const EdgeInsets.all(16),
       children: [
         // Date Header
-        Text(
-          DateFormat(isZh ? 'yyyy年M月d日 EEEE' : 'EEEE, MMMM d, yyyy')
-              .format(_selectedDate),
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                DateFormat(isZh ? 'yyyy年M月d日 EEEE' : 'EEEE, MMMM d, yyyy')
+                    .format(_selectedDate),
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            Builder(builder: (context) {
+              final emotion = context.watch<EntryProvider>().getDayEmotion(_selectedDate);
+              if (emotion == null) return const SizedBox.shrink();
+              return Text(emotion, style: const TextStyle(fontSize: 22));
+            }),
+          ],
         ),
         const SizedBox(height: 16),
 

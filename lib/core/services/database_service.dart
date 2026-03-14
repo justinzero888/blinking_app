@@ -23,7 +23,7 @@ class DatabaseService {
 
     return await openDatabase(
       path,
-      version: 2,
+      version: 3,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -35,6 +35,10 @@ class DatabaseService {
       await db.execute('ALTER TABLE routines ADD COLUMN description TEXT');
       await db.execute('ALTER TABLE routines ADD COLUMN description_en TEXT');
     }
+    if (oldVersion < 3) {
+      await db.execute('ALTER TABLE entries ADD COLUMN emotion TEXT');
+      await db.execute('ALTER TABLE routines ADD COLUMN category TEXT');
+    }
   }
 
   Future<void> _onCreate(Database db, int version) async {
@@ -44,10 +48,11 @@ class DatabaseService {
         id TEXT PRIMARY KEY,
         type TEXT NOT NULL,
         content TEXT,
-        media_json TEXT, 
+        media_json TEXT,
         metadata_json TEXT,
         created_at TEXT NOT NULL,
-        updated_at TEXT NOT NULL
+        updated_at TEXT NOT NULL,
+        emotion TEXT
       )
     ''');
 
@@ -90,6 +95,7 @@ class DatabaseService {
         current_count INTEGER DEFAULT 0,
         is_counter INTEGER NOT NULL DEFAULT 0,
         unit TEXT,
+        category TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       )
@@ -183,6 +189,7 @@ class DatabaseService {
           'metadata_json': entry.metadata != null ? json.encode(entry.metadata) : null,
           'created_at': entry.createdAt.toIso8601String(),
           'updated_at': entry.updatedAt.toIso8601String(),
+          'emotion': entry.emotion,
         }, conflictAlgorithm: ConflictAlgorithm.replace);
 
         for (final tagId in entry.tagIds) {

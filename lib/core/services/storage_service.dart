@@ -56,6 +56,7 @@ class StorageService {
       Tag(id: 'tag_learning', name: '学习', nameEn: 'Learning', color: '#5856D6', category: 'learning', createdAt: DateTime.now()),
       Tag(id: 'tag_family_menu', name: '家庭菜单', nameEn: 'Family Menu', color: '#FF2D55', category: 'custom', createdAt: DateTime.now()),
       Tag(id: 'tag_sleep', name: '睡眠', nameEn: 'Sleep', color: '#5AC8FA', category: 'sleeping', createdAt: DateTime.now()),
+      Tag(id: 'tag_reflection', name: '反思', nameEn: 'Reflection', color: '#AF52DE', category: 'reflection', createdAt: DateTime.now()),
     ];
   }
 
@@ -91,6 +92,7 @@ class StorageService {
       entryMap['metadata'] = map['metadata_json'] != null ? json.decode(map['metadata_json'] as String) : null;
       entryMap['createdAt'] = map['created_at'];
       entryMap['updatedAt'] = map['updated_at'];
+      entryMap['emotion'] = map['emotion'];
       
       entries.add(Entry.fromJson(entryMap));
     }
@@ -116,6 +118,7 @@ class StorageService {
         'metadata_json': entry.metadata != null ? json.encode(entry.metadata) : null,
         'created_at': entry.createdAt.toIso8601String(),
         'updated_at': entry.updatedAt.toIso8601String(),
+        'emotion': entry.emotion,
       }, conflictAlgorithm: ConflictAlgorithm.replace);
 
       // Save tags
@@ -137,6 +140,7 @@ class StorageService {
         'media_json': json.encode(entry.mediaUrls),
         'metadata_json': entry.metadata != null ? json.encode(entry.metadata) : null,
         'updated_at': entry.updatedAt.toIso8601String(),
+        'emotion': entry.emotion,
       }, where: 'id = ?', whereArgs: [entry.id]);
 
       // Refresh tags
@@ -227,6 +231,7 @@ class StorageService {
       routineMap['reminderTime'] = map['reminder_time'];
       routineMap['targetCount'] = map['target_count'];
       routineMap['currentCount'] = map['current_count'];
+      routineMap['category'] = map['category'];
       routineMap['completionLog'] = completionMaps.map((c) => {
         'id': c['id'],
         'routineId': c['routine_id'],
@@ -263,6 +268,7 @@ class StorageService {
         'current_count': routine.currentCount,
         'is_counter': routine.isCounter ? 1 : 0,
         'unit': routine.unit,
+        'category': routine.category?.name,
         'created_at': routine.createdAt.toIso8601String(),
         'updated_at': routine.updatedAt.toIso8601String(),
       }, conflictAlgorithm: ConflictAlgorithm.replace);
@@ -295,6 +301,7 @@ class StorageService {
         'current_count': routine.currentCount,
         'is_counter': routine.isCounter ? 1 : 0,
         'unit': routine.unit,
+        'category': routine.category?.name,
         'updated_at': routine.updatedAt.toIso8601String(),
       }, where: 'id = ?', whereArgs: [routine.id]);
 
