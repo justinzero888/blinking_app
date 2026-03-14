@@ -5,6 +5,7 @@ import '../../providers/entry_provider.dart';
 import '../../providers/tag_provider.dart';
 import '../../models/models.dart';
 import '../add_entry_screen.dart';
+import '../cherished/card_builder_dialog.dart';
 
 class MomentScreen extends StatefulWidget {
   const MomentScreen({super.key});
@@ -252,16 +253,33 @@ class _MomentScreenState extends State<MomentScreen> {
           DateFormat('HH:mm').format(entry.createdAt),
           style: const TextStyle(fontSize: 12),
         ),
-        trailing: entry.tagIds.isNotEmpty
-            ? Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.label, size: 16, color: Colors.grey),
-                  const SizedBox(width: 4),
-                  Text('${entry.tagIds.length}', style: const TextStyle(fontSize: 12)),
-                ],
-              )
-            : null,
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (entry.tagIds.isNotEmpty) ...[
+              const Icon(Icons.label, size: 16, color: Colors.grey),
+              const SizedBox(width: 2),
+              Text('${entry.tagIds.length}',
+                  style: const TextStyle(fontSize: 12)),
+              const SizedBox(width: 4),
+            ],
+            IconButton(
+              icon: const Icon(Icons.style_outlined, size: 18, color: Colors.grey),
+              tooltip: '制作卡片',
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => CardBuilderDialog(initialEntry: entry),
+                    fullscreenDialog: true,
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
         onTap: () {
           Navigator.push(
             context,

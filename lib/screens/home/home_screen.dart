@@ -8,6 +8,7 @@ import '../../models/routine.dart';
 import '../../models/entry.dart';
 import '../../widgets/calendar_widget.dart';
 import '../../widgets/entry_card.dart';
+import '../../widgets/emoji_jar.dart';
 import '../add_entry_screen.dart';
 
 /// Home Screen - Calendar View
@@ -182,6 +183,12 @@ class _HomeScreenState extends State<HomeScreen> {
           )),
         ],
 
+        // Emoji Jar Section — show when there are entries for the day
+        if (dayEntries.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          _EmojiJarSection(date: _selectedDate),
+        ],
+
         // Empty State
         if (dayEntries.isEmpty && activeRoutines.isEmpty)
           Center(
@@ -248,5 +255,42 @@ class _HomeScreenState extends State<HomeScreen> {
 
   bool _isSameDay(DateTime a, DateTime b) {
     return a.year == b.year && a.month == b.month && a.day == b.day;
+  }
+}
+
+/// Collapsible "今日情绪罐" section with EmojiJarWidget
+class _EmojiJarSection extends StatefulWidget {
+  final DateTime date;
+  const _EmojiJarSection({required this.date});
+
+  @override
+  State<_EmojiJarSection> createState() => _EmojiJarSectionState();
+}
+
+class _EmojiJarSectionState extends State<_EmojiJarSection> {
+  bool _expanded = true;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Column(
+        children: [
+          ListTile(
+            leading: const Text('🫙', style: TextStyle(fontSize: 20)),
+            title: const Text('今日情绪罐',
+                style: TextStyle(fontWeight: FontWeight.bold)),
+            trailing: IconButton(
+              icon: Icon(_expanded ? Icons.expand_less : Icons.expand_more),
+              onPressed: () => setState(() => _expanded = !_expanded),
+            ),
+          ),
+          if (_expanded)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: EmojiJarWidget(date: widget.date),
+            ),
+        ],
+      ),
+    );
   }
 }

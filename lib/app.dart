@@ -8,12 +8,16 @@ import 'providers/entry_provider.dart';
 import 'providers/tag_provider.dart';
 import 'providers/theme_provider.dart';
 import 'providers/locale_provider.dart';
+import 'providers/jar_provider.dart';
+import 'providers/card_provider.dart';
+import 'providers/summary_provider.dart';
 import 'screens/home/home_screen.dart';
 import 'screens/moment/moment_screen.dart';
 import 'screens/routine/routine_screen.dart';
+import 'screens/cherished/cherished_memory_screen.dart';
 import 'screens/settings/settings_screen.dart';
-import 'screens/assistant/assistant_screen.dart';
 import 'screens/add_entry_screen.dart';
+import 'widgets/floating_robot.dart';
 import 'l10n/app_localizations.dart';
 
 import 'core/services/export_service.dart';
@@ -40,19 +44,19 @@ class BlinkingApp extends StatelessWidget {
 
         // Theme provider
         ChangeNotifierProvider(create: (_) => ThemeProvider(storageService)),
-        
+
         // Locale provider
         ChangeNotifierProvider(create: (_) {
           final provider = LocaleProvider();
           provider.loadLocale();
           return provider;
         }),
-        
+
         // Repository providers
         Provider<EntryRepository>.value(value: entryRepository),
         Provider<RoutineRepository>.value(value: routineRepository),
         Provider<TagRepository>.value(value: tagRepository),
-        
+
         // Main data providers
         ChangeNotifierProvider(
           create: (_) => EntryProvider(entryRepository)..loadEntries(),
@@ -64,6 +68,29 @@ class BlinkingApp extends StatelessWidget {
         ),
         ChangeNotifierProvider(
           create: (_) => TagProvider(tagRepository)..loadTags(),
+        ),
+
+        // JarProvider — depends on EntryProvider
+        ChangeNotifierProxyProvider<EntryProvider, JarProvider>(
+          create: (context) => JarProvider(context.read<EntryProvider>()),
+          update: (context, entryProvider, jar) =>
+              jar!..update(entryProvider),
+        ),
+
+        // CardProvider — standalone, loads from storage
+        ChangeNotifierProvider(
+          create: (context) =>
+              CardProvider(context.read<StorageService>())..load(),
+        ),
+
+        // SummaryProvider — depends on EntryProvider + RoutineProvider
+        ChangeNotifierProxyProvider2<EntryProvider, RoutineProvider,
+            SummaryProvider>(
+          create: (context) => SummaryProvider(
+            context.read<EntryProvider>(),
+            context.read<RoutineProvider>(),
+          ),
+          update: (context, ep, rp, summary) => summary!..update(ep, rp),
         ),
       ],
       child: Consumer<LocaleProvider>(
@@ -99,7 +126,7 @@ class _MainScreenState extends State<MainScreen> {
     const HomeScreen(),
     const MomentScreen(),
     const RoutineScreen(),
-    const AssistantScreen(),
+    const CherishedMemoryScreen(),
     const SettingsScreen(),
   ];
 
@@ -113,9 +140,15 @@ class _MainScreenState extends State<MainScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     return Scaffold(
-      body: IndexedStack(
-        index: _currentIndex,
-        children: _screens,
+      body: Stack(
+        children: [
+          IndexedStack(
+            index: _currentIndex,
+            children: _screens,
+          ),
+          // Floating AI robot — overlaid above all content
+          const FloatingRobotWidget(),
+        ],
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
@@ -134,9 +167,9 @@ class _MainScreenState extends State<MainScreen> {
             icon: const Icon(Icons.check_circle_outline),
             label: l10n.routine,
           ),
-          BottomNavigationBarItem(
-            icon: const Icon(Icons.smart_toy_outlined),
-            label: l10n.aiAssistant,
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.auto_awesome),
+            label: '珍藏',
           ),
           BottomNavigationBarItem(
             icon: const Icon(Icons.settings),

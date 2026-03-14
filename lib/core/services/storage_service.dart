@@ -8,6 +8,9 @@ import 'package:path_provider/path_provider.dart';
 import '../../models/entry.dart';
 import '../../models/tag.dart';
 import '../../models/routine.dart';
+import '../../models/card_template.dart';
+import '../../models/card_folder.dart';
+import '../../models/note_card.dart';
 import 'database_service.dart';
 
 /// Local storage service using SQLite (via DatabaseService)
@@ -45,7 +48,79 @@ class StorageService {
         await addRoutine(routine);
       }
     }
+
+    // Seed default card folder
+    final folders = await getCardFolders();
+    if (folders.isEmpty) {
+      await addCardFolder(CardFolder(
+        id: 'folder_default',
+        name: '我的卡片',
+        icon: '🗂️',
+        isDefault: true,
+        createdAt: DateTime.now(),
+      ));
+    }
+
+    // Seed built-in templates
+    final templates = await getTemplates();
+    if (templates.isEmpty) {
+      for (final t in _getDefaultTemplates()) {
+        await addTemplate(t);
+      }
+    }
   }
+
+  /// Default card templates (6 built-in styles)
+  List<CardTemplate> _getDefaultTemplates() => [
+        CardTemplate(
+            id: 'tpl_spring',
+            name: '春日晴天',
+            icon: '🌸',
+            fontColor: '#333333',
+            bgColor: '#FFE4E1',
+            isBuiltIn: true,
+            createdAt: DateTime.now()),
+        CardTemplate(
+            id: 'tpl_midnight',
+            name: '午夜蓝调',
+            icon: '🌙',
+            fontColor: '#FFFFFF',
+            bgColor: '#1A237E',
+            isBuiltIn: true,
+            createdAt: DateTime.now()),
+        CardTemplate(
+            id: 'tpl_warm',
+            name: '暖阳橙',
+            icon: '☀️',
+            fontColor: '#FFFFFF',
+            bgColor: '#FF6F00',
+            isBuiltIn: true,
+            createdAt: DateTime.now()),
+        CardTemplate(
+            id: 'tpl_minimal',
+            name: '简约白',
+            icon: '📄',
+            fontColor: '#222222',
+            bgColor: '#FAFAFA',
+            isBuiltIn: true,
+            createdAt: DateTime.now()),
+        CardTemplate(
+            id: 'tpl_forest',
+            name: '森林绿',
+            icon: '🌿',
+            fontColor: '#FFFFFF',
+            bgColor: '#1B5E20',
+            isBuiltIn: true,
+            createdAt: DateTime.now()),
+        CardTemplate(
+            id: 'tpl_custom',
+            name: '自定义',
+            icon: '🎨',
+            fontColor: '#222222',
+            bgColor: '#E3F2FD',
+            isBuiltIn: false,
+            createdAt: DateTime.now()),
+      ];
 
   /// Get default tags
   List<Tag> _getDefaultTags() {
@@ -452,6 +527,108 @@ class StorageService {
     await db.delete('entry_tags');
     await db.delete('routines');
     await db.delete('completions');
+    await db.delete('card_folders');
+    await db.delete('templates');
+    await db.delete('note_cards');
+    await db.delete('note_card_entries');
     await _prefs.remove('sqlite_migrated');
+  }
+
+  // ============ CARD FOLDERS ============
+
+  Future<List<CardFolder>> getCardFolders() async {
+    final db = await _dbService.database;
+    final maps = await db.query('card_folders', orderBy: 'created_at ASC');
+    return maps.map((m) => CardFolder.fromJson(Map<String, dynamic>.from(m))).toList();
+  }
+
+  Future<void> addCardFolder(CardFolder folder) async {
+    final db = await _dbService.database;
+    await db.insert('card_folders', folder.toJson(),
+        conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  Future<void> updateCardFolder(CardFolder folder) async {
+    final db = await _dbService.database;
+    await db.update('card_folders', folder.toJson(),
+        where: 'id = ?', whereArgs: [folder.id]);
+  }
+
+  Future<void> deleteCardFolder(String id) async {
+    final db = await _dbService.database;
+    await db.delete('card_folders', where: 'id = ?', whereArgs: [id]);
+  }
+
+  // ============ TEMPLATES ============
+
+  Future<List<CardTemplate>> getTemplates() async {
+    final db = await _dbService.database;
+    final maps = await db.query('templates', orderBy: 'created_at ASC');
+    return maps.map((m) => CardTemplate.fromJson(Map<String, dynamic>.from(m))).toList();
+  }
+
+  Future<void> addTemplate(CardTemplate template) async {
+    final db = await _dbService.database;
+    await db.insert('templates', template.toJson(),
+        conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  Future<void> updateTemplate(CardTemplate template) async {
+    final db = await _dbService.database;
+    await db.update('templates', template.toJson(),
+        where: 'id = ?', whereArgs: [template.id]);
+  }
+
+  Future<void> deleteTemplate(String id) async {
+    final db = await _dbService.database;
+    await db.delete('templates', where: 'id = ?', whereArgs: [id]);
+  }
+
+  // ============ NOTE CARDS ============
+
+  Future<List<NoteCard>> getNoteCards() async {
+    final db = await _dbService.database;
+    final maps = await db.query('note_cards', orderBy: 'created_at DESC');
+    final List<NoteCard> cards = [];
+    for (final map in maps) {
+      final entryMaps = await db.query(
+        'note_card_entries',
+        where: 'card_id = ?',
+        whereArgs: [map['id']],
+      );
+      final entryIds = entryMaps.map((e) => e['entry_id'] as String).toList();
+      final cardMap = Map<String, dynamic>.from(map);
+      cardMap['entry_ids'] = entryIds;
+      cards.add(NoteCard.fromJson(cardMap));
+    }
+    return cards;
+  }
+
+  Future<void> addNoteCard(NoteCard card) async {
+    final db = await _dbService.database;
+    await db.transaction((txn) async {
+      await txn.insert('note_cards', {
+        'id': card.id,
+        'template_id': card.templateId,
+        'folder_id': card.folderId,
+        'rendered_image_path': card.renderedImagePath,
+        'created_at': card.createdAt.toIso8601String(),
+        'updated_at': card.updatedAt.toIso8601String(),
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      for (final entryId in card.entryIds) {
+        await txn.insert('note_card_entries', {
+          'card_id': card.id,
+          'entry_id': entryId,
+        }, conflictAlgorithm: ConflictAlgorithm.ignore);
+      }
+    });
+  }
+
+  Future<void> deleteNoteCard(String id) async {
+    final db = await _dbService.database;
+    await db.transaction((txn) async {
+      await txn.delete('note_card_entries', where: 'card_id = ?', whereArgs: [id]);
+      await txn.delete('note_cards', where: 'id = ?', whereArgs: [id]);
+    });
   }
 }

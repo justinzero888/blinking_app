@@ -23,7 +23,7 @@ class DatabaseService {
 
     return await openDatabase(
       path,
-      version: 3,
+      version: 4,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -38,6 +38,46 @@ class DatabaseService {
     if (oldVersion < 3) {
       await db.execute('ALTER TABLE entries ADD COLUMN emotion TEXT');
       await db.execute('ALTER TABLE routines ADD COLUMN category TEXT');
+    }
+    if (oldVersion < 4) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS card_folders (
+          id TEXT PRIMARY KEY,
+          name TEXT NOT NULL,
+          icon TEXT NOT NULL,
+          is_default INTEGER NOT NULL DEFAULT 0,
+          created_at TEXT NOT NULL
+        )
+      ''');
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS templates (
+          id TEXT PRIMARY KEY,
+          name TEXT NOT NULL,
+          icon TEXT NOT NULL,
+          font_family TEXT NOT NULL DEFAULT 'default',
+          font_color TEXT NOT NULL DEFAULT '#222222',
+          bg_color TEXT NOT NULL DEFAULT '#FFFFFF',
+          is_built_in INTEGER NOT NULL DEFAULT 0,
+          created_at TEXT NOT NULL
+        )
+      ''');
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS note_cards (
+          id TEXT PRIMARY KEY,
+          template_id TEXT NOT NULL,
+          folder_id TEXT NOT NULL,
+          rendered_image_path TEXT,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        )
+      ''');
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS note_card_entries (
+          card_id TEXT NOT NULL,
+          entry_id TEXT NOT NULL,
+          PRIMARY KEY (card_id, entry_id)
+        )
+      ''');
     }
   }
 
@@ -110,6 +150,52 @@ class DatabaseService {
         count INTEGER,
         notes TEXT,
         FOREIGN KEY (routine_id) REFERENCES routines (id) ON DELETE CASCADE
+      )
+    ''');
+
+    // Card folders table
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS card_folders (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        icon TEXT NOT NULL,
+        is_default INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL
+      )
+    ''');
+
+    // Templates table
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS templates (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        icon TEXT NOT NULL,
+        font_family TEXT NOT NULL DEFAULT 'default',
+        font_color TEXT NOT NULL DEFAULT '#222222',
+        bg_color TEXT NOT NULL DEFAULT '#FFFFFF',
+        is_built_in INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL
+      )
+    ''');
+
+    // Note cards table
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS note_cards (
+        id TEXT PRIMARY KEY,
+        template_id TEXT NOT NULL,
+        folder_id TEXT NOT NULL,
+        rendered_image_path TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      )
+    ''');
+
+    // Note card entries (many-to-many)
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS note_card_entries (
+        card_id TEXT NOT NULL,
+        entry_id TEXT NOT NULL,
+        PRIMARY KEY (card_id, entry_id)
       )
     ''');
   }

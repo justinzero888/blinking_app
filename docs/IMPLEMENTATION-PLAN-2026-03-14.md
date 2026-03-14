@@ -503,24 +503,24 @@ flutter:
 - [x] Add "Open Router" (qwen/qwen3.5-flash-02-23) as 4th default LLM provider
 - [x] Version display in Settings updated to 1.0.2
 
-### Phase 3 — Emoji jar + shelf
+### Phase 3 — Emoji jar + shelf ✅ COMPLETE (v1.0.3)
 *Depends on Phase 1 (emotion data) and Phase 2 (LlmService for AI messages).*
-- [ ] D1: `EmojiJarWidget` on Home screen for selected date
-- [ ] D2: AI messages panel (encouragement/inspiration/motivation) via LlmService
-- [ ] D3/D4: `JarProvider`, `ShelfTab`, `YearJarDetailScreen`
+- [x] D1: `EmojiJarWidget` on Home screen for selected date
+- [x] D2: AI messages panel (encouragement/inspiration/motivation) via LlmService
+- [x] D3/D4: `JarProvider`, `ShelfTab`, `YearJarDetailScreen`
 
-### Phase 4 — Templates + cards + folders
+### Phase 4 — Templates + cards + folders ✅ COMPLETE (v1.0.3)
 *Self-contained. Depends only on Phase 2 for navigation home.*
-- [ ] B2: `CardTemplate` model, DB migration v4, built-in template assets, `TemplateProvider`, `TemplateEditorScreen`
-- [ ] B3: `CardFolder` model, DB migration v4, `CardProvider` (folders), default folder seed
-- [ ] B1: `NoteCard` model, join table, `CardProvider` (cards), `CardBuilderDialog`, `CardRenderer`, `CardsTab`
-- [ ] Add card button to Moment screen entry tiles
+- [x] B2: `CardTemplate` model, DB migration v4, 6 built-in templates (solid bg colors), `CardProvider`
+- [x] B3: `CardFolder` model, DB migration v4, `CardProvider` (folders), default folder seed
+- [x] B1: `NoteCard` model, join table, `CardProvider` (cards), `CardBuilderDialog`, `CardRenderer`, `CardsTab`
+- [x] Add card button (style icon) to Moment screen entry tiles
 
-### Phase 5 — Visual summary
+### Phase 5 — Visual summary ✅ COMPLETE (v1.0.3)
 *Depends on Phase 1 (emotion data), Phase 3 (jar data), Phase 4 (tag data).*
-- [ ] Add `fl_chart: ^0.70.0` dependency
-- [ ] `SummaryProvider` with daily/weekly/monthly metric computation
-- [ ] `SummaryTab` with 4 fl_chart visualizations (note count, routine rate, emotion trend, tag highlights)
+- [x] Add `fl_chart: ^0.70.0` dependency
+- [x] `SummaryProvider` with daily/weekly/monthly metric computation
+- [x] `SummaryTab` with 4 fl_chart visualizations (note count, routine rate, emotion trend, tag highlights)
 
 ---
 

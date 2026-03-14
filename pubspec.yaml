@@ -53,6 +53,9 @@ dependencies:
   http: ^1.2.0
   file_picker: ^8.1.7
 
+  # Charts
+  fl_chart: ^0.70.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
