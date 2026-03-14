@@ -1,7 +1,7 @@
 name: blinking
 description: "A personal memory capture app for reflection and learning."
 publish_to: 'none'
-version: 1.0.2+3
+version: 1.0.3+4
 
 environment:
   sdk: ^3.11.0

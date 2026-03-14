@@ -62,14 +62,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final jsonStr = prefs.getString('llm_providers');
     if (jsonStr != null && mounted) {
       final List<dynamic> decoded = jsonDecode(jsonStr);
-      final providers = decoded
+      final saved = decoded
           .map((m) => (m as Map<String, dynamic>)
               .map((k, v) => MapEntry(k, v.toString())))
           .toList();
+
+      // Merge: start from saved list (preserves user API keys), then append
+      // any default providers whose name isn't already present.
+      final savedNames = saved.map((p) => p['name']).toSet();
+      final merged = [...saved];
+      for (final def in _llmProviders) {
+        if (!savedNames.contains(def['name'])) {
+          merged.add(Map<String, String>.from(def));
+        }
+      }
+
       setState(() {
         _llmProviders
           ..clear()
-          ..addAll(providers);
+          ..addAll(merged);
         final idx = prefs.getInt('llm_selected_index') ?? 0;
         _selectedLlmIndex = idx < _llmProviders.length ? idx : 0;
       });
@@ -206,7 +217,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ListTile(
             leading: const Icon(Icons.info),
             title: const Text('Blinking (记忆闪烁)'),
-            subtitle: Text(isZh ? '版本 1.0.2' : 'Version 1.0.2'),
+            subtitle: Text(isZh ? '版本 1.0.3' : 'Version 1.0.3'),
           ),
         ],
       ),
