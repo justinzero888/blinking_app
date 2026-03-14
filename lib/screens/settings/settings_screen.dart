@@ -41,6 +41,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
       'apiKey': '',
       'baseUrl': 'https://generativelanguage.googleapis.com/v1',
     },
+    {
+      'name': 'Open Router',
+      'model': 'qwen/qwen3.5-flash-02-23',
+      'apiKey': '',
+      'baseUrl': 'https://openrouter.ai/api/v1',
+    },
   ];
 
   int _selectedLlmIndex = 0;
@@ -200,7 +206,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ListTile(
             leading: const Icon(Icons.info),
             title: const Text('Blinking (记忆闪烁)'),
-            subtitle: Text(isZh ? '版本 1.0.0' : 'Version 1.0.0'),
+            subtitle: Text(isZh ? '版本 1.0.2' : 'Version 1.0.2'),
           ),
         ],
       ),
