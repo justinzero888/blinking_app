@@ -503,58 +503,62 @@ flutter:
 - [x] Add "Open Router" (qwen/qwen3.5-flash-02-23) as 4th default LLM provider
 - [x] Version display in Settings updated to 1.0.2
 
-### Phase 3 — Emoji jar + shelf ✅ COMPLETE (v1.0.3)
+### Phase 3 — Emoji jar + shelf ✅ TESTED & PASSED (v1.0.3)
 *Depends on Phase 1 (emotion data) and Phase 2 (LlmService for AI messages).*
 - [x] D1: `EmojiJarWidget` on Home screen for selected date
 - [x] D2: AI messages panel (encouragement/inspiration/motivation) via LlmService
 - [x] D3/D4: `JarProvider`, `ShelfTab`, `YearJarDetailScreen`
 
-### Phase 4 — Templates + cards + folders ✅ COMPLETE (v1.0.3)
+### Phase 4 — Templates + cards + folders ✅ TESTED & PASSED (v1.0.3)
 *Self-contained. Depends only on Phase 2 for navigation home.*
 - [x] B2: `CardTemplate` model, DB migration v4, 6 built-in templates (solid bg colors), `CardProvider`
 - [x] B3: `CardFolder` model, DB migration v4, `CardProvider` (folders), default folder seed
 - [x] B1: `NoteCard` model, join table, `CardProvider` (cards), `CardBuilderDialog`, `CardRenderer`, `CardsTab`
 - [x] Add card button (style icon) to Moment screen entry tiles
 
-### Phase 5 — Visual summary ✅ COMPLETE (v1.0.3)
+### Phase 5 — Visual summary ✅ TESTED & PASSED (v1.0.3)
 *Depends on Phase 1 (emotion data), Phase 3 (jar data), Phase 4 (tag data).*
 - [x] Add `fl_chart: ^0.70.0` dependency
 - [x] `SummaryProvider` with daily/weekly/monthly metric computation
 - [x] `SummaryTab` with 4 fl_chart visualizations (note count, routine rate, emotion trend, tag highlights)
 
+### Post-release UI fixes (v1.0.3 patch — committed a204bcd)
+- [x] ActionChip icon and label colors set to `Colors.black87` in `AssistantScreen` (white-on-light visibility fix)
+
 ---
 
 ## 7. File impact matrix
 
-Legend: ✅ shipped | ✓ planned
+Legend: ✅ shipped & tested
 
 | File | A1 | A2 | C1 | C2 | D1 | D2 | D3/D4 | B1 | B2 | B3 | E1 | E2 |
 |------|----|----|----|----|----|----|-------|----|----|----|----|-----|
-| `lib/app.dart` | | | | | | | | | | | ✅ | ✓ |
+| `lib/app.dart` | | | | | | | | | | | ✅ | ✅ |
 | `lib/models/entry.dart` | | | ✅ | | | | | | | | | |
 | `lib/models/routine.dart` | ✅ | | | | | | | | | | | |
-| `lib/core/services/database_service.dart` | ✅ | | ✅ | | | | | ✓ | ✓ | ✓ | | |
+| `lib/core/services/database_service.dart` | ✅ | | ✅ | | | | | ✅ | ✅ | ✅ | | |
 | `lib/core/services/storage_service.dart` | ✅ | | ✅ | | | | | | | | ✅ | |
-| `lib/core/services/llm_service.dart` | | | | | | ✓ | | | | | ✅ | |
+| `lib/core/services/llm_service.dart` | | | | | | ✅ | | | | | ✅ | |
 | `lib/providers/entry_provider.dart` | | | | ✅ | | | | | | | | |
-| `lib/providers/jar_provider.dart` | | | | | | | ✓ | | | | | |
-| `lib/providers/card_provider.dart` | | | | | | | | ✓ | | ✓ | | |
-| `lib/providers/template_provider.dart` | | | | | | | | | ✓ | | | |
-| `lib/providers/summary_provider.dart` | | | | | | | | | | | | ✓ |
+| `lib/providers/jar_provider.dart` | | | | | | | ✅ | | | | | |
+| `lib/providers/card_provider.dart` | | | | | | | | ✅ | ✅ | ✅ | | |
+| `lib/providers/summary_provider.dart` | | | | | | | | | | | | ✅ |
 | `lib/screens/routine/routine_screen.dart` | ✅ | ✅ | | | | | | | | | | |
 | `lib/screens/add_entry_screen.dart` | | | ✅ | | | | | | | | | |
-| `lib/screens/home/home_screen.dart` | | | | ✅ | ✓ | | | | | | | |
-| `lib/screens/assistant/assistant_screen.dart` | | | | | | | | | | | ✅ | ✓ |
-| `lib/screens/moment/moment_screen.dart` | | | | | | | | ✓ | | | | |
+| `lib/screens/home/home_screen.dart` | | | | ✅ | ✅ | | | | | | | |
+| `lib/screens/assistant/assistant_screen.dart` | | | | | | | | | | | ✅ | ✅ |
+| `lib/screens/moment/moment_screen.dart` | | | | | | | | ✅ | | | | |
 | `lib/screens/settings/settings_screen.dart` | | | | | | | | | | | ✅ | |
 | `lib/widgets/calendar_widget.dart` | | | | ✅ | | | | | | | | |
 | `lib/widgets/entry_card.dart` | | | ✅ | | | | | | | | | |
-| `lib/widgets/emoji_jar.dart` | | | | | ✓ | ✓ | | | | | | |
+| `lib/widgets/emoji_jar.dart` | | | | | ✅ | ✅ | | | | | | |
 | `lib/widgets/floating_robot.dart` | | | | | | | | | | | ✅ | |
-| `pubspec.yaml` | | | | | | | | | ✓ | | ✅ | ✓ |
+| `pubspec.yaml` | | | | | | | | | ✅ | | ✅ | ✅ |
 
-**New files — shipped (Phase 1+2):**
-`lib/core/config/emotions.dart`, `lib/core/services/llm_service.dart`, `lib/widgets/floating_robot.dart`, `lib/screens/cherished/cherished_memory_screen.dart`
+**New files — shipped & tested (all phases):**
+- Phase 1+2: `lib/core/config/emotions.dart`, `lib/core/services/llm_service.dart`, `lib/widgets/floating_robot.dart`, `lib/screens/cherished/cherished_memory_screen.dart`
+- Phase 3: `lib/providers/jar_provider.dart`, `lib/widgets/emoji_jar.dart`, `lib/screens/cherished/shelf_tab.dart`, `lib/screens/cherished/year_jar_detail_screen.dart`
+- Phase 4: `lib/models/card_template.dart`, `lib/models/card_folder.dart`, `lib/models/note_card.dart`, `lib/providers/card_provider.dart`, `lib/widgets/card_renderer.dart`, `lib/screens/cherished/cards_tab.dart`, `lib/screens/cherished/card_builder_dialog.dart`
+- Phase 5: `lib/providers/summary_provider.dart`, `lib/screens/cherished/summary_tab.dart`
 
-**New files — planned (Phase 3–5):**
-`jar_provider.dart`, `card_provider.dart`, `template_provider.dart`, `summary_provider.dart`, `emoji_jar.dart`, `card_renderer.dart`, `card_template.dart`, `card_folder.dart`, `note_card.dart`, `shelf_tab.dart`, `cards_tab.dart`, `summary_tab.dart`, `card_builder_dialog.dart`, `template_editor_screen.dart`, `year_jar_detail_screen.dart`
+**Note:** `template_provider.dart` was merged into `card_provider.dart` (templates and cards managed by single provider).
