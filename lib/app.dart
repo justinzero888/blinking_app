@@ -18,6 +18,7 @@ import 'screens/cherished/cherished_memory_screen.dart';
 import 'screens/settings/settings_screen.dart';
 import 'screens/add_entry_screen.dart';
 import 'widgets/floating_robot.dart';
+import 'package:flutter_quill/flutter_quill.dart' show FlutterQuillLocalizations;
 import 'l10n/app_localizations.dart';
 
 import 'core/services/export_service.dart';
@@ -103,7 +104,10 @@ class BlinkingApp extends StatelessWidget {
             themeMode: ThemeMode.light,
             locale: localeProvider.locale,
             supportedLocales: AppLocalizations.supportedLocales,
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            localizationsDelegates: [
+              ...AppLocalizations.localizationsDelegates,
+              FlutterQuillLocalizations.delegate,
+            ],
             home: const MainScreen(),
           );
         },
