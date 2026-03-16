@@ -307,6 +307,12 @@ class StorageService {
       routineMap['targetCount'] = map['target_count'];
       routineMap['currentCount'] = map['current_count'];
       routineMap['category'] = map['category'];
+      routineMap['scheduledDaysOfWeek'] = map['scheduled_days_of_week'] != null
+          ? (json.decode(map['scheduled_days_of_week'] as String) as List<dynamic>)
+              .map((e) => e as int)
+              .toList()
+          : null;
+      routineMap['scheduledDate'] = map['scheduled_date'];
       routineMap['completionLog'] = completionMaps.map((c) => {
         'id': c['id'],
         'routineId': c['routine_id'],
@@ -344,6 +350,10 @@ class StorageService {
         'is_counter': routine.isCounter ? 1 : 0,
         'unit': routine.unit,
         'category': routine.category?.name,
+        'scheduled_days_of_week': routine.scheduledDaysOfWeek != null
+            ? json.encode(routine.scheduledDaysOfWeek)
+            : null,
+        'scheduled_date': routine.scheduledDate?.toIso8601String(),
         'created_at': routine.createdAt.toIso8601String(),
         'updated_at': routine.updatedAt.toIso8601String(),
       }, conflictAlgorithm: ConflictAlgorithm.replace);
@@ -377,6 +387,10 @@ class StorageService {
         'is_counter': routine.isCounter ? 1 : 0,
         'unit': routine.unit,
         'category': routine.category?.name,
+        'scheduled_days_of_week': routine.scheduledDaysOfWeek != null
+            ? json.encode(routine.scheduledDaysOfWeek)
+            : null,
+        'scheduled_date': routine.scheduledDate?.toIso8601String(),
         'updated_at': routine.updatedAt.toIso8601String(),
       }, where: 'id = ?', whereArgs: [routine.id]);
 

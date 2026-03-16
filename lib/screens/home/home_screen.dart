@@ -51,6 +51,7 @@ class _HomeScreenState extends State<HomeScreen> {
             selectedDate: _selectedDate,
             entryCounts: _getEntryCounts(),
             dayEmotions: _getDayEmotions(),
+            dayHabitStatus: _getDayHabitStatus(),
             onDateSelected: _onDateSelected,
             onMonthChanged: _onMonthChanged,
           ),
@@ -93,6 +94,23 @@ class _HomeScreenState extends State<HomeScreen> {
     return emotions;
   }
 
+  /// Compute habit completion status for each date in the focused month.
+  Map<DateTime, ({int completed, int total})> _getDayHabitStatus() {
+    final routineProvider = context.read<RoutineProvider>();
+    final result = <DateTime, ({int completed, int total})>{};
+    final firstDay = DateTime(_focusedMonth.year, _focusedMonth.month, 1);
+    final lastDay = DateTime(_focusedMonth.year, _focusedMonth.month + 1, 0);
+    for (int i = 0; i < lastDay.day; i++) {
+      final day = firstDay.add(Duration(days: i));
+      final dayKey = DateTime(day.year, day.month, day.day);
+      final scheduled = routineProvider.getRoutinesForDate(day);
+      if (scheduled.isEmpty) continue;
+      final completed = scheduled.where((r) => r.isCompletedOn(day)).length;
+      result[dayKey] = (completed: completed, total: scheduled.length);
+    }
+    return result;
+  }
+
   void _goToToday() {
     setState(() {
       _selectedDate = DateTime.now();
@@ -116,16 +134,15 @@ class _HomeScreenState extends State<HomeScreen> {
     final locale = context.watch<LocaleProvider>().locale;
     final isZh = locale.languageCode == 'zh';
     final entries = context.watch<EntryProvider>().entries;
-    final routines = context.watch<RoutineProvider>().routines;
+    final routineProvider = context.watch<RoutineProvider>();
     final isToday = _isSameDay(_selectedDate, DateTime.now());
+    final isPastDay = !isToday && _selectedDate.isBefore(DateTime.now());
+    final dayRoutines = routineProvider.getRoutinesForDate(_selectedDate);
 
     // Get selected day's entries
     final dayEntries = entries.where((e) =>
       _isSameDay(e.createdAt, _selectedDate)
     ).toList();
-
-    // Get selected day's active routines (all routines that should be done daily)
-    final activeRoutines = routines.where((r) => r.isActive).toList();
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -152,15 +169,15 @@ class _HomeScreenState extends State<HomeScreen> {
         const SizedBox(height: 16),
 
         // Routines Section
-        if (activeRoutines.isNotEmpty) ...[
+        if (dayRoutines.isNotEmpty) ...[
           Text(
             isZh ? '✅ 习惯打卡' : '✅ Habit Check-in',
             style: Theme.of(context).textTheme.titleSmall,
           ),
           const SizedBox(height: 8),
-          ...activeRoutines.map((r) => Padding(
+          ...dayRoutines.map((r) => Padding(
             padding: const EdgeInsets.only(bottom: 8),
-            child: _buildRoutineChecklistItem(context, r),
+            child: _buildRoutineChecklistItem(context, r, readOnly: isPastDay),
           )),
           const SizedBox(height: 16),
         ],
@@ -190,7 +207,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
 
         // Empty State
-        if (dayEntries.isEmpty && activeRoutines.isEmpty)
+        if (dayEntries.isEmpty && dayRoutines.isEmpty)
           Center(
             child: Padding(
               padding: const EdgeInsets.all(32),
@@ -226,20 +243,33 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildRoutineChecklistItem(BuildContext context, Routine routine) {
+  Widget _buildRoutineChecklistItem(BuildContext context, Routine routine, {bool readOnly = false}) {
     final isCompleted = routine.isCompletedOn(_selectedDate);
-    
+    final isMissed = readOnly && !isCompleted;
+
     return Card(
       child: CheckboxListTile(
-        secondary: Icon(
-          isCompleted ? Icons.check_circle : Icons.radio_button_unchecked,
-          color: isCompleted ? Colors.green : Colors.grey,
+        secondary: readOnly
+            ? Icon(
+                isCompleted ? Icons.check_circle : Icons.cancel,
+                color: isCompleted ? Colors.green : Colors.red,
+              )
+            : Icon(
+                isCompleted ? Icons.check_circle : Icons.radio_button_unchecked,
+                color: isCompleted ? Colors.green : Colors.grey,
+              ),
+        title: Text(
+          routine.name,
+          style: TextStyle(
+            color: isMissed ? Colors.red[300] : null,
+          ),
         ),
-        title: Text(routine.name),
         value: isCompleted,
-        onChanged: (value) {
-          context.read<RoutineProvider>().toggleComplete(routine.id, date: _selectedDate);
-        },
+        onChanged: readOnly
+            ? null
+            : (value) {
+                context.read<RoutineProvider>().toggleComplete(routine.id, date: _selectedDate);
+              },
       ),
     );
   }

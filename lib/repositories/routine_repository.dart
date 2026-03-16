@@ -56,6 +56,8 @@ class RoutineRepository {
     bool isCounter = false,
     bool isActive = true,
     RoutineCategory? category,
+    List<int>? scheduledDaysOfWeek,
+    DateTime? scheduledDate,
   }) async {
     final now = DateTime.now();
     final routine = Routine(
@@ -72,6 +74,8 @@ class RoutineRepository {
       createdAt: now,
       updatedAt: now,
       category: category,
+      scheduledDaysOfWeek: scheduledDaysOfWeek,
+      scheduledDate: scheduledDate,
     );
     await _storage.addRoutine(routine);
     return routine;

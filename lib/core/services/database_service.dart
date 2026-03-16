@@ -23,7 +23,7 @@ class DatabaseService {
 
     return await openDatabase(
       path,
-      version: 4,
+      version: 5,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -78,6 +78,10 @@ class DatabaseService {
           PRIMARY KEY (card_id, entry_id)
         )
       ''');
+    }
+    if (oldVersion < 5) {
+      await db.execute('ALTER TABLE routines ADD COLUMN scheduled_days_of_week TEXT');
+      await db.execute('ALTER TABLE routines ADD COLUMN scheduled_date TEXT');
     }
   }
 
@@ -136,6 +140,8 @@ class DatabaseService {
         is_counter INTEGER NOT NULL DEFAULT 0,
         unit TEXT,
         category TEXT,
+        scheduled_days_of_week TEXT,
+        scheduled_date TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       )

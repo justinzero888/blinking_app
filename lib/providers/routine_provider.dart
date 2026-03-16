@@ -93,6 +93,8 @@ class RoutineProvider extends ChangeNotifier {
     String? unit,
     bool isCounter = false,
     RoutineCategory? category,
+    List<int>? scheduledDaysOfWeek,
+    DateTime? scheduledDate,
   }) async {
     _error = null;
 
@@ -106,6 +108,8 @@ class RoutineProvider extends ChangeNotifier {
         unit: unit,
         isCounter: isCounter,
         category: category,
+        scheduledDaysOfWeek: scheduledDaysOfWeek,
+        scheduledDate: scheduledDate,
       );
       if (routine.isActive && routine.reminderTime != null) {
         await _notificationService.scheduleRoutineReminder(routine);
@@ -271,10 +275,44 @@ class RoutineProvider extends ChangeNotifier {
     return _repository.getStreak(routineId);
   }
 
-  /// Get active routines for today
-  List<Routine> getActiveRoutinesForToday() {
-    return activeRoutines.where((r) => r.frequency == RoutineFrequency.daily).toList();
+  /// Get routines that should appear for a given date based on their schedule.
+  List<Routine> getRoutinesForDate(DateTime date) {
+    final weekday = date.weekday; // 1=Mon…7=Sun
+    return _routines.where((r) {
+      if (!r.isActive) return false;
+      switch (r.frequency) {
+        case RoutineFrequency.daily:
+          return true;
+        case RoutineFrequency.weekly:
+          if (r.scheduledDaysOfWeek == null || r.scheduledDaysOfWeek!.isEmpty) {
+            return true; // backward compat: no day set → every day
+          }
+          return r.scheduledDaysOfWeek!.contains(weekday);
+        case RoutineFrequency.scheduled:
+          final sd = r.scheduledDate;
+          return sd != null &&
+              sd.year == date.year &&
+              sd.month == date.month &&
+              sd.day == date.day;
+        case RoutineFrequency.adhoc:
+          return false;
+      }
+    }).toList();
   }
+
+  /// Returns true if a routine was scheduled for [date] but not completed,
+  /// and [date] is strictly before today (i.e., the day has ended).
+  bool isMissedOn(Routine routine, DateTime date) {
+    final today = DateTime.now();
+    final todayNorm = DateTime(today.year, today.month, today.day);
+    final dateNorm = DateTime(date.year, date.month, date.day);
+    return dateNorm.isBefore(todayNorm) &&
+        !routine.isCompletedOn(date) &&
+        getRoutinesForDate(date).any((r) => r.id == routine.id);
+  }
+
+  List<Routine> get adhocRoutines =>
+      _routines.where((r) => r.isActive && r.frequency == RoutineFrequency.adhoc).toList();
 
   /// Sync all active routine reminders with the notification service
   Future<void> syncAllReminders() async {
