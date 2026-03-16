@@ -5,8 +5,8 @@ Personal memory/habit-tracking Flutter app (记忆闪烁). Path: `/home/justin/.
 ## Quick Reference
 
 - **Flutter SDK:** `^3.11.0`
-- **Current version:** `1.0.5+6` (pubspec.yaml)
-- **DB version:** 5 (sequential migrations in `DatabaseService.onUpgrade`)
+- **Current version:** `1.0.6+7` (pubspec.yaml)
+- **DB version:** 7 (sequential migrations in `DatabaseService.onUpgrade`)
 - **Build:** `flutter build apk --debug`
 - **Lint:** `flutter analyze --no-pub` (target: 0 errors)
 
@@ -40,10 +40,10 @@ Calendar | Moment | Routine | 珍藏 | Settings
 
 ### Storage Layers
 - **SQLite** via `DatabaseService` singleton (accessed through `StorageService`)
-  - DB version 5; migration blocks: v1→v2 (emotion, category), v3→v4 (card tables), v4→v5 (routine scheduling + card AI fields)
+  - DB version 7; migration blocks: `< 2` (entries/routines), `< 3` (emotion/category), `< 4` (card tables), `< 5` (routine scheduling), `< 6` (template image + card AI summary), `< 7` (card rich content)
   - Tables: `entries`, `routines`, `tags`, `templates`, `card_folders`, `note_cards`, `note_card_entries`
 - **SharedPreferences** for: theme, locale, LLM provider config (`llm_providers`, `llm_selected_index`), AI persona (`ai_assistant_name`, `ai_assistant_personality`)
-- **File system** via `FileService` for media attachments, rendered card PNGs, and custom template images
+- **File system** via `FileService` for media attachments, rendered card PNGs, custom template images, and card inline images (`card_images/`)
 
 ---
 
@@ -51,10 +51,10 @@ Calendar | Moment | Routine | 珍藏 | Settings
 
 | File | Purpose |
 |------|---------|
-| `lib/app.dart` | Provider tree + `MainScreen` (nav + `FloatingRobotWidget`) |
+| `lib/app.dart` | Provider tree + `MainScreen` (nav + `FloatingRobotWidget`); registers `FlutterQuillLocalizations.delegate` |
 | `lib/main.dart` | App entry point, `StorageService` init |
 | `lib/core/services/storage_service.dart` | All CRUD; seeds default tags, routines, templates, folders |
-| `lib/core/services/database_service.dart` | SQLite schema v5 + migrations |
+| `lib/core/services/database_service.dart` | SQLite schema v7 + migrations |
 | `lib/core/services/llm_service.dart` | OpenAI-compatible chat/complete; reads provider config from SharedPreferences |
 | `lib/core/services/file_service.dart` | Media copy to app documents directory |
 | `lib/core/config/emotions.dart` | `kDefaultEmotions` — 10 emoji strings |
@@ -69,12 +69,13 @@ Calendar | Moment | Routine | 珍藏 | Settings
 | `lib/screens/routine/routine_screen.dart` | 3-tab: 全部 / 今日 / 记录; add/edit dialog with frequency/day/date pickers |
 | `lib/screens/cherished/cherished_memory_screen.dart` | 3-tab shell: 书架 / 卡片 / 总结 |
 | `lib/screens/cherished/shelf_tab.dart` | Yearly jar cards → `YearJarDetailScreen` |
-| `lib/screens/cherished/cards_tab.dart` | Card grid + folder filter; long-press → Edit/Share/Delete |
-| `lib/screens/cherished/card_builder_dialog.dart` | Create/edit card; AI merge toggle; template editor sheet |
+| `lib/screens/cherished/cards_tab.dart` | Card grid + folder filter; tap → `CardEditorScreen`; long-press → Edit/Share/Delete |
+| `lib/screens/cherished/card_builder_dialog.dart` | Create card; AI merge (≤100 words); template editor sheet |
+| `lib/screens/cherished/card_editor_screen.dart` | flutter_quill rich text editor; word counter (X/100); image insert |
 | `lib/screens/cherished/summary_tab.dart` | fl_chart visualizations (scope: 日/周/月) |
 | `lib/screens/settings/settings_screen.dart` | LLM config, tags, language, export, AI 个性化 |
 | `lib/widgets/emoji_jar.dart` | `EmojiJarWidget` CustomPainter + AI bottom sheet |
-| `lib/widgets/card_renderer.dart` | `RepaintBoundary` off-screen PNG render; supports image or solid-color background |
+| `lib/widgets/card_renderer.dart` | Off-screen PNG render; `_extractPlainText()` handles `richContent > aiSummary > entry` |
 | `lib/widgets/floating_robot.dart` | Bobbing + pulse + wave-on-tap robot overlay (3 AnimationControllers) |
 | `lib/widgets/entry_card.dart` | Entry display card with share button |
 
@@ -83,7 +84,7 @@ Calendar | Moment | Routine | 珍藏 | Settings
 ## Important Conventions
 
 ### Database Migrations
-Always use sequential `if (oldVersion < N)` blocks in `DatabaseService.onUpgrade`. Never nest or use `else if`. `_onCreate` always creates the full v5 schema.
+Always use sequential `if (oldVersion < N)` blocks in `DatabaseService.onUpgrade`. Never nest or use `else if`. `_onCreate` always creates the full v7 schema.
 
 ### LLM Provider Config
 Stored as JSON list in SharedPreferences key `llm_providers`. Use **merge-on-load** strategy in Settings: start from saved list (preserving API keys), then append any defaults not already present by name. Never discard saved providers on load.
@@ -107,8 +108,21 @@ For `SummaryProvider` emotion trend chart: 😊=5, 😌=4, 😐=3, 😢=2, 😡=
 - `adhoc`: never auto-appears; user adds manually via "手动加入"
 - `isMissedOn(Routine, DateTime)` is a pure derivation — no extra DB column
 
+### Card Content Priority
+`NoteCard` has three text fields in precedence order:
+1. `richContent: String?` — Quill Delta JSON (set by `CardEditorScreen`); source of truth when present
+2. `aiSummary: String?` — plain text; written by AI merge in `CardBuilderDialog` and kept in sync as plain-text mirror of `richContent` on every save
+3. First entry's `content` — fallback when neither field is set
+
+`_extractPlainText()` in `CardRenderer` implements this priority. `note_card_entries` links to original entries and must never be modified by card operations.
+
 ### Card Templates
-Built-in templates must never be mutated. Use `CardProvider.copyBuiltInTemplate()` to create an `isBuiltIn: false` copy before editing. `NoteCard.aiSummary` is for card display only — `note_card_entries` links to original entries and must never be modified by card operations.
+Built-in templates must never be mutated. Use `CardProvider.copyBuiltInTemplate()` to create an `isBuiltIn: false` copy before editing.
+
+### flutter_quill Integration
+`FlutterQuillLocalizations.delegate` **must** be present in `MaterialApp.localizationsDelegates` (registered in `app.dart`). Without it, `QuillEditor` throws `UnimplementedError` at runtime. The delegate is appended via spread: `[...AppLocalizations.localizationsDelegates, FlutterQuillLocalizations.delegate]`.
+
+Word counting for the 100-word limit uses mixed CJK+English logic: each CJK character (U+4E00–U+9FFF, U+3400–U+4DBF) = 1 word; English words counted by whitespace tokens.
 
 ---
 
@@ -136,3 +150,4 @@ Built-in templates must never be mutated. Use `CardProvider.copyBuiltInTemplate(
 | v1.0.3 | a99adc6 | Jar, cards, summary + LLM merge fix |
 | v1.0.4 | 78d2c7b | Phase 1: habit system overhaul (RoutineFrequency, 3-tab screen, calendar badges) |
 | v1.0.5 | 7bb251c | Phases 2–4: card edit/AI merge/template image, social sharing, AI personalization |
+| v1.0.6 | ddf89d5 | Rich card editor (flutter_quill), 100-word limit, card tap → edit, 3 bug fixes |
