@@ -2,6 +2,7 @@
 
 **Based on:** `docs/TODO-2026-03-15.md`
 **Deferred:** WeChat native SDK, Rednote integration
+**PM answers incorporated:** 2026-03-15
 **Status:** Ready for implementation
 
 ---
@@ -120,59 +121,82 @@ Today's records remain fully interactive until midnight.
 
 ### 2.4 Three-panel UI redesign (`RoutineScreen`)
 
-The screen gains a tab bar:
+The screen gains a `DefaultTabController(length: 3)` tab bar:
 
 ```
 ┌─────────────────────────────────────┐
 │  日常           [全部] [今日] [记录] │
 ├─────────────────────────────────────┤
 │ Tab 1 — 全部 (Available list)        │
-│   Active habits (all frequencies)   │
-│   + Paused habits section           │
-│   [+ 添加] FAB or AppBar action     │
+│   All habits grouped: 活跃 / 已暂停  │
+│   Frequency badge on each tile       │
+│   [+ 添加] in AppBar                │
 │                                     │
 │ Tab 2 — 今日 (Daily list)            │
-│   Auto-populated for today          │
-│   ○ Pending section                 │
-│   ✓ Completed section               │
-│   [手动添加] button → adhoc picker  │
+│   Auto-populated via                 │
+│     getRoutinesForDate(today)        │
+│   ─ 待完成 ─                         │
+│   [icon] Vitamin  every day  [  □  ]│
+│   [icon] 5000步   every day  [  □  ]│
+│   ─ 已完成 ─                        │
+│   [✓] Meditation  (green, struck)   │
+│   [手动加入] button → adhoc picker  │
 │                                     │
 │ Tab 3 — 记录 (History)              │
-│   Date picker to view any past day  │
-│   Each routine shown as:            │
-│     [icon]  Name     [✓] or [✗]     │
-│   Read-only; cannot toggle          │
+│   Flat reverse-chronological list   │
+│   ─── 3月14日 (周五) ───             │
+│   💊 维生素     ✓                   │
+│   🏃 5000步     ✗                   │
+│   ─── 3月13日 (周四) ───            │
+│   ...                               │
+│   Read-only; no tap on ✓/✗          │
 └─────────────────────────────────────┘
 ```
 
 **Tab 1 — 全部 (Available list)**
-- Shows all routines grouped: Active / Paused
-- Shows frequency badge: 每天 / 每周六 / 2026-03-20 / 随时
-- Edit / Pause / Delete via popup menu (unchanged)
-- Add dialog gains frequency selector: 每天 / 指定星期 / 指定日期 / 随时
+- Groups: 活跃 / 已暂停
+- Frequency badge per tile: `每天` / `每周六` / `2026-03-20` / `随时`
+- Edit / Pause / Delete via popup menu (unchanged flow)
+- Add button opens enhanced dialog (see below)
 
-**Tab 2 — 今日 (Daily list)**
+**Tab 2 — 今日 (Daily list) — interactive**
 - `getRoutinesForDate(DateTime.now())` drives the list
-- Split: 待完成 / 已完成 (same as current RoutineScreen)
-- "手动加入" button opens a dialog to pick an `adhoc` routine or any routine for today only
-- Each item shows: `[effectiveIcon]  Name  frequency-badge  [checkbox]`
-- Item tile also has a small icon representation (emoji from `effectiveIcon`) always visible
+- Checking an item → calls `completeRoutine(id)` → item disappears from 待完成, appears in 已完成
+- Unchecking → calls `unmarkRoutine(id)` → reverses
+- "手动加入" opens a dialog listing `adhoc` + any routine not already in today's list
+- Each pending tile: `[effectiveIcon]` emoji + name + frequency badge + checkbox
 
-**Tab 3 — 记录 (History)**
-- `CalendarDatePicker` or a date chip row to navigate days
-- Shows routines that were scheduled for that day via `getRoutinesForDate(selectedDate)`
-- Each entry renders: icon, name, ✓ (green) / ✗ (red) / — (not applicable)
-- Immutable — no tap gesture on check boxes
+**Tab 3 — 记录 (History) — read-only**
+- Flat `ListView` of last 60 days in reverse chronological order
+- Days with no scheduled routines are omitted
+- Per-day section header: `─── 3月14日 (周五) ───`
+- Per-routine row: `effectiveIcon` + name + ✓ (green) or ✗ (red)
+- ✓/✗ derived: `isCompletedOn(date)` → ✓; date < today && not completed → ✗
+- No date picker; no interactive elements
 
 **Add/edit dialog changes:**
 ```
 Name:          [          ]
 Frequency:     [每天 ▼]   (dropdown: 每天 / 每周 / 指定日期 / 随时)
-  if weekly:   [Mon][Tue][Wed][Thu][Fri][Sat][Sun]  (multi-select chips)
-  if scheduled: [Date picker]
+  if 每周:    [一][二][三][四][五][六][日]  (multi-select day chips)
+  if 指定日期: [Date picker → YYYY-MM-DD]
 Reminder:      [HH:mm]  (optional)
 Category:      [chip picker]  (unchanged)
 ```
+
+**Calendar view — habit status overlay**
+`HomeScreen` passes a new `dayHabitStatus` map to `CalendarWidget`:
+```dart
+Map<DateTime, ({int completed, int total})> _getDayHabitStatus() {
+  final result = <DateTime, ({int completed, int total})>{};
+  // for each day in focused month:
+  //   total = getRoutinesForDate(day).length
+  //   completed = how many isCompletedOn(day)
+  //   if total > 0: result[day] = (completed: c, total: t)
+  return result;
+}
+```
+Calendar cell shows a tiny `✓n/n` badge or mini progress bar below the date number, in addition to (or replacing) the emotion emoji when habit data is present.
 
 ---
 
@@ -181,11 +205,13 @@ Category:      [chip picker]  (unchanged)
 | File | Change |
 |------|--------|
 | `lib/models/routine.dart` | Add `scheduledDaysOfWeek`, `scheduledDate` fields; extend `RoutineFrequency` enum with `scheduled`, `adhoc`; update `copyWith`, `toJson`, `fromJson` |
-| `lib/core/services/database_service.dart` | v4→v5 migration: `ALTER TABLE routines ADD COLUMN scheduled_days_of_week TEXT`, `ADD COLUMN scheduled_date TEXT` |
+| `lib/core/services/database_service.dart` | v4→v5 migration: `ALTER TABLE routines ADD COLUMN scheduled_days_of_week TEXT`, `ADD COLUMN scheduled_date TEXT`; bump `_onCreate` to version 5 |
 | `lib/core/services/storage_service.dart` | Include new columns in routine insert/update/select |
 | `lib/repositories/routine_repository.dart` | Propagate new fields in `create()` and `update()` |
-| `lib/providers/routine_provider.dart` | Replace `getActiveRoutinesForToday()` with `getRoutinesForDate(DateTime)`; add `isMissedOn(Routine, DateTime)` helper |
-| `lib/screens/routine/routine_screen.dart` | Full rewrite: `DefaultTabController(3)` with 全部 / 今日 / 记录 tabs; new add/edit dialog with frequency/day pickers |
+| `lib/providers/routine_provider.dart` | Replace `getActiveRoutinesForToday()` with `getRoutinesForDate(DateTime)`; add `isMissedOn(Routine, DateTime)` derived helper |
+| `lib/screens/routine/routine_screen.dart` | Full rewrite: `DefaultTabController(3)` with 全部 / 今日 / 记录 tabs; new add/edit dialog with frequency/day/date pickers; read-only 记录 list |
+| `lib/widgets/calendar_widget.dart` | Add `dayHabitStatus: Map<DateTime, ({int completed, int total})>` parameter; render mini completion badge in day cell |
+| `lib/screens/home/home_screen.dart` | Compute `dayHabitStatus` from `RoutineProvider` and pass to `CalendarWidget` |
 
 ---
 
@@ -497,6 +523,7 @@ No new dependencies for Phases 1 and 4.
 | `lib/screens/assistant/assistant_screen.dart` | | | | ✓ |
 | `lib/screens/settings/settings_screen.dart` | | | | ✓ |
 | `lib/widgets/card_renderer.dart` | | ✓ | | |
+| `lib/widgets/calendar_widget.dart` | ✓ | | | |
 | `lib/widgets/entry_card.dart` | | | ✓ | |
 | `lib/widgets/floating_robot.dart` | | | | ✓ |
 | `pubspec.yaml` | | ✓ | ✓ | |
@@ -505,12 +532,93 @@ No new dependencies for Phases 1 and 4.
 
 ---
 
-## 10. Open questions (need PM answers before implementation)
+## 10. PM answers
 
-| # | Question | Default if not answered |
-|---|----------|------------------------|
-| Q1 | For "记录" tab history view — should the date picker show a calendar grid or a simple prev/next day navigator? | Day navigator (simpler) |
-| Q2 | Can a user add a single `adhoc` routine to multiple days, or is each "add to day" a separate entry? | Each add = separate manual inclusion for that day; the routine definition is shared |
-| Q3 | For the AI card merge — should the original entry text still be visible on the card (below the poem), or replaced entirely? | Replaced entirely; original entries accessible via `note_card_entries` links |
-| Q4 | Template editor: should editing a built-in template create a copy (leaving built-in intact) or mutate it? | Create a copy with `isBuiltIn = false` |
-| Q5 | For the tap-wave robot animation — should it play every tap (including when opening AI chat), or only on a separate "wave" trigger? | Every tap |
+| # | Question | Answer |
+|---|----------|--------|
+| Q1 | History view format? | Simple list of past days (most recent first), each showing that day's routines. **Key clarification:** Calendar view must also show daily habit results. Each day starts with a fresh list; checking an item removes it from pending → moves to completed. At end of day the list becomes a read-only record. |
+| Q2 | Adhoc routine: one definition, multiple days? | Each add = separate manual inclusion for that day; the routine definition is shared. |
+| Q3 | AI card merge: replace or append original text? | Replaced entirely on the card. Original entries must NOT be lost or altered — only the card's display text changes. `note_card_entries` links to originals remain intact. |
+| Q4 | Editing built-in template? | Create a copy with `isBuiltIn = false`; leave the original built-in unchanged. |
+| Q5 | Tap-wave animation timing? | Every tap (including when opening AI chat). |
+
+---
+
+## 11. Refined design from PM answers
+
+### 11.1 Day-state machine (Q1 clarification)
+
+Each day has exactly one of three states:
+
+```
+FUTURE / TODAY (interactive)          PAST (read-only)
+─────────────────────────────         ─────────────────
+Fresh list = getRoutinesForDate()     Record = completion log snapshot
+User checks item → moves to           Completed: ✓ (green)
+  Completed section                   Missed: ✗ (red)
+User unchecks → moves back to         Cannot toggle
+  Pending section
+```
+
+"End of day" is not an active transition — it is purely derived: if `date < today` then read-only. No background job or timer needed.
+
+**Immutability rule:** `date < today` → render ✓/✗, disable tap gesture. `date == today` → fully interactive.
+
+### 11.2 Calendar cell — habit completion indicator (Q1)
+
+`CalendarWidget` receives a new parameter:
+```dart
+final Map<DateTime, ({int completed, int total})> dayHabitStatus;
+```
+
+Cell rendering priority (bottom sub-row, below date number):
+1. If `dayHabitStatus[day] != null` → show compact ratio badge: `✓ 3/5` or a colored mini progress bar
+2. Else if `dayEmotions[day] != null` → show emotion emoji (existing)
+3. Else if `hasEntries` → show dot (existing)
+
+`HomeScreen` computes `dayHabitStatus` from `RoutineProvider.getRoutinesForDate(date)` + `isCompletedOn(date)` for each calendar day.
+
+### 11.3 记录 tab — flat day list (Q1)
+
+No date picker. Render a `ListView` of the last N days (e.g., 30) in reverse chronological order:
+
+```
+─── 3月14日 (周五) ──────────────────────  ← section header
+  💊 维生素       ✓
+  🏃 5000步       ✗
+  📚 阅读         ✓
+
+─── 3月13日 (周四) ──────────────────────
+  💊 维生素       ✓
+  ...
+```
+
+Each row: `effectiveIcon` + routine name + ✓ or ✗. Tapping a row does nothing (read-only). Days with no scheduled routines are omitted.
+
+### 11.4 Original entries protection (Q3)
+
+- `NoteCard.aiSummary` stores the AI-generated text for **display purposes only**
+- `note_card_entries` join table is never modified during card edit
+- `Entry` records are never touched by card operations
+- `CardRenderer` renders `aiSummary` when set; `note_card_entries` remain the authoritative link to source entries
+- Card detail view (future) can show "查看原文" to navigate to the linked entries
+
+### 11.5 Template copy-on-edit (Q4)
+
+When the user taps "Edit" on a built-in template:
+1. Create a new `CardTemplate` with `isBuiltIn = false`, name prefixed with "自定义 — {originalName}", all other fields copied
+2. Open the template editor with this new copy
+3. The original built-in template is never modified
+4. The new copy is saved as a user template and immediately available in the template picker
+
+### 11.6 Robot wave on every tap (Q5)
+
+`_onTap` in `FloatingRobotWidget`:
+```dart
+void _onTap() {
+  _waveController.forward(from: 0); // non-blocking, plays 500ms animation
+  // then open AssistantScreen
+  showModalBottomSheet(...);
+}
+```
+The wave plays concurrently with the modal opening — no delay added to navigation.
