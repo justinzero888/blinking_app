@@ -175,13 +175,45 @@ class _HomeScreenState extends State<HomeScreen> {
             style: Theme.of(context).textTheme.titleSmall,
           ),
           const SizedBox(height: 8),
-          // Pending: show individually with checkbox
-          ...dayRoutines
-              .where((r) => !r.isCompletedOn(_selectedDate))
-              .map((r) => Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: _buildRoutineChecklistItem(context, r, readOnly: isPastDay),
-                  )),
+          // Pending: for past days consolidate into a red icon row;
+          // for today show individually with checkbox
+          Builder(builder: (context) {
+            final pending = dayRoutines
+                .where((r) => !r.isCompletedOn(_selectedDate))
+                .toList();
+            if (pending.isEmpty) return const SizedBox.shrink();
+            if (isPastDay) {
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Card(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.cancel, color: Colors.red, size: 18),
+                        const SizedBox(width: 8),
+                        Wrap(
+                          spacing: 6,
+                          children: pending
+                              .map((r) => Text(r.effectiveIcon,
+                                  style: const TextStyle(fontSize: 22)))
+                              .toList(),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }
+            return Column(
+              children: pending
+                  .map((r) => Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: _buildRoutineChecklistItem(context, r),
+                      ))
+                  .toList(),
+            );
+          }),
           // Completed: one consolidated icon row
           Builder(builder: (context) {
             final done = dayRoutines
