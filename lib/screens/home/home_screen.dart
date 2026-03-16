@@ -175,11 +175,42 @@ class _HomeScreenState extends State<HomeScreen> {
             style: Theme.of(context).textTheme.titleSmall,
           ),
           const SizedBox(height: 8),
-          ...dayRoutines.map((r) => Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: _buildRoutineChecklistItem(context, r, readOnly: isPastDay),
-          )),
-          const SizedBox(height: 16),
+          // Pending: show individually with checkbox
+          ...dayRoutines
+              .where((r) => !r.isCompletedOn(_selectedDate))
+              .map((r) => Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: _buildRoutineChecklistItem(context, r, readOnly: isPastDay),
+                  )),
+          // Completed: one consolidated icon row
+          Builder(builder: (context) {
+            final done = dayRoutines
+                .where((r) => r.isCompletedOn(_selectedDate))
+                .toList();
+            if (done.isEmpty) return const SizedBox.shrink();
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Card(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.check_circle, color: Colors.green, size: 18),
+                      const SizedBox(width: 8),
+                      Wrap(
+                        spacing: 6,
+                        children: done
+                            .map((r) => Text(r.effectiveIcon,
+                                style: const TextStyle(fontSize: 22)))
+                            .toList(),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }),
+          const SizedBox(height: 8),
         ],
 
         // Entries Section
