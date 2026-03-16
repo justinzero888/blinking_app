@@ -1,58 +1,43 @@
-# Session Summary — 2026-03-14
+# Session Summary — 2026-03-15
 
 ## Completed Tasks
 
-### Phase 1 — Data foundation + routine polish (v1.0.1 · bc3d826)
-- Added `emotion: String?` to `Entry` model with nullable emoji picker in `AddEntryScreen`
-- Added `RoutineCategory` enum with keyword auto-detection (`autoDetectCategory()`) and `effectiveIcon` getter on `Routine`
-- DB migration v1→v2→v3: `ALTER TABLE entries ADD COLUMN emotion`, `ALTER TABLE routines ADD COLUMN category`
-- `getDayEmotion(DateTime)` on `EntryProvider` — frequency-based dominant emotion per day
-- `CalendarWidget` shows per-cell emoji instead of dot when emotion data exists
-- Home screen date header shows emoji badge (e.g. `今天 · 😊`)
-- `RoutineScreen` rewritten: three sections (今日待完成 / 已完成 / 已暂停)
-- `kDefaultEmotions` constant in `lib/core/config/emotions.dart`
-- `tag_reflection` added to default tag seed (purple `#AF52DE`)
-- Added `http: ^1.2.0` to pubspec
+### Phase 1 — Habit system overhaul (v1.0.4 · 78d2c7b) ✅ TESTED
+- Extended `RoutineFrequency` enum: `daily | weekly | scheduled | adhoc` (removed `custom`)
+- Added `scheduledDaysOfWeek: List<int>?` and `scheduledDate: DateTime?` to `Routine` model
+- DB migration v4 → v5: `ALTER TABLE routines ADD COLUMN scheduled_days_of_week TEXT`, `ADD COLUMN scheduled_date TEXT`
+- `getRoutinesForDate(DateTime)` replaces `getActiveRoutinesForToday()` in `RoutineProvider`
+- `isMissedOn(Routine, DateTime)` pure derivation helper (no extra DB column)
+- `RoutineScreen` full rewrite: `DefaultTabController(length: 3)` — 全部 / 今日 / 记录
+  - 全部: active/paused groups, frequency badge, popup menu (edit/pause/delete)
+  - 今日: auto-populated checklist, completed section, "手动加入" for adhoc
+  - 记录: flat reverse-chronological 60-day list, read-only ✓/✗ per routine
+  - Add/edit dialog: frequency dropdown → day-chip picker (weekly) or date picker (scheduled)
+- `CalendarWidget` gains `dayHabitStatus: Map<DateTime, ({int completed, int total})>` — mini `LinearProgressIndicator` per cell
+- `HomeScreen._getDayHabitStatus()` computes per-day habit completion, passes to `CalendarWidget`
+- Post-release UI fixes:
+  - Completed habits consolidated into one green ✓ icon row (no text)
+  - Past uncompleted habits consolidated into one red ✗ icon row (no text)
 
-### Phase 2 — Navigation + AI floating robot (v1.0.2 → v1.0.3 · 1ea1f96, a99adc6)
-- `AssistantScreen` removed from bottom nav; replaced with `CherishedMemoryScreen` (珍藏 tab)
-- `FloatingRobotWidget` added to `MainScreen` Stack — bobbing 🤖 animation, tap → AssistantScreen modal
-- `LlmService` extracted (`lib/core/services/llm_service.dart`) — OpenAI-compatible `/chat/completions`, reads config from SharedPreferences, typed `LlmException`
-- `AssistantScreen` wired to real LLM multi-turn chat (loading spinner, Chinese error messages)
-- "Save Reflection" button: LLM summarises conversation → saved as freeform entry with `tag_reflection`
-- LLM provider persistence via SharedPreferences with merge strategy (preserves API keys, appends new defaults)
-- 4 default LLM providers: Claude, Gemini, Ollama, Open Router (qwen/qwen3.5-flash-02-23)
-- `AppProvider` deleted (dead code — nothing imported it)
-- Dead stubs deleted: `lib/screens/add_entry/`, `lib/models/completion_log.dart`
+### Phase 2 — Card enhancements (v1.0.5 · 7bb251c) ✅ TESTED
+- `CardTemplate.customImagePath: String?` — user-uploaded background image
+- `NoteCard.aiSummary: String?` — AI-generated display text (originals preserved in `note_card_entries`)
+- DB v5 additions (same `if (oldVersion < 5)` block): `custom_image_path` on templates, `ai_summary` on note_cards
+- `StorageService.updateNoteCard()` added; `getNoteCards()` / `addNoteCard()` propagate new fields
+- `CardProvider.updateCard(NoteCard)` and `copyBuiltInTemplate(CardTemplate)` added
+- `CardRenderer`: conditional `DecorationImage(FileImage(...))` vs solid bgColor; renders `aiSummary ?? firstEntry.content`
+- `CardBuilderDialog` full rewrite: edit mode (pre-fills from existingCard), content mode toggle (原文 / AI 生成), LlmService call for merge, `_TemplateEditorSheet` (name, bgColor cycle, image upload via ImagePicker)
+- `CardsTab` full rewrite: long-press → Edit / Share / Delete bottom sheet; `_CardTile` supports customImagePath background
 
-### Phase 3 — Emoji jar + shelf (v1.0.3 · b576de7) ✅ TESTED
-- `EmojiJarWidget` (`lib/widgets/emoji_jar.dart`) — CustomPainter mason jar with shimmer, emoji Wrap, amber tint
-- AI bottom sheet from jar: 3 tabs (鼓励/灵感/动力), each calls `LlmService.complete()`
-- `JarProvider` (`ChangeNotifierProxyProvider<EntryProvider, JarProvider>`) — aggregates emotion data by year/month/day
-- `ShelfTab` — year card list with mini emoji preview + entry count
-- `YearJarDetailScreen` — 3-column month grid → day-list bottom sheet
-- Home screen `_EmojiJarSection` collapsible card shown when day has entries
+### Phase 3 — Social sharing (v1.0.5 · 7bb251c) ✅ TESTED
+- `EntryCard`: share button (top-right) via `share_plus` — `Share.share(entry.content)`
+- `CardsTab`: share rendered PNG via `Share.shareXFiles([XFile(card.renderedImagePath!)])`
+- Both use OS system share sheet (WeChat, Telegram, etc. available automatically)
 
-### Phase 4 — Templates + cards + folders (v1.0.3 · b576de7) ✅ TESTED
-- `CardTemplate`, `CardFolder`, `NoteCard` models; all exported from `lib/models/models.dart`
-- DB migration v3→v4: `card_folders`, `templates`, `note_cards`, `note_card_entries` tables
-- Default folder "🗂️ 我的卡片" seeded on init; 6 built-in color templates seeded
-- `CardProvider` — manages folders, templates, note cards via StorageService
-- `CardRenderer` widget — `RepaintBoundary` + `RenderRepaintBoundary.toImage()` for PNG export
-- `CardsTab` — folder chip filter + 2-col GridView + FAB → `CardBuilderDialog`
-- `CardBuilderDialog` — entry picker, template thumbnails, folder dropdown, "生成卡片"
-- `template_provider.dart` was **not** created separately — merged into `CardProvider`
-
-### Phase 5 — Visual summary (v1.0.3 · b576de7) ✅ TESTED
-- `fl_chart: ^0.70.0` added to pubspec
-- `SummaryProvider` (`ChangeNotifierProxyProvider2<EntryProvider, RoutineProvider, SummaryProvider>`)
-  - Computes: `noteCounts`, `routineCompletionRates`, `emotionTrend` (emoji→score 1–5), `topTags`
-  - Scopes: daily / weekly / monthly (`SummaryScope` enum)
-- `SummaryTab` — scope `ChoiceChip`s + 4 fl_chart visualizations (BarChart, horizontal BarChart, LineChart, tag frequency bars)
-
-### Post-release fixes (a204bcd, b064e3a)
-- `AssistantScreen` ActionChip icons and labels set to `Colors.black87` (white-on-light visibility fix)
-- Docs updated: phases 3–5 marked TESTED & PASSED, file impact matrix completed
+### Phase 4 — AI personalization (v1.0.5 · 7bb251c) ✅ TESTED
+- `Settings` — new "AI 个性化" section: name TextField + personality TextField, saved to SharedPreferences keys `ai_assistant_name` / `ai_assistant_personality`
+- `AssistantScreen`: dynamic `_systemPrompt` getter reads name/personality; AppBar title shows custom name
+- `FloatingRobotWidget`: `TickerProviderStateMixin`; added `_pulseController` (3000ms idle scale 1.0→1.05) and `_waveController` (500ms rotation TweenSequence on every tap)
 
 ---
 
@@ -60,10 +45,10 @@
 
 | Priority | Item | Notes |
 |----------|------|-------|
-| P2 | Entry detail / edit view | `add_entry_screen.dart` is reused via `moment_screen.dart` onTap — works but no dedicated read-only detail view |
-| P2 | Image attachment persisted to entry | `FileService.saveFile()` exists; need to wire picker → `entry.mediaUrls` → display in `EntryCard` |
-| P2 | Audio recording functional | `flutter_sound ^9.16.3` is in pubspec but not used; `_recordAudio()` shows a snackbar stub |
-| P3 | Firebase / Cloud Sync | All deps commented out in `pubspec.yaml`; sync toggle in Settings is a no-op |
+| P2 | Wire image picker → `FileService.saveFile()` → `entry.mediaUrls` → display in `EntryCard` | `FileService` exists; `add_entry_screen.dart` shows snackbar only |
+| P2 | Implement audio recording with `flutter_sound` | `flutter_sound ^9.16.3` in pubspec; `_recordAudio()` is a snackbar stub |
+| P2 | Dedicated entry detail / read-only view | `AddEntryScreen` is reused for editing via onTap — no standalone detail view |
+| P3 | Firebase / Cloud Sync | All deps commented out in pubspec; Settings sync toggle is no-op |
 | P3 | Tests | Single `1+1=2` placeholder; 50+ source files untested |
 | P3 | CSV export UI | `csv_utils.dart` exists; no screen triggers it |
 | P3 | Backup import UI | `ExportService` import logic exists; no screen calls it |
@@ -74,15 +59,18 @@
 
 | Decision | Rationale |
 |----------|-----------|
-| AI tab replaced by floating robot | PM directive (Q7) — keeps nav clean; robot is always accessible as overlay |
-| `template_provider.dart` skipped | Templates and cards share the same CRUD lifecycle; merged into `CardProvider` reduces indirection |
-| `AppProvider` deleted | Was dead code duplicating EntryProvider/TagProvider/RoutineProvider; caused data inconsistency risk |
-| DB version 4, sequential `if (oldVersion < N)` blocks | Handles all upgrade paths (v1→v4, v2→v4, v3→v4) without branching |
+| AI tab replaced by floating robot | PM directive — keeps nav clean; robot always accessible as overlay |
+| `AppProvider` deleted | Dead code duplicating EntryProvider/TagProvider/RoutineProvider; caused data inconsistency risk |
+| DB version 5, sequential `if (oldVersion < N)` blocks | Handles all upgrade paths without branching; Phase 1 + Phase 2 both in same `if (oldVersion < 5)` block |
 | LLM config: merge-on-load strategy | Preserves user API keys while appending new default providers added in later releases |
-| `tag_reflection` id is stable | Used as a hardcoded string in `AssistantScreen._saveReflection()`; must not be renamed |
-| No image generation API | PM decision (Q8) — AI returns text only; jar tint derived from keyword-to-color map |
-| `CardTemplate` uses solid `bgColor` (hex) | Designer assets not available; solid colors ship without asset bundle complexity |
-| Emotion encoded as score 1–5 for LineChart | 😊=5 😌=4 😐=3 😢=2 😡=1; missing emotion defaults to 3 (neutral) |
+| `tag_reflection` id is stable | Hardcoded in `AssistantScreen._saveReflection()`; must not be renamed |
+| No image generation API | PM decision — AI returns text only; jar tint derived from keyword-to-color map |
+| `CardTemplate` uses solid `bgColor` (hex) + optional `customImagePath` | Designer assets not available; user can upload own image |
+| Emotion encoded as score 1–5 for LineChart | 😊=5 😌=4 😐=3 😢=2 😡=1; missing defaults to 3 (neutral) |
+| Missed habit = pure derivation | `date < today && !isCompletedOn(date) && scheduled` — no extra DB column |
+| Built-in template edit → copy-on-write | `copyBuiltInTemplate()` creates `isBuiltIn: false` copy; original never mutated |
+| `NoteCard.aiSummary` for display only | Original entries in `note_card_entries` never altered by card operations |
+| `TickerProviderStateMixin` in FloatingRobotWidget | Required for multiple AnimationControllers (bob + pulse + wave) |
 
 ---
 
@@ -90,7 +78,9 @@
 
 | Version | Commit | APK |
 |---------|--------|-----|
-| v1.0.0 | 42b23e4 | initial release |
-| v1.0.1 | bc3d826 | Phase 1 |
-| v1.0.2 | 1ea1f96 | Phase 2 shell |
-| v1.0.3 | a99adc6 | Phase 2–5 complete (latest built APK) |
+| v1.0.0 | 42b23e4 | Initial release |
+| v1.0.1 | bc3d826 | Emotion picker, routine categories |
+| v1.0.2 | 1ea1f96 | Floating robot, LlmService |
+| v1.0.3 | a99adc6 | Jar, cards, summary (latest built APK prior to this session) |
+| v1.0.4 | 78d2c7b | Phase 1 — habit system overhaul |
+| v1.0.5 | 7bb251c | Phases 2–4 — card edit/AI/sharing/personalization (latest built APK) |

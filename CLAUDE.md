@@ -5,8 +5,8 @@ Personal memory/habit-tracking Flutter app (记忆闪烁). Path: `/home/justin/.
 ## Quick Reference
 
 - **Flutter SDK:** `^3.11.0`
-- **Current version:** `1.0.3+4` (pubspec.yaml)
-- **DB version:** 4 (sequential migrations in `DatabaseService.onUpgrade`)
+- **Current version:** `1.0.5+6` (pubspec.yaml)
+- **DB version:** 5 (sequential migrations in `DatabaseService.onUpgrade`)
 - **Build:** `flutter build apk --debug`
 - **Lint:** `flutter analyze --no-pub` (target: 0 errors)
 
@@ -35,15 +35,15 @@ Bottom nav (5 tabs) in `MainScreen` (`lib/app.dart`):
 ```
 Calendar | Moment | Routine | 珍藏 | Settings
 ```
-- `FloatingRobotWidget` overlay (bobbing 🤖) → taps into `AssistantScreen` modal
+- `FloatingRobotWidget` overlay (bobbing + pulsing 🤖, wave-on-tap) → `AssistantScreen` modal
 - `FloatingActionButton` → `AddEntryScreen`
 
 ### Storage Layers
 - **SQLite** via `DatabaseService` singleton (accessed through `StorageService`)
-  - DB version 4; migration blocks: v1→v2 (emotion, category), v2→v3 (old — unused path now), v3→v4 (card tables)
+  - DB version 5; migration blocks: v1→v2 (emotion, category), v3→v4 (card tables), v4→v5 (routine scheduling + card AI fields)
   - Tables: `entries`, `routines`, `tags`, `templates`, `card_folders`, `note_cards`, `note_card_entries`
-- **SharedPreferences** for: theme, locale, LLM provider config (`llm_providers`, `llm_selected_index`)
-- **File system** via `FileService` for media attachments and rendered card PNGs
+- **SharedPreferences** for: theme, locale, LLM provider config (`llm_providers`, `llm_selected_index`), AI persona (`ai_assistant_name`, `ai_assistant_personality`)
+- **File system** via `FileService` for media attachments, rendered card PNGs, and custom template images
 
 ---
 
@@ -54,35 +54,42 @@ Calendar | Moment | Routine | 珍藏 | Settings
 | `lib/app.dart` | Provider tree + `MainScreen` (nav + `FloatingRobotWidget`) |
 | `lib/main.dart` | App entry point, `StorageService` init |
 | `lib/core/services/storage_service.dart` | All CRUD; seeds default tags, routines, templates, folders |
-| `lib/core/services/database_service.dart` | SQLite schema v4 + migrations |
+| `lib/core/services/database_service.dart` | SQLite schema v5 + migrations |
 | `lib/core/services/llm_service.dart` | OpenAI-compatible chat/complete; reads provider config from SharedPreferences |
 | `lib/core/services/file_service.dart` | Media copy to app documents directory |
 | `lib/core/config/emotions.dart` | `kDefaultEmotions` — 10 emoji strings |
 | `lib/providers/entry_provider.dart` | `addEntry`, `getDayEmotion`, `setSearchQuery`, `setFilterTag` |
+| `lib/providers/routine_provider.dart` | `getRoutinesForDate`, `isMissedOn`, `toggleComplete` |
 | `lib/providers/jar_provider.dart` | `getDayEmotions`, `getMonthEmotionMap`, `getYearEmotions`, `getYearEntryCount` |
-| `lib/providers/card_provider.dart` | Folders + templates + note cards CRUD; `load()` on init |
+| `lib/providers/card_provider.dart` | Folders + templates + note cards CRUD; `updateCard()`, `copyBuiltInTemplate()` |
 | `lib/providers/summary_provider.dart` | `noteCounts`, `routineCompletionRates`, `emotionTrend`, `topTags` |
 | `lib/screens/add_entry_screen.dart` | Add/edit entry (emotion picker, tag picker, image/audio) |
-| `lib/screens/assistant/assistant_screen.dart` | Multi-turn LLM chat + Save Reflection |
+| `lib/screens/assistant/assistant_screen.dart` | Multi-turn LLM chat; dynamic system prompt from AI persona; Save Reflection |
 | `lib/screens/moment/moment_screen.dart` | Entry list with live search + tag/date filter |
+| `lib/screens/routine/routine_screen.dart` | 3-tab: 全部 / 今日 / 记录; add/edit dialog with frequency/day/date pickers |
 | `lib/screens/cherished/cherished_memory_screen.dart` | 3-tab shell: 书架 / 卡片 / 总结 |
 | `lib/screens/cherished/shelf_tab.dart` | Yearly jar cards → `YearJarDetailScreen` |
-| `lib/screens/cherished/cards_tab.dart` | Card grid + folder filter → `CardBuilderDialog` |
+| `lib/screens/cherished/cards_tab.dart` | Card grid + folder filter; long-press → Edit/Share/Delete |
+| `lib/screens/cherished/card_builder_dialog.dart` | Create/edit card; AI merge toggle; template editor sheet |
 | `lib/screens/cherished/summary_tab.dart` | fl_chart visualizations (scope: 日/周/月) |
-| `lib/screens/settings/settings_screen.dart` | LLM config (persisted), tags, language, export |
+| `lib/screens/settings/settings_screen.dart` | LLM config, tags, language, export, AI 个性化 |
 | `lib/widgets/emoji_jar.dart` | `EmojiJarWidget` CustomPainter + AI bottom sheet |
-| `lib/widgets/card_renderer.dart` | `RepaintBoundary` off-screen PNG render |
-| `lib/widgets/floating_robot.dart` | Bobbing robot overlay widget |
+| `lib/widgets/card_renderer.dart` | `RepaintBoundary` off-screen PNG render; supports image or solid-color background |
+| `lib/widgets/floating_robot.dart` | Bobbing + pulse + wave-on-tap robot overlay (3 AnimationControllers) |
+| `lib/widgets/entry_card.dart` | Entry display card with share button |
 
 ---
 
 ## Important Conventions
 
 ### Database Migrations
-Always use sequential `if (oldVersion < N)` blocks in `DatabaseService.onUpgrade`. Never nest or use `else if`. `_onCreate` always creates the full v4 schema.
+Always use sequential `if (oldVersion < N)` blocks in `DatabaseService.onUpgrade`. Never nest or use `else if`. `_onCreate` always creates the full v5 schema.
 
 ### LLM Provider Config
 Stored as JSON list in SharedPreferences key `llm_providers`. Use **merge-on-load** strategy in Settings: start from saved list (preserving API keys), then append any defaults not already present by name. Never discard saved providers on load.
+
+### AI Persona Config
+Stored in SharedPreferences: `ai_assistant_name` (default `'AI 助手'`) and `ai_assistant_personality` (default `''`). `AssistantScreen` reads these in `initState` and builds a dynamic `_systemPrompt` getter. Settings screen writes them on save.
 
 ### Stable IDs
 `tag_reflection` is hardcoded in `AssistantScreen._saveReflection()`. Do not rename or delete this tag ID.
@@ -92,6 +99,16 @@ For `SummaryProvider` emotion trend chart: 😊=5, 😌=4, 😐=3, 😢=2, 😡=
 
 ### Provider Hierarchy
 `AppProvider` was deleted. Do not recreate it. Settings screen uses `TagProvider` directly.
+
+### Routine Scheduling
+`RoutineFrequency` has four values: `daily | weekly | scheduled | adhoc`.
+- `weekly`: uses `scheduledDaysOfWeek: List<int>` (1=Mon…7=Sun ISO 8601)
+- `scheduled`: uses `scheduledDate: DateTime` (one-time)
+- `adhoc`: never auto-appears; user adds manually via "手动加入"
+- `isMissedOn(Routine, DateTime)` is a pure derivation — no extra DB column
+
+### Card Templates
+Built-in templates must never be mutated. Use `CardProvider.copyBuiltInTemplate()` to create an `isBuiltIn: false` copy before editing. `NoteCard.aiSummary` is for card display only — `note_card_entries` links to original entries and must never be modified by card operations.
 
 ---
 
@@ -114,8 +131,8 @@ For `SummaryProvider` emotion trend chart: 😊=5, 😌=4, 😐=3, 😢=2, 😡=
 | Version | Commit | What |
 |---------|--------|------|
 | v1.0.0 | 42b23e4 | Initial release |
-| v1.0.1 | bc3d826 | Phase 1: emotion, routine categories, calendar emoji |
-| v1.0.2 | 1ea1f96 | Phase 2: floating robot, LlmService, AssistantScreen real LLM |
-| v1.0.3 | a99adc6 | Phase 2–5: jar, cards, summary + LLM merge fix + version bump |
-| —      | a204bcd | Fix: ActionChip colors black87 in AssistantScreen |
-| —      | b064e3a | Docs: phases 3–5 marked tested & passed |
+| v1.0.1 | bc3d826 | Emotion picker, routine categories, calendar emoji |
+| v1.0.2 | 1ea1f96 | Floating robot, LlmService, AssistantScreen real LLM |
+| v1.0.3 | a99adc6 | Jar, cards, summary + LLM merge fix |
+| v1.0.4 | 78d2c7b | Phase 1: habit system overhaul (RoutineFrequency, 3-tab screen, calendar badges) |
+| v1.0.5 | 7bb251c | Phases 2–4: card edit/AI merge/template image, social sharing, AI personalization |
