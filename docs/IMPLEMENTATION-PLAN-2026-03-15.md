@@ -215,7 +215,7 @@ Calendar cell shows a tiny `✓n/n` badge or mini progress bar below the date nu
 
 ---
 
-## 3. Phase 2 — Card Enhancements
+## 3. Phase 2 — Card Enhancements ✅ TESTED
 
 ### 3.1 Editable cards
 
@@ -311,7 +311,7 @@ ALTER TABLE note_cards ADD COLUMN ai_summary TEXT;
 
 ---
 
-## 4. Phase 3 — Social Sharing
+## 4. Phase 3 — Social Sharing ✅ TESTED
 
 ### 4.1 Share via system share sheet
 
@@ -351,7 +351,7 @@ Requires `url_launcher: ^6.x` (add only if the deep-link path is chosen).
 
 ---
 
-## 5. Phase 4 — AI Assistant Personalization
+## 5. Phase 4 — AI Assistant Personalization ✅ TESTED
 
 ### 5.1 Name and personality
 
@@ -481,27 +481,26 @@ No new dependencies for Phases 1 and 4.
 - [ ] `RoutineProvider.isMissedOn(Routine, DateTime)` helper
 - [ ] `RoutineScreen` rewrite: 3-tab (全部 / 今日 / 记录), new add/edit dialog
 
-### Phase 2 — Card enhancements
+### Phase 2 — Card enhancements ✅ TESTED
 *DB v5 migration (templates + note_cards). New image_picker dep.*
-- [ ] `NoteCard.aiSummary` field + DB migration
-- [ ] `CardTemplate.customImagePath` field + DB migration
-- [ ] `StorageService` + `CardProvider` propagate both new fields
-- [ ] `CardRenderer` supports image background
-- [ ] `CardBuilderDialog`: pre-fill for edit mode + AI merge toggle
-- [ ] `CardsTab`: Edit entry point (long press / menu)
-- [ ] Template editor bottom sheet (name, font, bg color or image)
+- [x] `NoteCard.aiSummary` field + DB migration
+- [x] `CardTemplate.customImagePath` field + DB migration
+- [x] `StorageService` + `CardProvider` propagate both new fields
+- [x] `CardRenderer` supports image background
+- [x] `CardBuilderDialog`: pre-fill for edit mode + AI merge toggle
+- [x] `CardsTab`: Edit entry point (long press / menu)
+- [x] Template editor bottom sheet (name, font, bg color or image)
 
-### Phase 3 — Social sharing
-*No DB changes. New share_plus dep.*
-- [ ] `share_plus` added to pubspec
-- [ ] Share icon on `EntryCard`
-- [ ] Share option in `CardsTab` card tile menu
+### Phase 3 — Social sharing ✅ TESTED
+*No DB changes. share_plus already in pubspec.*
+- [x] Share icon on `EntryCard`
+- [x] Share option in `CardsTab` card tile menu
 
-### Phase 4 — AI personalization
+### Phase 4 — AI personalization ✅ TESTED
 *No DB changes. No new deps.*
-- [ ] Settings "AI 个性化" section (name + personality fields)
-- [ ] `AssistantScreen` reads name/personality, builds dynamic system prompt
-- [ ] `FloatingRobotWidget` enhanced with pulse + tap-wave animations
+- [x] Settings "AI 个性化" section (name + personality fields)
+- [x] `AssistantScreen` reads name/personality, builds dynamic system prompt
+- [x] `FloatingRobotWidget` enhanced with pulse + tap-wave animations
 
 ---
 
