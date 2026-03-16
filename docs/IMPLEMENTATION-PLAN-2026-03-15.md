@@ -3,7 +3,7 @@
 **Based on:** `docs/TODO-2026-03-15.md`
 **Deferred:** WeChat native SDK, Rednote integration
 **PM answers incorporated:** 2026-03-15
-**Status:** Ready for implementation
+**Status:** All phases complete (v1.0.4 — Phase 1, v1.0.5 — Phases 2–4)
 
 ---
 
@@ -11,18 +11,18 @@
 
 Four phases, roughly in dependency order:
 
-| Phase | Feature area | Size | New deps |
-|-------|-------------|------|----------|
-| 1 | Habit system overhaul | Large | — |
-| 2 | Card enhancements | Medium | `image_picker` |
-| 3 | Social sharing | Small | `share_plus` |
-| 4 | AI personalization | Small | — |
+| Phase | Feature area | Size | New deps | Status |
+|-------|-------------|------|----------|--------|
+| 1 | Habit system overhaul | Large | — | ✅ v1.0.4 |
+| 2 | Card enhancements | Medium | `image_picker` | ✅ v1.0.5 |
+| 3 | Social sharing | Small | `share_plus` | ✅ v1.0.5 |
+| 4 | AI personalization | Small | — | ✅ v1.0.5 |
 
 **DB impact:** single migration block v4 → v5 covering all structural changes.
 
 ---
 
-## 2. Phase 1 — Habit System Overhaul
+## 2. Phase 1 — Habit System Overhaul ✅ TESTED
 
 ### 2.1 New scheduling model
 
@@ -471,15 +471,15 @@ No new dependencies for Phases 1 and 4.
 
 ## 8. Phased delivery order
 
-### Phase 1 — Habit system overhaul
+### Phase 1 — Habit system overhaul ✅ TESTED
 *DB v5 migration. Touches Routine model, repository, provider, screen.*
-- [ ] Extend `RoutineFrequency` with `scheduled`, `adhoc`
-- [ ] Add `scheduledDaysOfWeek`, `scheduledDate` to `Routine` model
-- [ ] DB v5 migration (routine columns)
-- [ ] `StorageService` + `RoutineRepository` propagate new fields
-- [ ] `RoutineProvider.getRoutinesForDate(DateTime)` replaces `getActiveRoutinesForToday()`
-- [ ] `RoutineProvider.isMissedOn(Routine, DateTime)` helper
-- [ ] `RoutineScreen` rewrite: 3-tab (全部 / 今日 / 记录), new add/edit dialog
+- [x] Extend `RoutineFrequency` with `scheduled`, `adhoc`
+- [x] Add `scheduledDaysOfWeek`, `scheduledDate` to `Routine` model
+- [x] DB v5 migration (routine columns)
+- [x] `StorageService` + `RoutineRepository` propagate new fields
+- [x] `RoutineProvider.getRoutinesForDate(DateTime)` replaces `getActiveRoutinesForToday()`
+- [x] `RoutineProvider.isMissedOn(Routine, DateTime)` helper
+- [x] `RoutineScreen` rewrite: 3-tab (全部 / 今日 / 记录), new add/edit dialog
 
 ### Phase 2 — Card enhancements ✅ TESTED
 *DB v5 migration (templates + note_cards). New image_picker dep.*
