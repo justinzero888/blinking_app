@@ -193,7 +193,20 @@ class _CardBuilderDialogState extends State<CardBuilderDialog> {
                           onPressed: _generateAiSummary,
                         ),
                 ),
-                onChanged: (v) => _aiSummary = v,
+                onChanged: (v) => setState(() { _aiSummary = v; }),
+              ),
+              const SizedBox(height: 4),
+              Align(
+                alignment: Alignment.centerRight,
+                child: Text(
+                  '${_countWords(_aiController.text)} / 100 字',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: _countWords(_aiController.text) > 100
+                        ? Colors.red
+                        : Colors.grey,
+                  ),
+                ),
               ),
             ],
             const Divider(height: 24),
@@ -320,6 +333,14 @@ class _CardBuilderDialogState extends State<CardBuilderDialog> {
     );
   }
 
+  int _countWords(String text) {
+    final cjk = RegExp(r'[\u4e00-\u9fff\u3400-\u4dbf]');
+    int count = cjk.allMatches(text).length;
+    final noCjk = text.replaceAll(cjk, ' ');
+    count += noCjk.trim().split(RegExp(r'\s+')).where((s) => s.isNotEmpty).length;
+    return count;
+  }
+
   bool _canBuild() =>
       _selectedEntries.isNotEmpty &&
       _selectedTemplate != null &&
@@ -334,7 +355,7 @@ class _CardBuilderDialogState extends State<CardBuilderDialog> {
           .where((c) => c.isNotEmpty)
           .join('\n---\n');
       final prompt =
-          '将以下日记片段合并为一段简洁优美的文字（可以是诗意的句子，50-100字）：\n$combined';
+          '将以下日记片段合并为一段简洁优美的文字（不超过100个字）：\n$combined';
       final result = await _llmService.complete(prompt);
       setState(() {
         _aiSummary = result;

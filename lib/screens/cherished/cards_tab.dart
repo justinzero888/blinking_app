@@ -2,11 +2,13 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
+import '../../models/entry.dart';
 import '../../models/note_card.dart';
 import '../../models/card_template.dart';
 import '../../providers/card_provider.dart';
 import '../../providers/entry_provider.dart';
 import 'card_builder_dialog.dart';
+import 'card_editor_screen.dart';
 
 /// 卡片 tab — folder chips + card grid + FAB to build new cards
 class CardsTab extends StatefulWidget {
@@ -124,40 +126,23 @@ class _CardsTabState extends State<CardsTab> {
           onDelete: () => _confirmDelete(context, card, cardProvider),
           onEdit: () => _openCardEditor(context, card),
           onShare: () => _shareCard(card),
-          onTap: () => _viewCard(context, card, template, entries),
+          onTap: () => _openCardViewer(context, card, template, entries),
         );
       },
     );
   }
 
-  void _viewCard(BuildContext context, NoteCard card, CardTemplate? template,
-      List<dynamic> entries) {
-    showDialog(
-      context: context,
-      builder: (ctx) => Dialog(
-        backgroundColor: Colors.transparent,
-        insetPadding: const EdgeInsets.all(16),
-        child: Stack(
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: _CardFullView(card: card, template: template, entries: entries),
-            ),
-            Positioned(
-              top: 8,
-              right: 8,
-              child: GestureDetector(
-                onTap: () => Navigator.pop(ctx),
-                child: Container(
-                  decoration: const BoxDecoration(
-                      color: Colors.black54, shape: BoxShape.circle),
-                  padding: const EdgeInsets.all(4),
-                  child: const Icon(Icons.close, color: Colors.white, size: 20),
-                ),
-              ),
-            ),
-          ],
+  void _openCardViewer(BuildContext context, NoteCard card,
+      CardTemplate? template, List<dynamic> entries) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CardEditorScreen(
+          card: card,
+          template: template,
+          entries: entries.cast<Entry>(),
         ),
+        fullscreenDialog: true,
       ),
     );
   }
@@ -397,91 +382,3 @@ class _CardTile extends StatelessWidget {
   }
 }
 
-/// Full-size card view shown in a dialog on tap.
-class _CardFullView extends StatelessWidget {
-  final NoteCard card;
-  final CardTemplate? template;
-  final List<dynamic> entries;
-
-  const _CardFullView(
-      {required this.card, required this.template, required this.entries});
-
-  Color _hexToColor(String hex) {
-    final cleaned = hex.replaceFirst('#', '');
-    final value = int.tryParse(cleaned, radix: 16) ?? 0xFFFFFF;
-    return Color(0xFF000000 | value);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    // Show rendered PNG if available
-    if (card.renderedImagePath != null) {
-      final file = File(card.renderedImagePath!);
-      if (file.existsSync()) {
-        return Image.file(file, fit: BoxFit.contain);
-      }
-    }
-
-    // Fallback: rich preview from template
-    if (template != null) {
-      final bgColor = _hexToColor(template!.bgColor);
-      final fontColor = _hexToColor(template!.fontColor);
-      final firstEntry = entries.isNotEmpty ? entries.first : null;
-      final displayText =
-          card.aiSummary ?? (firstEntry?.content as String? ?? '');
-
-      Widget background;
-      if (template!.customImagePath != null &&
-          File(template!.customImagePath!).existsSync()) {
-        background = Image.file(File(template!.customImagePath!),
-            fit: BoxFit.cover,
-            width: double.infinity,
-            height: double.infinity);
-      } else {
-        background = Container(color: bgColor);
-      }
-
-      return AspectRatio(
-        aspectRatio: 1.6,
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            background,
-            Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (firstEntry?.emotion != null)
-                    Text(firstEntry!.emotion as String,
-                        style: const TextStyle(fontSize: 28)),
-                  const SizedBox(height: 8),
-                  Expanded(
-                    child: Text(
-                      displayText,
-                      style: TextStyle(
-                          color: fontColor, fontSize: 16, height: 1.6),
-                      overflow: TextOverflow.fade,
-                    ),
-                  ),
-                  Text('Blinking ✨',
-                      style: TextStyle(
-                          color: fontColor.withValues(alpha: 0.5),
-                          fontSize: 12)),
-                ],
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return const AspectRatio(
-      aspectRatio: 1.6,
-      child: ColoredBox(
-        color: Colors.white,
-        child: Center(child: Text('🎴', style: TextStyle(fontSize: 48))),
-      ),
-    );
-  }
-}

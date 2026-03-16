@@ -46,6 +46,7 @@ class CardProvider extends ChangeNotifier {
     required String folderId,
     String? renderedImagePath,
     String? aiSummary,
+    String? richContent,
   }) async {
     final now = DateTime.now();
     final card = NoteCard(
@@ -55,6 +56,7 @@ class CardProvider extends ChangeNotifier {
       folderId: folderId,
       renderedImagePath: renderedImagePath,
       aiSummary: aiSummary,
+      richContent: richContent,
       createdAt: now,
       updatedAt: now,
     );

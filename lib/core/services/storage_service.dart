@@ -614,6 +614,7 @@ class StorageService {
       final cardMap = Map<String, dynamic>.from(map);
       cardMap['entry_ids'] = entryIds;
       cardMap['ai_summary'] = map['ai_summary'];
+      cardMap['rich_content'] = map['rich_content'];
       cards.add(NoteCard.fromJson(cardMap));
     }
     return cards;
@@ -628,6 +629,7 @@ class StorageService {
         'folder_id': card.folderId,
         'rendered_image_path': card.renderedImagePath,
         'ai_summary': card.aiSummary,
+        'rich_content': card.richContent,
         'created_at': card.createdAt.toIso8601String(),
         'updated_at': card.updatedAt.toIso8601String(),
       }, conflictAlgorithm: ConflictAlgorithm.replace);
@@ -648,6 +650,7 @@ class StorageService {
         'folder_id': card.folderId,
         'rendered_image_path': card.renderedImagePath,
         'ai_summary': card.aiSummary,
+        'rich_content': card.richContent,
         'updated_at': card.updatedAt.toIso8601String(),
       }, where: 'id = ?', whereArgs: [card.id]);
       // Refresh entry links

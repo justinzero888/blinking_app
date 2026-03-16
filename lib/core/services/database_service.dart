@@ -23,7 +23,7 @@ class DatabaseService {
 
     return await openDatabase(
       path,
-      version: 6,
+      version: 7,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -86,6 +86,9 @@ class DatabaseService {
     if (oldVersion < 6) {
       await db.execute('ALTER TABLE templates ADD COLUMN custom_image_path TEXT');
       await db.execute('ALTER TABLE note_cards ADD COLUMN ai_summary TEXT');
+    }
+    if (oldVersion < 7) {
+      await db.execute('ALTER TABLE note_cards ADD COLUMN rich_content TEXT');
     }
   }
 
@@ -197,6 +200,7 @@ class DatabaseService {
         folder_id TEXT NOT NULL,
         rendered_image_path TEXT,
         ai_summary TEXT,
+        rich_content TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       )

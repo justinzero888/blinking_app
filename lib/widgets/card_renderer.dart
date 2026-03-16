@@ -1,6 +1,8 @@
+import 'dart:convert';
 import 'dart:io';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:flutter_quill/flutter_quill.dart';
 import 'package:path_provider/path_provider.dart';
 import '../models/note_card.dart';
 import '../models/card_template.dart';
@@ -22,6 +24,18 @@ class CardRenderer extends StatelessWidget {
     this.width = 320,
     this.height = 200,
   });
+
+  /// Extract plain text from richContent Delta JSON, falling back to aiSummary or entry content.
+  static String _extractPlainText(
+      String? richContent, String? aiSummary, Entry? firstEntry) {
+    if (richContent != null) {
+      try {
+        final doc = Document.fromJson(jsonDecode(richContent) as List);
+        return doc.toPlainText().trim();
+      } catch (_) {}
+    }
+    return aiSummary ?? firstEntry?.content ?? '';
+  }
 
   static Color _hexToColor(String hex) {
     final cleaned = hex.replaceFirst('#', '');
@@ -73,7 +87,7 @@ class CardRenderer extends StatelessWidget {
           // Entry content
           Expanded(
             child: Text(
-              card.aiSummary ?? firstEntry?.content ?? '',
+              _extractPlainText(card.richContent, card.aiSummary, firstEntry),
               style: _fontStyle(template.fontFamily).copyWith(
                 color: fontColor,
                 fontSize: 14,
@@ -154,7 +168,7 @@ class CardRenderer extends StatelessWidget {
       // Content text
       final textPainter = TextPainter(
         text: TextSpan(
-          text: firstEntry.content,
+          text: _extractPlainText(card.richContent, card.aiSummary, firstEntry),
           style: TextStyle(
             color: fontColor,
             fontSize: 14,

@@ -6,6 +6,7 @@ class NoteCard {
   final String folderId;
   final String? renderedImagePath;
   final String? aiSummary;
+  final String? richContent;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -16,6 +17,7 @@ class NoteCard {
     required this.folderId,
     this.renderedImagePath,
     this.aiSummary,
+    this.richContent,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -28,6 +30,7 @@ class NoteCard {
     String? renderedImagePath,
     bool clearImagePath = false,
     String? aiSummary,
+    String? richContent,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -39,6 +42,7 @@ class NoteCard {
       renderedImagePath:
           clearImagePath ? null : (renderedImagePath ?? this.renderedImagePath),
       aiSummary: aiSummary ?? this.aiSummary,
+      richContent: richContent ?? this.richContent,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -51,6 +55,7 @@ class NoteCard {
         'folder_id': folderId,
         'rendered_image_path': renderedImagePath,
         'ai_summary': aiSummary,
+        'rich_content': richContent,
         'created_at': createdAt.toIso8601String(),
         'updated_at': updatedAt.toIso8601String(),
       };
@@ -62,6 +67,7 @@ class NoteCard {
         folderId: json['folder_id'] as String,
         renderedImagePath: json['rendered_image_path'] as String?,
         aiSummary: json['ai_summary'] as String?,
+        richContent: json['rich_content'] as String?,
         createdAt: DateTime.parse(json['created_at'] as String),
         updatedAt: DateTime.parse(json['updated_at'] as String),
       );
