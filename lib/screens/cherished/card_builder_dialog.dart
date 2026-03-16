@@ -1,17 +1,23 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:uuid/uuid.dart';
 import '../../models/entry.dart';
 import '../../models/card_template.dart';
 import '../../models/card_folder.dart';
+import '../../models/note_card.dart';
 import '../../providers/card_provider.dart';
 import '../../providers/entry_provider.dart';
-import '../../widgets/card_renderer.dart';
+import '../../core/services/llm_service.dart';
 
-/// Full-screen dialog for creating a note card from entries
+/// Full-screen dialog for creating or editing a note card from entries.
 class CardBuilderDialog extends StatefulWidget {
   final Entry? initialEntry;
+  final NoteCard? existingCard; // non-null = edit mode
 
-  const CardBuilderDialog({super.key, this.initialEntry});
+  const CardBuilderDialog({super.key, this.initialEntry, this.existingCard});
 
   @override
   State<CardBuilderDialog> createState() => _CardBuilderDialogState();
@@ -23,21 +29,69 @@ class _CardBuilderDialogState extends State<CardBuilderDialog> {
   CardFolder? _selectedFolder;
   bool _building = false;
 
+  // AI merge
+  bool _useAiMerge = false;
+  String? _aiSummary;
+  bool _generatingAi = false;
+  final _aiController = TextEditingController();
+
+  final _llmService = LlmService();
+
+  bool get _isEditMode => widget.existingCard != null;
+
   @override
   void initState() {
     super.initState();
-    if (widget.initialEntry != null) {
-      _selectedEntries.add(widget.initialEntry!);
-    }
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final cardProvider = context.read<CardProvider>();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _initDefaults());
+  }
+
+  void _initDefaults() {
+    final cardProvider = context.read<CardProvider>();
+    final entryProvider = context.read<EntryProvider>();
+
+    if (_isEditMode) {
+      final card = widget.existingCard!;
+      // Pre-fill entries
+      for (final id in card.entryIds) {
+        try {
+          final e = entryProvider.allEntries.firstWhere((e) => e.id == id);
+          _selectedEntries.add(e);
+        } catch (_) {}
+      }
+      // Pre-fill template
+      final tpl = cardProvider.getTemplateById(card.templateId);
+      // Pre-fill folder
+      CardFolder? folder;
+      try {
+        folder = cardProvider.folders.firstWhere((f) => f.id == card.folderId);
+      } catch (_) {}
+      // Pre-fill AI summary
+      if (card.aiSummary != null) {
+        _useAiMerge = true;
+        _aiSummary = card.aiSummary;
+        _aiController.text = card.aiSummary!;
+      }
+      setState(() {
+        _selectedTemplate = tpl;
+        _selectedFolder = folder;
+      });
+    } else {
+      if (widget.initialEntry != null) {
+        _selectedEntries.add(widget.initialEntry!);
+      }
       if (cardProvider.templates.isNotEmpty) {
         setState(() => _selectedTemplate = cardProvider.templates.first);
       }
       if (cardProvider.folders.isNotEmpty) {
         setState(() => _selectedFolder = cardProvider.folders.first);
       }
-    });
+    }
+  }
+
+  @override
+  void dispose() {
+    _aiController.dispose();
+    super.dispose();
   }
 
   Color _hexToColor(String hex) {
@@ -55,7 +109,7 @@ class _CardBuilderDialogState extends State<CardBuilderDialog> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('制作记忆卡片'),
+        title: Text(_isEditMode ? '编辑卡片' : '制作记忆卡片'),
         leading: IconButton(
           icon: const Icon(Icons.close),
           onPressed: () => Navigator.pop(context),
@@ -64,29 +118,27 @@ class _CardBuilderDialogState extends State<CardBuilderDialog> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // Selected entries section
+          // Selected entries
           Text('已选记录 (${_selectedEntries.length})',
               style: const TextStyle(fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
-          ..._selectedEntries.map(
-            (entry) => Card(
-              child: ListTile(
-                leading: Text(entry.emotion ?? '📝'),
-                title: Text(
-                  entry.content.length > 50
-                      ? '${entry.content.substring(0, 50)}...'
-                      : entry.content,
-                  style: const TextStyle(fontSize: 13),
+          ..._selectedEntries.map((entry) => Card(
+                child: ListTile(
+                  leading: Text(entry.emotion ?? '📝'),
+                  title: Text(
+                    entry.content.length > 50
+                        ? '${entry.content.substring(0, 50)}...'
+                        : entry.content,
+                    style: const TextStyle(fontSize: 13),
+                  ),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.remove_circle_outline,
+                        color: Colors.red, size: 20),
+                    onPressed: () =>
+                        setState(() => _selectedEntries.remove(entry)),
+                  ),
                 ),
-                trailing: IconButton(
-                  icon: const Icon(Icons.remove_circle_outline,
-                      color: Colors.red, size: 20),
-                  onPressed: () =>
-                      setState(() => _selectedEntries.remove(entry)),
-                ),
-              ),
-            ),
-          ),
+              )),
           TextButton.icon(
             icon: const Icon(Icons.add),
             label: const Text('添加更多笔记'),
@@ -94,49 +146,130 @@ class _CardBuilderDialogState extends State<CardBuilderDialog> {
           ),
           const Divider(height: 24),
 
+          // AI merge toggle
+          if (_selectedEntries.isNotEmpty) ...[
+            Row(
+              children: [
+                const Text('内容模式',
+                    style: TextStyle(fontWeight: FontWeight.bold)),
+                const Spacer(),
+                ChoiceChip(
+                  label: const Text('原文'),
+                  selected: !_useAiMerge,
+                  onSelected: (_) => setState(() {
+                    _useAiMerge = false;
+                    _aiSummary = null;
+                    _aiController.clear();
+                  }),
+                ),
+                const SizedBox(width: 8),
+                ChoiceChip(
+                  label: const Text('AI 生成'),
+                  selected: _useAiMerge,
+                  onSelected: (_) => setState(() => _useAiMerge = true),
+                ),
+              ],
+            ),
+            if (_useAiMerge) ...[
+              const SizedBox(height: 8),
+              TextField(
+                controller: _aiController,
+                maxLines: 4,
+                decoration: InputDecoration(
+                  hintText: 'AI 生成的内容将显示在这里，你可以直接编辑',
+                  border: const OutlineInputBorder(),
+                  suffixIcon: _generatingAi
+                      ? const Padding(
+                          padding: EdgeInsets.all(12),
+                          child: SizedBox(
+                              width: 20,
+                              height: 20,
+                              child:
+                                  CircularProgressIndicator(strokeWidth: 2)),
+                        )
+                      : IconButton(
+                          icon: const Icon(Icons.auto_awesome),
+                          tooltip: '用 AI 生成',
+                          onPressed: _generateAiSummary,
+                        ),
+                ),
+                onChanged: (v) => _aiSummary = v,
+              ),
+            ],
+            const Divider(height: 24),
+          ],
+
           // Template picker
-          const Text('选择模板', style: TextStyle(fontWeight: FontWeight.bold)),
+          Row(
+            children: [
+              const Text('选择模板',
+                  style: TextStyle(fontWeight: FontWeight.bold)),
+              const Spacer(),
+              TextButton.icon(
+                icon: const Icon(Icons.edit, size: 16),
+                label: const Text('编辑模板'),
+                onPressed: _selectedTemplate != null
+                    ? () => _showTemplateEditor(_selectedTemplate!)
+                    : null,
+              ),
+            ],
+          ),
           const SizedBox(height: 8),
           SizedBox(
             height: 100,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               itemCount: templates.length,
-              separatorBuilder: (context, index) => const SizedBox(width: 8),
+              separatorBuilder: (_, __) => const SizedBox(width: 8),
               itemBuilder: (context, index) {
                 final tpl = templates[index];
                 final isSelected = _selectedTemplate?.id == tpl.id;
+                Widget bg;
+                if (tpl.customImagePath != null &&
+                    File(tpl.customImagePath!).existsSync()) {
+                  bg = Image.file(File(tpl.customImagePath!),
+                      fit: BoxFit.cover,
+                      width: 80,
+                      height: 100);
+                } else {
+                  bg = Container(
+                      width: 80,
+                      height: 100,
+                      color: _hexToColor(tpl.bgColor));
+                }
                 return GestureDetector(
                   onTap: () => setState(() => _selectedTemplate = tpl),
-                  child: Container(
-                    width: 80,
-                    decoration: BoxDecoration(
-                      color: _hexToColor(tpl.bgColor),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: isSelected
-                            ? Theme.of(context).colorScheme.primary
-                            : Colors.transparent,
-                        width: 2,
-                      ),
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(tpl.icon, style: const TextStyle(fontSize: 22)),
-                        const SizedBox(height: 4),
-                        Text(
+                  child: Stack(
+                    children: [
+                      ClipRRect(
+                          borderRadius: BorderRadius.circular(8), child: bg),
+                      if (isSelected)
+                        Container(
+                          width: 80,
+                          height: 100,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                                color:
+                                    Theme.of(context).colorScheme.primary,
+                                width: 2.5),
+                          ),
+                        ),
+                      Positioned(
+                        bottom: 4,
+                        left: 0,
+                        right: 0,
+                        child: Text(
                           tpl.name,
                           style: TextStyle(
-                            fontSize: 10,
-                            color: _hexToColor(tpl.fontColor),
-                          ),
+                              fontSize: 9,
+                              color: _hexToColor(tpl.fontColor)),
                           textAlign: TextAlign.center,
-                          maxLines: 2,
+                          maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 );
               },
@@ -145,7 +278,8 @@ class _CardBuilderDialogState extends State<CardBuilderDialog> {
           const SizedBox(height: 16),
 
           // Folder picker
-          const Text('选择文件夹', style: TextStyle(fontWeight: FontWeight.bold)),
+          const Text('选择文件夹',
+              style: TextStyle(fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
           if (folders.isNotEmpty)
             DropdownButtonFormField<CardFolder>(
@@ -153,13 +287,11 @@ class _CardBuilderDialogState extends State<CardBuilderDialog> {
               items: folders
                   .map((f) => DropdownMenuItem(
                         value: f,
-                        child: Row(
-                          children: [
-                            Text(f.icon),
-                            const SizedBox(width: 8),
-                            Text(f.name),
-                          ],
-                        ),
+                        child: Row(children: [
+                          Text(f.icon),
+                          const SizedBox(width: 8),
+                          Text(f.name)
+                        ]),
                       ))
                   .toList(),
               onChanged: (val) => setState(() => _selectedFolder = val),
@@ -167,32 +299,20 @@ class _CardBuilderDialogState extends State<CardBuilderDialog> {
             ),
           const SizedBox(height: 24),
 
-          // Preview
-          if (_selectedTemplate != null && _selectedEntries.isNotEmpty) ...[
-            const Text('预览', style: TextStyle(fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            Center(
-              child: _CardPreview(
-                template: _selectedTemplate!,
-                entries: _selectedEntries,
-              ),
-            ),
-            const SizedBox(height: 24),
-          ],
-
           // Generate button
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
               onPressed: _canBuild() ? (_building ? null : _buildCard) : null,
-              style: ElevatedButton.styleFrom(padding: const EdgeInsets.all(16)),
+              style:
+                  ElevatedButton.styleFrom(padding: const EdgeInsets.all(16)),
               child: _building
                   ? const SizedBox(
                       height: 20,
                       width: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Text('生成卡片', style: TextStyle(fontSize: 16)),
+                      child: CircularProgressIndicator(strokeWidth: 2))
+                  : Text(_isEditMode ? '保存卡片' : '生成卡片',
+                      style: const TextStyle(fontSize: 16)),
             ),
           ),
         ],
@@ -205,6 +325,31 @@ class _CardBuilderDialogState extends State<CardBuilderDialog> {
       _selectedTemplate != null &&
       _selectedFolder != null;
 
+  Future<void> _generateAiSummary() async {
+    if (_selectedEntries.isEmpty) return;
+    setState(() => _generatingAi = true);
+    try {
+      final combined = _selectedEntries
+          .map((e) => e.content)
+          .where((c) => c.isNotEmpty)
+          .join('\n---\n');
+      final prompt =
+          '将以下日记片段合并为一段简洁优美的文字（可以是诗意的句子，50-100字）：\n$combined';
+      final result = await _llmService.complete(prompt);
+      setState(() {
+        _aiSummary = result;
+        _aiController.text = result;
+      });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('AI 生成失败: $e')));
+      }
+    } finally {
+      if (mounted) setState(() => _generatingAi = false);
+    }
+  }
+
   void _showEntryPicker(EntryProvider entryProvider) {
     final available = entryProvider.allEntries
         .where((e) => !_selectedEntries.any((s) => s.id == e.id))
@@ -212,8 +357,7 @@ class _CardBuilderDialogState extends State<CardBuilderDialog> {
 
     if (available.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('没有更多可添加的记录')),
-      );
+          const SnackBar(content: Text('没有更多可添加的记录')));
       return;
     }
 
@@ -237,9 +381,8 @@ class _CardBuilderDialogState extends State<CardBuilderDialog> {
                   style: const TextStyle(fontSize: 13),
                 ),
                 subtitle: Text(
-                  '${entry.createdAt.year}/${entry.createdAt.month}/${entry.createdAt.day}',
-                  style: const TextStyle(fontSize: 11),
-                ),
+                    '${entry.createdAt.year}/${entry.createdAt.month}/${entry.createdAt.day}',
+                    style: const TextStyle(fontSize: 11)),
                 onTap: () {
                   setState(() => _selectedEntries.add(entry));
                   Navigator.pop(ctx);
@@ -250,9 +393,8 @@ class _CardBuilderDialogState extends State<CardBuilderDialog> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('取消'),
-          ),
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('取消')),
         ],
       ),
     );
@@ -262,106 +404,220 @@ class _CardBuilderDialogState extends State<CardBuilderDialog> {
     if (!_canBuild()) return;
     setState(() => _building = true);
 
+    final finalAiSummary = _useAiMerge
+        ? (_aiController.text.trim().isNotEmpty
+            ? _aiController.text.trim()
+            : _aiSummary)
+        : null;
+
     try {
       final cardProvider = context.read<CardProvider>();
 
-      // Add the card
-      final card = await cardProvider.addCard(
-        entryIds: _selectedEntries.map((e) => e.id).toList(),
-        templateId: _selectedTemplate!.id,
-        folderId: _selectedFolder!.id,
-      );
-
-      // Try to render to image in background
-      try {
-        final imagePath = await CardRenderer.renderToImage(
-          card: card,
-          template: _selectedTemplate!,
-          entries: _selectedEntries,
+      if (_isEditMode) {
+        final updated = widget.existingCard!.copyWith(
+          entryIds: _selectedEntries.map((e) => e.id).toList(),
+          templateId: _selectedTemplate!.id,
+          folderId: _selectedFolder!.id,
+          aiSummary: finalAiSummary,
+          updatedAt: DateTime.now(),
         );
-        debugPrint('Card image saved: $imagePath');
-      } catch (e) {
-        debugPrint('Card image render failed (non-fatal): $e');
+        await cardProvider.updateCard(updated);
+      } else {
+        await cardProvider.addCard(
+          entryIds: _selectedEntries.map((e) => e.id).toList(),
+          templateId: _selectedTemplate!.id,
+          folderId: _selectedFolder!.id,
+          aiSummary: finalAiSummary,
+        );
       }
 
       if (mounted) {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('卡片已生成！')),
+          SnackBar(content: Text(_isEditMode ? '卡片已更新！' : '卡片已生成！')),
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('生成失败：$e')),
-        );
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('操作失败：$e')));
       }
     } finally {
       if (mounted) setState(() => _building = false);
     }
   }
+
+  void _showTemplateEditor(CardTemplate template) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) => _TemplateEditorSheet(
+        template: template,
+        onSave: (updated) async {
+          final cp = context.read<CardProvider>();
+          if (updated.isBuiltIn) {
+            // Copy-on-edit: create a user copy
+            final copy = await cp.copyBuiltInTemplate(updated);
+            if (mounted) setState(() => _selectedTemplate = copy);
+          } else {
+            await cp.updateTemplate(updated);
+            if (mounted) setState(() => _selectedTemplate = updated);
+          }
+        },
+      ),
+    );
+  }
 }
 
-/// A lightweight preview widget that renders the card style without NoteCard model
-class _CardPreview extends StatelessWidget {
+/// Bottom sheet for editing a template's name, colors, and background image.
+class _TemplateEditorSheet extends StatefulWidget {
   final CardTemplate template;
-  final List<Entry> entries;
+  final Future<void> Function(CardTemplate updated) onSave;
 
-  const _CardPreview({required this.template, required this.entries});
+  const _TemplateEditorSheet({required this.template, required this.onSave});
 
-  Color _hexToColor(String hex) {
-    final cleaned = hex.replaceFirst('#', '');
-    final value = int.tryParse(cleaned, radix: 16) ?? 0xFFFFFF;
-    return Color(0xFF000000 | value);
+  @override
+  State<_TemplateEditorSheet> createState() => _TemplateEditorSheetState();
+}
+
+class _TemplateEditorSheetState extends State<_TemplateEditorSheet> {
+  late TextEditingController _nameController;
+  late String _bgColor;
+  String? _customImagePath;
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController(text: widget.template.name);
+    _bgColor = widget.template.bgColor;
+    _customImagePath = widget.template.customImagePath;
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickImage() async {
+    final picker = ImagePicker();
+    final xfile = await picker.pickImage(source: ImageSource.gallery);
+    if (xfile == null) return;
+
+    // Copy image to app documents directory
+    final docDir = await getApplicationDocumentsDirectory();
+    final destDir = Directory('${docDir.path}/template_images');
+    if (!await destDir.exists()) await destDir.create(recursive: true);
+    final dest = '${destDir.path}/${const Uuid().v4()}.jpg';
+    await File(xfile.path).copy(dest);
+
+    setState(() => _customImagePath = dest);
   }
 
   @override
   Widget build(BuildContext context) {
-    final bgColor = _hexToColor(template.bgColor);
-    final fontColor = _hexToColor(template.fontColor);
-    final firstEntry = entries.isNotEmpty ? entries.first : null;
-
-    return Container(
-      width: 280,
-      height: 175,
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(12),
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 16,
+        right: 16,
+        top: 16,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 16,
       ),
-      padding: const EdgeInsets.all(16),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (firstEntry?.emotion != null)
-            Text(firstEntry!.emotion!, style: const TextStyle(fontSize: 24)),
-          const SizedBox(height: 6),
-          Expanded(
-            child: Text(
-              firstEntry?.content ?? '',
-              style: TextStyle(color: fontColor, fontSize: 13, height: 1.5),
-              maxLines: 5,
-              overflow: TextOverflow.ellipsis,
-            ),
+          Text(
+            widget.template.isBuiltIn ? '编辑模板（将创建副本）' : '编辑模板',
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
           ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _nameController,
+            decoration: const InputDecoration(
+                labelText: '模板名称', border: OutlineInputBorder()),
+          ),
+          const SizedBox(height: 12),
+          // Background: color swatch or image thumbnail
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                firstEntry != null
-                    ? '${firstEntry.createdAt.year}/${firstEntry.createdAt.month}/${firstEntry.createdAt.day}'
-                    : '',
-                style: TextStyle(
-                    color: fontColor.withValues(alpha: 0.6), fontSize: 10),
+              const Text('背景：'),
+              const SizedBox(width: 8),
+              GestureDetector(
+                onTap: () async {
+                  // Simple color picker: cycle through palette
+                  const colors = [
+                    '#FFE4E1',
+                    '#1A237E',
+                    '#FF6F00',
+                    '#FAFAFA',
+                    '#1B5E20',
+                    '#E3F2FD',
+                    '#F3E5F5',
+                    '#FFF9C4',
+                    '#E0F2F1'
+                  ];
+                  final idx = colors.indexOf(_bgColor);
+                  setState(() => _bgColor = colors[(idx + 1) % colors.length]);
+                },
+                child: Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: Color(0xFF000000 |
+                        (int.tryParse(
+                                _bgColor.replaceFirst('#', ''),
+                                radix: 16) ??
+                            0xFFFFFF)),
+                    border: Border.all(color: Colors.grey),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                ),
               ),
-              Text(
-                'Blinking ✨',
-                style: TextStyle(
-                    color: fontColor.withValues(alpha: 0.5), fontSize: 10),
+              const SizedBox(width: 8),
+              TextButton.icon(
+                icon: const Icon(Icons.image, size: 18),
+                label: Text(_customImagePath != null ? '已选择图片' : '上传图片'),
+                onPressed: _pickImage,
               ),
+              if (_customImagePath != null) ...[
+                const SizedBox(width: 4),
+                IconButton(
+                  icon: const Icon(Icons.clear, size: 18, color: Colors.red),
+                  onPressed: () => setState(() => _customImagePath = null),
+                ),
+              ],
             ],
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: _saving ? null : _save,
+              child: _saving
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Text('保存'),
+            ),
           ),
         ],
       ),
     );
+  }
+
+  Future<void> _save() async {
+    setState(() => _saving = true);
+    final updated = widget.template.copyWith(
+      name: _nameController.text.trim().isNotEmpty
+          ? _nameController.text.trim()
+          : widget.template.name,
+      bgColor: _bgColor,
+      customImagePath: _customImagePath,
+    );
+    await widget.onSave(updated);
+    if (mounted) Navigator.pop(context);
   }
 }

@@ -58,6 +58,7 @@ class DatabaseService {
           font_color TEXT NOT NULL DEFAULT '#222222',
           bg_color TEXT NOT NULL DEFAULT '#FFFFFF',
           is_built_in INTEGER NOT NULL DEFAULT 0,
+          custom_image_path TEXT,
           created_at TEXT NOT NULL
         )
       ''');
@@ -67,6 +68,7 @@ class DatabaseService {
           template_id TEXT NOT NULL,
           folder_id TEXT NOT NULL,
           rendered_image_path TEXT,
+          ai_summary TEXT,
           created_at TEXT NOT NULL,
           updated_at TEXT NOT NULL
         )
@@ -82,6 +84,8 @@ class DatabaseService {
     if (oldVersion < 5) {
       await db.execute('ALTER TABLE routines ADD COLUMN scheduled_days_of_week TEXT');
       await db.execute('ALTER TABLE routines ADD COLUMN scheduled_date TEXT');
+      await db.execute('ALTER TABLE templates ADD COLUMN custom_image_path TEXT');
+      await db.execute('ALTER TABLE note_cards ADD COLUMN ai_summary TEXT');
     }
   }
 
@@ -180,6 +184,7 @@ class DatabaseService {
         font_color TEXT NOT NULL DEFAULT '#222222',
         bg_color TEXT NOT NULL DEFAULT '#FFFFFF',
         is_built_in INTEGER NOT NULL DEFAULT 0,
+        custom_image_path TEXT,
         created_at TEXT NOT NULL
       )
     ''');
@@ -191,6 +196,7 @@ class DatabaseService {
         template_id TEXT NOT NULL,
         folder_id TEXT NOT NULL,
         rendered_image_path TEXT,
+        ai_summary TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       )

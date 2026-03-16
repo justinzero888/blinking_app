@@ -51,10 +51,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   int _selectedLlmIndex = 0;
 
+  String _aiName = 'AI 助手';
+  String _aiPersonality = '';
+
   @override
   void initState() {
     super.initState();
     _loadLlmSettings();
+    _loadAiSettings();
+  }
+
+  Future<void> _loadAiSettings() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (mounted) {
+      setState(() {
+        _aiName = prefs.getString('ai_assistant_name') ?? 'AI 助手';
+        _aiPersonality = prefs.getString('ai_assistant_personality') ?? '';
+      });
+    }
+  }
+
+  Future<void> _saveAiSettings() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('ai_assistant_name', _aiName);
+    await prefs.setString('ai_assistant_personality', _aiPersonality);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('AI 设置已保存')),
+      );
+    }
   }
 
   Future<void> _loadLlmSettings() async {
@@ -140,6 +165,49 @@ class _SettingsScreenState extends State<SettingsScreen> {
             leading: const Icon(Icons.add, color: Colors.blue),
             title: Text(isZh ? '添加 AI 服务' : 'Add AI Provider'),
             onTap: () => _showAddLlmDialog(context, isZh),
+          ),
+          const Divider(),
+
+          // AI Personalization
+          _buildSectionHeader(isZh ? 'AI 个性化' : 'AI Personalization'),
+          Card(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  TextField(
+                    decoration: InputDecoration(
+                      labelText: isZh ? '助手名称' : 'Assistant Name',
+                      hintText: 'AI 助手',
+                    ),
+                    controller: TextEditingController(text: _aiName),
+                    onChanged: (v) => _aiName = v,
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    decoration: InputDecoration(
+                      labelText: isZh ? '性格描述' : 'Personality',
+                      hintText: isZh
+                          ? '例如: 温柔、幽默、鼓励型'
+                          : 'e.g. warm, funny, motivating',
+                    ),
+                    controller: TextEditingController(text: _aiPersonality),
+                    onChanged: (v) => _aiPersonality = v,
+                    maxLines: 2,
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: _saveAiSettings,
+                      child: Text(isZh ? '保存 AI 设置' : 'Save AI Settings'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
           const Divider(),
 

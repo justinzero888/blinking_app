@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../providers/entry_provider.dart';
 import '../../models/entry.dart';
 import '../../core/services/llm_service.dart';
@@ -18,9 +19,30 @@ class _AssistantScreenState extends State<AssistantScreen> {
   final List<ChatMessage> _messages = [];
   bool _isSending = false;
 
-  static const String _systemPrompt =
-      '你是 Blinking 日记应用的 AI 助手，帮助用户回顾每日记录、提供情绪支持和成长建议。'
-      '请用温暖、简洁的中文回答。如果用户分享了心情或记录，给出有共鸣的回应。';
+  String _assistantName = 'AI 助手';
+  String _assistantPersonality = '';
+
+  String get _systemPrompt =>
+      '你是 Blinking 日记应用的 AI 助手，名字叫 $_assistantName。'
+      '${_assistantPersonality.isNotEmpty ? "你的性格特点：$_assistantPersonality。" : ""}'
+      '帮助用户回顾每日记录、提供情绪支持和成长建议。请用温暖、简洁的中文回答。如果用户分享了心情或记录，给出有共鸣的回应。';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPersona();
+  }
+
+  Future<void> _loadPersona() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (mounted) {
+      setState(() {
+        _assistantName = prefs.getString('ai_assistant_name') ?? 'AI 助手';
+        _assistantPersonality =
+            prefs.getString('ai_assistant_personality') ?? '';
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -167,7 +189,7 @@ class _AssistantScreenState extends State<AssistantScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('AI 助手'),
+        title: Text(_assistantName),
         actions: [
           if (_messages.isNotEmpty)
             IconButton(

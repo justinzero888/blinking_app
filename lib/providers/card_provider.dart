@@ -45,6 +45,7 @@ class CardProvider extends ChangeNotifier {
     required String templateId,
     required String folderId,
     String? renderedImagePath,
+    String? aiSummary,
   }) async {
     final now = DateTime.now();
     final card = NoteCard(
@@ -53,6 +54,7 @@ class CardProvider extends ChangeNotifier {
       templateId: templateId,
       folderId: folderId,
       renderedImagePath: renderedImagePath,
+      aiSummary: aiSummary,
       createdAt: now,
       updatedAt: now,
     );
@@ -62,10 +64,32 @@ class CardProvider extends ChangeNotifier {
     return card;
   }
 
+  Future<void> updateCard(NoteCard card) async {
+    await _storage.updateNoteCard(card);
+    final index = _cards.indexWhere((c) => c.id == card.id);
+    if (index != -1) {
+      _cards[index] = card;
+      notifyListeners();
+    }
+  }
+
   Future<void> deleteCard(String id) async {
     await _storage.deleteNoteCard(id);
     _cards.removeWhere((c) => c.id == id);
     notifyListeners();
+  }
+
+  Future<CardTemplate> copyBuiltInTemplate(CardTemplate source) async {
+    final copy = source.copyWith(
+      id: _uuid.v4(),
+      name: '自定义 — ${source.name}',
+      isBuiltIn: false,
+      createdAt: DateTime.now(),
+    );
+    await _storage.addTemplate(copy);
+    _templates.add(copy);
+    notifyListeners();
+    return copy;
   }
 
   List<NoteCard> getCardsInFolder(String folderId) {

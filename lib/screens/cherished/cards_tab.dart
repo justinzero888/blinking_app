@@ -1,7 +1,9 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../models/note_card.dart';
+import '../../models/card_template.dart';
 import '../../providers/card_provider.dart';
 import '../../providers/entry_provider.dart';
 import 'card_builder_dialog.dart';
@@ -23,17 +25,13 @@ class _CardsTabState extends State<CardsTab> {
     final folders = cardProvider.folders;
     final allCards = cardProvider.cards;
 
-    // Filter cards by selected folder
     final displayCards = _selectedFolderId == null
         ? allCards
-        : allCards
-            .where((c) => c.folderId == _selectedFolderId)
-            .toList();
+        : allCards.where((c) => c.folderId == _selectedFolderId).toList();
 
     return Scaffold(
       body: Column(
         children: [
-          // Folder chips
           if (folders.isNotEmpty)
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
@@ -47,23 +45,19 @@ class _CardsTabState extends State<CardsTab> {
                     onTap: () => setState(() => _selectedFolderId = null),
                   ),
                   const SizedBox(width: 8),
-                  ...folders.map(
-                    (f) => Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: _FolderChip(
-                        label: f.name,
-                        icon: f.icon,
-                        isSelected: _selectedFolderId == f.id,
-                        onTap: () =>
-                            setState(() => _selectedFolderId = f.id),
-                      ),
-                    ),
-                  ),
+                  ...folders.map((f) => Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: _FolderChip(
+                          label: f.name,
+                          icon: f.icon,
+                          isSelected: _selectedFolderId == f.id,
+                          onTap: () =>
+                              setState(() => _selectedFolderId = f.id),
+                        ),
+                      )),
                 ],
               ),
             ),
-
-          // Cards grid
           Expanded(
             child: displayCards.isEmpty
                 ? _buildEmptyState(context)
@@ -86,15 +80,10 @@ class _CardsTabState extends State<CardsTab> {
         children: [
           const Text('🎴', style: TextStyle(fontSize: 64)),
           const SizedBox(height: 16),
-          Text(
-            '还没有卡片',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
+          Text('还没有卡片', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
-          const Text(
-            '点击下方按钮，将记录制作成精美卡片',
-            style: TextStyle(color: Colors.grey),
-          ),
+          const Text('点击下方按钮，将记录制作成精美卡片',
+              style: TextStyle(color: Colors.grey)),
         ],
       ),
     );
@@ -119,8 +108,7 @@ class _CardsTabState extends State<CardsTab> {
         final entries = card.entryIds
             .map((id) {
               try {
-                return entryProvider.allEntries
-                    .firstWhere((e) => e.id == id);
+                return entryProvider.allEntries.firstWhere((e) => e.id == id);
               } catch (_) {
                 return null;
               }
@@ -134,6 +122,8 @@ class _CardsTabState extends State<CardsTab> {
           template: template,
           entries: entries,
           onDelete: () => _confirmDelete(context, card, cardProvider),
+          onEdit: () => _openCardEditor(context, card),
+          onShare: () => _shareCard(card),
         );
       },
     );
@@ -149,6 +139,28 @@ class _CardsTabState extends State<CardsTab> {
     );
   }
 
+  void _openCardEditor(BuildContext context, NoteCard card) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CardBuilderDialog(existingCard: card),
+        fullscreenDialog: true,
+      ),
+    );
+  }
+
+  Future<void> _shareCard(NoteCard card) async {
+    if (card.renderedImagePath != null &&
+        File(card.renderedImagePath!).existsSync()) {
+      await Share.shareXFiles(
+        [XFile(card.renderedImagePath!)],
+        text: '来自 Blinking ✨',
+      );
+    } else {
+      await Share.share('来自 Blinking ✨');
+    }
+  }
+
   void _confirmDelete(
       BuildContext context, NoteCard card, CardProvider cardProvider) {
     showDialog(
@@ -158,9 +170,7 @@ class _CardsTabState extends State<CardsTab> {
         content: const Text('确定要删除这张卡片吗？'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('取消'),
-          ),
+              onPressed: () => Navigator.pop(ctx), child: const Text('取消')),
           TextButton(
             onPressed: () {
               cardProvider.deleteCard(card.id);
@@ -206,15 +216,19 @@ class _FolderChip extends StatelessWidget {
 
 class _CardTile extends StatelessWidget {
   final NoteCard card;
-  final dynamic template; // CardTemplate?
+  final CardTemplate? template;
   final List<dynamic> entries;
   final VoidCallback onDelete;
+  final VoidCallback onEdit;
+  final VoidCallback onShare;
 
   const _CardTile({
     required this.card,
     required this.template,
     required this.entries,
     required this.onDelete,
+    required this.onEdit,
+    required this.onShare,
   });
 
   Color _hexToColor(String hex) {
@@ -223,14 +237,50 @@ class _CardTile extends StatelessWidget {
     return Color(0xFF000000 | value);
   }
 
+  void _showMenu(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.edit),
+              title: const Text('编辑'),
+              onTap: () {
+                Navigator.pop(context);
+                onEdit();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.share),
+              title: const Text('分享'),
+              onTap: () {
+                Navigator.pop(context);
+                onShare();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete, color: Colors.red),
+              title: const Text('删除', style: TextStyle(color: Colors.red)),
+              onTap: () {
+                Navigator.pop(context);
+                onDelete();
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    // If there's a rendered image, show it
     if (card.renderedImagePath != null) {
       final file = File(card.renderedImagePath!);
       if (file.existsSync()) {
         return GestureDetector(
-          onLongPress: onDelete,
+          onLongPress: () => _showMenu(context),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(8),
             child: Image.file(file, fit: BoxFit.cover),
@@ -239,39 +289,58 @@ class _CardTile extends StatelessWidget {
       }
     }
 
-    // Fallback: render widget directly
     if (template != null) {
-      final bgColor = _hexToColor(template.bgColor as String);
-      final fontColor = _hexToColor(template.fontColor as String);
+      final bgColor = _hexToColor(template!.bgColor);
+      final fontColor = _hexToColor(template!.fontColor);
       final firstEntry = entries.isNotEmpty ? entries.first : null;
+      final displayText = card.aiSummary ??
+          (firstEntry?.content as String? ?? '');
+
+      Widget background;
+      if (template!.customImagePath != null &&
+          File(template!.customImagePath!).existsSync()) {
+        background = Image.file(File(template!.customImagePath!),
+            fit: BoxFit.cover,
+            width: double.infinity,
+            height: double.infinity);
+      } else {
+        background = Container(
+            decoration: BoxDecoration(
+                color: bgColor,
+                borderRadius: BorderRadius.circular(8)));
+      }
 
       return GestureDetector(
-        onLongPress: onDelete,
-        child: Container(
-          decoration: BoxDecoration(
-            color: bgColor,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          padding: const EdgeInsets.all(8),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        onLongPress: () => _showMenu(context),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: Stack(
+            fit: StackFit.expand,
             children: [
-              if (firstEntry?.emotion != null)
-                Text(firstEntry!.emotion,
-                    style: const TextStyle(fontSize: 16)),
-              Expanded(
-                child: Text(
-                  firstEntry?.content ?? '',
-                  style: TextStyle(
-                      color: fontColor, fontSize: 10, height: 1.4),
-                  maxLines: 4,
-                  overflow: TextOverflow.ellipsis,
+              background,
+              Padding(
+                padding: const EdgeInsets.all(8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (firstEntry?.emotion != null)
+                      Text(firstEntry!.emotion as String,
+                          style: const TextStyle(fontSize: 16)),
+                    Expanded(
+                      child: Text(
+                        displayText,
+                        style: TextStyle(
+                            color: fontColor, fontSize: 10, height: 1.4),
+                        maxLines: 4,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    Text('Blinking ✨',
+                        style: TextStyle(
+                            color: fontColor.withValues(alpha: 0.5),
+                            fontSize: 9)),
+                  ],
                 ),
-              ),
-              Text(
-                'Blinking ✨',
-                style: TextStyle(
-                    color: fontColor.withValues(alpha: 0.5), fontSize: 9),
               ),
             ],
           ),
@@ -280,12 +349,10 @@ class _CardTile extends StatelessWidget {
     }
 
     return GestureDetector(
-      onLongPress: onDelete,
+      onLongPress: () => _showMenu(context),
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.grey[200],
-          borderRadius: BorderRadius.circular(8),
-        ),
+            color: Colors.grey[200], borderRadius: BorderRadius.circular(8)),
         child: const Center(child: Text('🎴')),
       ),
     );

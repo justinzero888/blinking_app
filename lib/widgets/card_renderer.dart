@@ -50,7 +50,13 @@ class CardRenderer extends StatelessWidget {
       width: width,
       height: height,
       decoration: BoxDecoration(
-        color: bgColor,
+        color: template.customImagePath == null ? bgColor : null,
+        image: template.customImagePath != null
+            ? DecorationImage(
+                image: FileImage(File(template.customImagePath!)),
+                fit: BoxFit.cover,
+              )
+            : null,
         borderRadius: BorderRadius.circular(12),
       ),
       padding: const EdgeInsets.all(16),
@@ -67,7 +73,7 @@ class CardRenderer extends StatelessWidget {
           // Entry content
           Expanded(
             child: Text(
-              firstEntry?.content ?? '',
+              card.aiSummary ?? firstEntry?.content ?? '',
               style: _fontStyle(template.fontFamily).copyWith(
                 color: fontColor,
                 fontSize: 14,

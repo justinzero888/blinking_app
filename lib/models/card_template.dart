@@ -7,6 +7,7 @@ class CardTemplate {
   final String fontColor;  // hex e.g. '#222222'
   final String bgColor;    // hex background color
   final bool isBuiltIn;
+  final String? customImagePath;
   final DateTime createdAt;
 
   const CardTemplate({
@@ -17,6 +18,7 @@ class CardTemplate {
     required this.fontColor,
     required this.bgColor,
     this.isBuiltIn = false,
+    this.customImagePath,
     required this.createdAt,
   });
 
@@ -28,6 +30,7 @@ class CardTemplate {
     String? fontColor,
     String? bgColor,
     bool? isBuiltIn,
+    String? customImagePath,
     DateTime? createdAt,
   }) {
     return CardTemplate(
@@ -38,6 +41,7 @@ class CardTemplate {
       fontColor: fontColor ?? this.fontColor,
       bgColor: bgColor ?? this.bgColor,
       isBuiltIn: isBuiltIn ?? this.isBuiltIn,
+      customImagePath: customImagePath ?? this.customImagePath,
       createdAt: createdAt ?? this.createdAt,
     );
   }
@@ -50,6 +54,7 @@ class CardTemplate {
         'font_color': fontColor,
         'bg_color': bgColor,
         'is_built_in': isBuiltIn ? 1 : 0,
+        'custom_image_path': customImagePath,
         'created_at': createdAt.toIso8601String(),
       };
 
@@ -61,6 +66,7 @@ class CardTemplate {
         fontColor: json['font_color'] as String? ?? '#222222',
         bgColor: json['bg_color'] as String? ?? '#FFFFFF',
         isBuiltIn: (json['is_built_in'] as int? ?? 0) == 1,
+        customImagePath: json['custom_image_path'] as String?,
         createdAt: DateTime.parse(json['created_at'] as String),
       );
 }

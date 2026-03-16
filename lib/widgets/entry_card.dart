@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:share_plus/share_plus.dart';
 import '../models/entry.dart';
 import '../models/tag.dart';
 import 'tag_chip.dart';
@@ -57,10 +58,14 @@ class EntryCard extends StatelessWidget {
                 color: Colors.grey,
               ),
         ),
-        if (entry.emotion != null) ...[
-          const Spacer(),
+        const Spacer(),
+        if (entry.emotion != null)
           Text(entry.emotion!, style: const TextStyle(fontSize: 18)),
-        ],
+        const SizedBox(width: 4),
+        GestureDetector(
+          onTap: () => Share.share(entry.content, subject: '来自 Blinking'),
+          child: const Icon(Icons.share, size: 16, color: Colors.grey),
+        ),
       ],
     );
   }

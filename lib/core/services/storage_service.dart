@@ -613,6 +613,7 @@ class StorageService {
       final entryIds = entryMaps.map((e) => e['entry_id'] as String).toList();
       final cardMap = Map<String, dynamic>.from(map);
       cardMap['entry_ids'] = entryIds;
+      cardMap['ai_summary'] = map['ai_summary'];
       cards.add(NoteCard.fromJson(cardMap));
     }
     return cards;
@@ -626,9 +627,31 @@ class StorageService {
         'template_id': card.templateId,
         'folder_id': card.folderId,
         'rendered_image_path': card.renderedImagePath,
+        'ai_summary': card.aiSummary,
         'created_at': card.createdAt.toIso8601String(),
         'updated_at': card.updatedAt.toIso8601String(),
       }, conflictAlgorithm: ConflictAlgorithm.replace);
+      for (final entryId in card.entryIds) {
+        await txn.insert('note_card_entries', {
+          'card_id': card.id,
+          'entry_id': entryId,
+        }, conflictAlgorithm: ConflictAlgorithm.ignore);
+      }
+    });
+  }
+
+  Future<void> updateNoteCard(NoteCard card) async {
+    final db = await _dbService.database;
+    await db.transaction((txn) async {
+      await txn.update('note_cards', {
+        'template_id': card.templateId,
+        'folder_id': card.folderId,
+        'rendered_image_path': card.renderedImagePath,
+        'ai_summary': card.aiSummary,
+        'updated_at': card.updatedAt.toIso8601String(),
+      }, where: 'id = ?', whereArgs: [card.id]);
+      // Refresh entry links
+      await txn.delete('note_card_entries', where: 'card_id = ?', whereArgs: [card.id]);
       for (final entryId in card.entryIds) {
         await txn.insert('note_card_entries', {
           'card_id': card.id,
