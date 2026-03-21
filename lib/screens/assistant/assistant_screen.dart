@@ -159,9 +159,10 @@ class _AssistantScreenState extends State<AssistantScreen> {
       }
     } on LlmException catch (e) {
       if (mounted) {
+        final isZh = context.read<LocaleProvider>().locale.languageCode == 'zh';
         setState(() {
           _messages.add(ChatMessage(
-              text: '⚠️ ${e.message}',
+              text: '⚠️ ${e.friendlyMessage(isZh)}',
               isUser: false,
               timestamp: DateTime.now()));
         });
@@ -169,9 +170,12 @@ class _AssistantScreenState extends State<AssistantScreen> {
       }
     } catch (_) {
       if (mounted) {
+        final isZh = context.read<LocaleProvider>().locale.languageCode == 'zh';
         setState(() {
           _messages.add(ChatMessage(
-              text: '⚠️ 发送失败，请检查网络连接。',
+              text: isZh
+                  ? '⚠️ 网络连接失败，请检查网络后重试。'
+                  : '⚠️ Network connection failed. Please check your connection and try again.',
               isUser: false,
               timestamp: DateTime.now()));
         });
@@ -321,14 +325,16 @@ class _AssistantScreenState extends State<AssistantScreen> {
           ));
         });
         _scrollToBottom();
+        final isZh = context.read<LocaleProvider>().locale.languageCode == 'zh';
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('总结已保存到记录 ✨')),
+          SnackBar(content: Text(isZh ? '总结已保存到记录 ✨' : 'Summary saved to entries ✨')),
         );
       }
     } on LlmException catch (e) {
       if (mounted) {
+        final isZh = context.read<LocaleProvider>().locale.languageCode == 'zh';
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('总结失败: ${e.message}')),
+          SnackBar(content: Text(e.friendlyMessage(isZh))),
         );
       }
     } finally {
@@ -355,8 +361,9 @@ class _AssistantScreenState extends State<AssistantScreen> {
       summary = await _llmService.complete(prompt);
     } on LlmException catch (e) {
       if (mounted) {
+        final isZh = context.read<LocaleProvider>().locale.languageCode == 'zh';
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('生成总结失败: ${e.message}')),
+          SnackBar(content: Text(e.friendlyMessage(isZh))),
         );
       }
       setState(() => _isSending = false);

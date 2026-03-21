@@ -177,7 +177,13 @@ class _AiBottomSheetState extends State<_AiBottomSheet>
       final text = await _llm.complete(_buildPrompt(_activeTab));
       setState(() => _result = text);
     } catch (e) {
-      setState(() => _result = '生成失败：${e.toString().replaceFirst('LlmException: ', '')}');
+      final isZh = mounted
+          ? (context.read<LocaleProvider>().locale.languageCode == 'zh')
+          : true;
+      final msg = e is LlmException
+          ? e.friendlyMessage(isZh)
+          : (isZh ? '发生未知错误，请重试。' : 'An unexpected error occurred. Please try again.');
+      setState(() => _result = msg);
     } finally {
       setState(() => _loading = false);
     }

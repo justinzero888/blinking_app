@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -21,11 +22,8 @@ class LlmService {
     final apiKey = config['apiKey'] as String? ?? '';
     final model = config['model'] as String? ?? 'gpt-4o';
 
-    if (baseUrl == null || baseUrl.isEmpty) {
-      throw LlmException('未配置 AI 提供商，请在设置中添加 API Key 和 Base URL。');
-    }
-    if (apiKey.isEmpty) {
-      throw LlmException('API Key 为空，请在设置 → AI助手 中填写。');
+    if (baseUrl == null || baseUrl.isEmpty || apiKey.isEmpty) {
+      throw LlmException('No API key configured.', LlmErrorType.noApiKey);
     }
 
     final messages = <Map<String, String>>[];
@@ -54,11 +52,8 @@ class LlmService {
     final apiKey = config['apiKey'] as String? ?? '';
     final model = config['model'] as String? ?? 'gpt-4o';
 
-    if (baseUrl == null || baseUrl.isEmpty) {
-      throw LlmException('未配置 AI 提供商，请在设置中添加 API Key 和 Base URL。');
-    }
-    if (apiKey.isEmpty) {
-      throw LlmException('API Key 为空，请在设置 → AI助手 中填写。');
+    if (baseUrl == null || baseUrl.isEmpty || apiKey.isEmpty) {
+      throw LlmException('No API key configured.', LlmErrorType.noApiKey);
     }
 
     final messages = <Map<String, String>>[];
@@ -103,7 +98,7 @@ class LlmService {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
         final choices = data['choices'] as List<dynamic>?;
         if (choices == null || choices.isEmpty) {
-          throw LlmException('AI 返回了空响应。');
+          throw LlmException('Empty response from API.', LlmErrorType.emptyResponse);
         }
         final content = choices[0]['message']['content'] as String?;
         return content ?? '';
@@ -112,16 +107,26 @@ class LlmService {
         String detail = '';
         try {
           final err = jsonDecode(response.body);
-          detail = err['error']?['message'] as String? ?? response.body;
-        } catch (_) {
-          detail = response.body;
+          detail = err['error']?['message'] as String? ?? '';
+        } catch (_) {}
+
+        final status = response.statusCode;
+        if (status == 401 || status == 403) {
+          throw LlmException('HTTP $status: $detail', LlmErrorType.invalidApiKey);
+        } else if (status == 429) {
+          throw LlmException('HTTP $status: $detail', LlmErrorType.rateLimited);
+        } else if (status >= 500) {
+          throw LlmException('HTTP $status: $detail', LlmErrorType.serverError);
+        } else {
+          throw LlmException('HTTP $status: $detail', LlmErrorType.unknown);
         }
-        throw LlmException('API 错误 (${response.statusCode}): $detail');
       }
     } on LlmException {
       rethrow;
+    } on TimeoutException {
+      throw LlmException('Request timed out.', LlmErrorType.timeout);
     } catch (e) {
-      throw LlmException('网络错误: $e');
+      throw LlmException('Network error: $e', LlmErrorType.networkError);
     }
   }
 
@@ -143,10 +148,59 @@ class LlmService {
   }
 }
 
+enum LlmErrorType {
+  noApiKey,       // key not configured
+  invalidApiKey,  // 401 — key rejected or expired
+  rateLimited,    // 429 — quota / rate limit
+  serverError,    // 5xx — provider side issue
+  networkError,   // socket / DNS failure
+  timeout,        // request timed out
+  emptyResponse,  // 200 but no content
+  unknown,
+}
+
 class LlmException implements Exception {
   final String message;
-  LlmException(this.message);
+  final LlmErrorType type;
+
+  LlmException(this.message, [this.type = LlmErrorType.unknown]);
+
+  /// Returns a concise, user-friendly message in the requested language.
+  String friendlyMessage(bool isZh) {
+    switch (type) {
+      case LlmErrorType.noApiKey:
+        return isZh
+            ? '尚未配置 API Key，请前往设置 → AI 服务配置中填写。'
+            : 'No API key configured. Go to Settings → AI Provider to set it up.';
+      case LlmErrorType.invalidApiKey:
+        return isZh
+            ? 'API Key 无效或已过期，请在设置中更新。'
+            : 'API key is invalid or expired. Please update it in Settings.';
+      case LlmErrorType.rateLimited:
+        return isZh
+            ? '请求频率超限或额度已用尽，请稍后再试或检查账户用量。'
+            : 'Rate limit reached or quota exceeded. Please wait and try again, or check your account usage.';
+      case LlmErrorType.serverError:
+        return isZh
+            ? 'AI 服务暂时不可用，请稍后重试。'
+            : 'The AI provider is temporarily unavailable. Please try again later.';
+      case LlmErrorType.networkError:
+        return isZh
+            ? '网络连接失败，请检查网络后重试。'
+            : 'Network connection failed. Please check your connection and try again.';
+      case LlmErrorType.timeout:
+        return isZh
+            ? '请求超时，AI 服务响应过慢，请稍后重试。'
+            : 'Request timed out. The AI service is responding slowly — please try again.';
+      case LlmErrorType.emptyResponse:
+        return isZh
+            ? 'AI 返回了空响应，请重试。'
+            : 'The AI returned an empty response. Please try again.';
+      case LlmErrorType.unknown:
+        return isZh ? '发生未知错误，请重试。' : 'An unexpected error occurred. Please try again.';
+    }
+  }
 
   @override
-  String toString() => 'LlmException: $message';
+  String toString() => 'LlmException[$type]: $message';
 }

@@ -192,6 +192,44 @@ class _SettingsScreenState extends State<SettingsScreen> {
             title: Text(isZh ? '添加 AI 服务' : 'Add AI Provider'),
             onTap: () => _showAddLlmDialog(context, isZh),
           ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.amber.shade50,
+                border: Border.all(color: Colors.amber.shade300),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              padding: const EdgeInsets.all(12),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.info_outline, size: 18, color: Colors.amber.shade800),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      isZh
+                          ? 'AI 功能需要您自行提供 API Key。您需自行承担：\n'
+                            '• API Key 的安全保管\n'
+                            '• 使用 AI 服务产生的 Token 费用\n'
+                            '• 发送给 AI 提供商的数据隐私（受该提供商条款约束）\n'
+                            'Blinking 不收集任何您的数据，AI 请求由您的设备直接发送至 AI 提供商。'
+                          : 'The AI feature requires your own API key. You are responsible for:\n'
+                            '• Keeping your API key secure\n'
+                            '• Any token costs charged by your AI provider\n'
+                            '• Data privacy with your AI provider (governed by their terms)\n'
+                            'Blinking does not collect your data. AI requests are sent directly from your device to the AI provider.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.amber.shade900,
+                        height: 1.5,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
           const Divider(),
 
           // AI Personalization
