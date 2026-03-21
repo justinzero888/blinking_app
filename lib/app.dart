@@ -147,6 +147,7 @@ class _MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final isZh = context.watch<LocaleProvider>().locale.languageCode == 'zh';
     return Scaffold(
       body: Stack(
         children: [
@@ -175,9 +176,9 @@ class _MainScreenState extends State<MainScreen> {
             icon: const Icon(Icons.check_circle_outline),
             label: l10n.routine,
           ),
-          const BottomNavigationBarItem(
-            icon: Icon(Icons.auto_awesome),
-            label: '珍藏',
+          BottomNavigationBarItem(
+            icon: const Icon(Icons.auto_awesome),
+            label: isZh ? '珍藏' : 'Keepsakes',
           ),
           BottomNavigationBarItem(
             icon: const Icon(Icons.settings),

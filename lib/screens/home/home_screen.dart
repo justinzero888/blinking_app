@@ -365,13 +365,14 @@ class _EmojiJarSectionState extends State<_EmojiJarSection> {
 
   @override
   Widget build(BuildContext context) {
+    final isZh = context.watch<LocaleProvider>().locale.languageCode == 'zh';
     return Card(
       child: Column(
         children: [
           ListTile(
             leading: const Text('🫙', style: TextStyle(fontSize: 20)),
-            title: const Text('今日情绪罐',
-                style: TextStyle(fontWeight: FontWeight.bold)),
+            title: Text(isZh ? '今日情绪罐' : "Today's Mood Jar",
+                style: const TextStyle(fontWeight: FontWeight.bold)),
             trailing: IconButton(
               icon: Icon(_expanded ? Icons.expand_less : Icons.expand_more),
               onPressed: () => setState(() => _expanded = !_expanded),
