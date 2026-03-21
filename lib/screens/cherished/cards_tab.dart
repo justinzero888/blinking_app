@@ -8,6 +8,7 @@ import '../../models/card_template.dart';
 import '../../providers/card_provider.dart';
 import '../../providers/entry_provider.dart';
 import '../../providers/locale_provider.dart';
+import '../../widgets/card_renderer.dart';
 import 'card_builder_dialog.dart';
 import 'card_editor_screen.dart';
 
@@ -132,7 +133,7 @@ class _CardsTabState extends State<CardsTab> {
           entries: entries,
           onDelete: () => _confirmDelete(context, card, cardProvider),
           onEdit: () => _openCardEditor(context, card),
-          onShare: () => _shareCard(card),
+          onShare: () => _shareCard(context, card, template, entries.cast<Entry>()),
           onTap: () => _openCardViewer(context, card, template, entries),
         );
       },
@@ -174,20 +175,54 @@ class _CardsTabState extends State<CardsTab> {
     );
   }
 
-  Future<void> _shareCard(NoteCard card) async {
-    final content = card.aiSummary ?? '';
-    final shareText = content.isNotEmpty
-        ? '$content\n\n— 来自 Blinking ✨'
+  Future<void> _shareCard(BuildContext context, NoteCard card,
+      CardTemplate? template, List<Entry> entries) async {
+    final isZh = context.read<LocaleProvider>().locale.languageCode == 'zh';
+    final shareText = (card.aiSummary?.isNotEmpty == true)
+        ? '${card.aiSummary}\n\n— 来自 Blinking ✨'
         : '来自 Blinking ✨';
 
+    // 1. Use cached rendered image if it exists
     if (card.renderedImagePath != null &&
         File(card.renderedImagePath!).existsSync()) {
-      await Share.shareXFiles(
-        [XFile(card.renderedImagePath!)],
-        text: shareText,
-      );
-    } else {
+      await Share.shareXFiles([XFile(card.renderedImagePath!)], text: shareText);
+      return;
+    }
+
+    // 2. Render on-the-fly if template is available
+    if (template != null) {
+      try {
+        final path = await CardRenderer.renderToImage(
+          card: card,
+          template: template,
+          entries: entries,
+          width: 640,
+          height: 400,
+        );
+        // Persist so next share is instant
+        if (context.mounted) {
+          await context.read<CardProvider>().updateCard(
+                card.copyWith(renderedImagePath: path, updatedAt: DateTime.now()),
+              );
+        }
+        await Share.shareXFiles([XFile(path)], text: shareText);
+        return;
+      } catch (_) {
+        // fall through to text share
+      }
+    }
+
+    // 3. Last resort: text only
+    if (shareText.isNotEmpty) {
       await Share.share(shareText);
+    } else {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(isZh
+              ? '卡片内容为空，无法分享'
+              : 'Card has no content to share'),
+        ));
+      }
     }
   }
 

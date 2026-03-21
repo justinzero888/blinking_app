@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/jar_provider.dart';
+import '../../providers/locale_provider.dart';
 import 'year_jar_detail_screen.dart';
 
 /// 书架 tab — shows a vertical list of year cards with mini emoji jars
@@ -10,6 +11,7 @@ class ShelfTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final jarProvider = context.watch<JarProvider>();
+    final isZh = context.watch<LocaleProvider>().locale.languageCode == 'zh';
     final years = jarProvider.yearsWithData;
 
     if (years.isEmpty) {
@@ -20,12 +22,14 @@ class ShelfTab extends StatelessWidget {
             const Text('🫙', style: TextStyle(fontSize: 64)),
             const SizedBox(height: 16),
             Text(
-              '情绪罐书架',
+              isZh ? '情绪罐书架' : 'Mood Jar Shelf',
               style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: 8),
             Text(
-              '开始记录情绪，这里将收藏每一天的心情',
+              isZh
+                  ? '开始记录情绪，这里将收藏每一天的心情'
+                  : 'Start recording your mood — each day will be saved here',
               style: Theme.of(context)
                   .textTheme
                   .bodyMedium
@@ -41,7 +45,7 @@ class ShelfTab extends StatelessWidget {
       itemCount: years.length,
       itemBuilder: (context, index) {
         final year = years[index];
-        return _YearCard(year: year, jarProvider: jarProvider);
+        return _YearCard(year: year, jarProvider: jarProvider, isZh: isZh);
       },
     );
   }
@@ -50,8 +54,9 @@ class ShelfTab extends StatelessWidget {
 class _YearCard extends StatelessWidget {
   final int year;
   final JarProvider jarProvider;
+  final bool isZh;
 
-  const _YearCard({required this.year, required this.jarProvider});
+  const _YearCard({required this.year, required this.jarProvider, required this.isZh});
 
   @override
   Widget build(BuildContext context) {
@@ -87,9 +92,9 @@ class _YearCard extends StatelessWidget {
                   ),
                 ),
                 child: displayEmotions.isEmpty
-                    ? const Center(
-                        child:
-                            Text('空', style: TextStyle(color: Colors.grey)))
+                    ? Center(
+                        child: Text(isZh ? '空' : 'empty',
+                            style: const TextStyle(color: Colors.grey)))
                     : Padding(
                         padding: const EdgeInsets.all(4),
                         child: Wrap(
@@ -110,14 +115,14 @@ class _YearCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '$year 年',
+                      isZh ? '$year 年' : '$year',
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
                             fontWeight: FontWeight.bold,
                           ),
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '$count 条记录',
+                      isZh ? '$count 条记录' : '$count entries',
                       style: Theme.of(context)
                           .textTheme
                           .bodyMedium
@@ -126,7 +131,7 @@ class _YearCard extends StatelessWidget {
                     const SizedBox(height: 4),
                     if (emotions.isNotEmpty)
                       Text(
-                        '${emotions.length} 个情绪',
+                        isZh ? '${emotions.length} 个情绪' : '${emotions.length} moods',
                         style: Theme.of(context)
                             .textTheme
                             .bodySmall
