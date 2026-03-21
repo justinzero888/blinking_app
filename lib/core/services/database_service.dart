@@ -23,7 +23,7 @@ class DatabaseService {
 
     return await openDatabase(
       path,
-      version: 7,
+      version: 8,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -90,6 +90,9 @@ class DatabaseService {
     if (oldVersion < 7) {
       await db.execute('ALTER TABLE note_cards ADD COLUMN rich_content TEXT');
     }
+    if (oldVersion < 8) {
+      await db.execute('ALTER TABLE routines ADD COLUMN icon_image_path TEXT');
+    }
   }
 
   Future<void> _onCreate(Database db, int version) async {
@@ -146,6 +149,7 @@ class DatabaseService {
         current_count INTEGER DEFAULT 0,
         is_counter INTEGER NOT NULL DEFAULT 0,
         unit TEXT,
+        icon_image_path TEXT,
         category TEXT,
         scheduled_days_of_week TEXT,
         scheduled_date TEXT,

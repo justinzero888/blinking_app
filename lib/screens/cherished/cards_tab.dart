@@ -7,6 +7,7 @@ import '../../models/note_card.dart';
 import '../../models/card_template.dart';
 import '../../providers/card_provider.dart';
 import '../../providers/entry_provider.dart';
+import '../../providers/locale_provider.dart';
 import 'card_builder_dialog.dart';
 import 'card_editor_screen.dart';
 
@@ -26,6 +27,7 @@ class _CardsTabState extends State<CardsTab> {
     final cardProvider = context.watch<CardProvider>();
     final folders = cardProvider.folders;
     final allCards = cardProvider.cards;
+    final isZh = context.watch<LocaleProvider>().locale.languageCode == 'zh';
 
     final displayCards = _selectedFolderId == null
         ? allCards
@@ -41,7 +43,7 @@ class _CardsTabState extends State<CardsTab> {
               child: Row(
                 children: [
                   _FolderChip(
-                    label: '全部',
+                    label: isZh ? '全部' : 'All',
                     icon: '📋',
                     isSelected: _selectedFolderId == null,
                     onTap: () => setState(() => _selectedFolderId = null),
@@ -70,22 +72,27 @@ class _CardsTabState extends State<CardsTab> {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _openCardBuilder(context),
         icon: const Icon(Icons.add),
-        label: const Text('制作卡片'),
+        label: Text(isZh ? '制作卡片' : 'New Card'),
       ),
     );
   }
 
   Widget _buildEmptyState(BuildContext context) {
+    final isZh = context.read<LocaleProvider>().locale.languageCode == 'zh';
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           const Text('🎴', style: TextStyle(fontSize: 64)),
           const SizedBox(height: 16),
-          Text('还没有卡片', style: Theme.of(context).textTheme.titleMedium),
+          Text(isZh ? '还没有卡片' : 'No cards yet',
+              style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
-          const Text('点击下方按钮，将记录制作成精美卡片',
-              style: TextStyle(color: Colors.grey)),
+          Text(
+              isZh
+                  ? '点击下方按钮，将记录制作成精美卡片'
+                  : 'Tap the button below to create a card from your entries',
+              style: const TextStyle(color: Colors.grey)),
         ],
       ),
     );
@@ -168,33 +175,41 @@ class _CardsTabState extends State<CardsTab> {
   }
 
   Future<void> _shareCard(NoteCard card) async {
+    final content = card.aiSummary ?? '';
+    final shareText = content.isNotEmpty
+        ? '$content\n\n— 来自 Blinking ✨'
+        : '来自 Blinking ✨';
+
     if (card.renderedImagePath != null &&
         File(card.renderedImagePath!).existsSync()) {
       await Share.shareXFiles(
         [XFile(card.renderedImagePath!)],
-        text: '来自 Blinking ✨',
+        text: shareText,
       );
     } else {
-      await Share.share('来自 Blinking ✨');
+      await Share.share(shareText);
     }
   }
 
   void _confirmDelete(
       BuildContext context, NoteCard card, CardProvider cardProvider) {
+    final isZh = context.read<LocaleProvider>().locale.languageCode == 'zh';
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('删除卡片'),
-        content: const Text('确定要删除这张卡片吗？'),
+        title: Text(isZh ? '删除卡片' : 'Delete Card'),
+        content: Text(isZh ? '确定要删除这张卡片吗？' : 'Delete this card?'),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx), child: const Text('取消')),
+              onPressed: () => Navigator.pop(ctx),
+              child: Text(isZh ? '取消' : 'Cancel')),
           TextButton(
             onPressed: () {
               cardProvider.deleteCard(card.id);
               Navigator.pop(ctx);
             },
-            child: const Text('删除', style: TextStyle(color: Colors.red)),
+            child: Text(isZh ? '删除' : 'Delete',
+                style: const TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -258,6 +273,7 @@ class _CardTile extends StatelessWidget {
   }
 
   void _showMenu(BuildContext context) {
+    final isZh = context.read<LocaleProvider>().locale.languageCode == 'zh';
     showModalBottomSheet(
       context: context,
       builder: (_) => SafeArea(
@@ -266,7 +282,7 @@ class _CardTile extends StatelessWidget {
           children: [
             ListTile(
               leading: const Icon(Icons.edit),
-              title: const Text('编辑'),
+              title: Text(isZh ? '编辑' : 'Edit'),
               onTap: () {
                 Navigator.pop(context);
                 onEdit();
@@ -274,7 +290,7 @@ class _CardTile extends StatelessWidget {
             ),
             ListTile(
               leading: const Icon(Icons.share),
-              title: const Text('分享'),
+              title: Text(isZh ? '分享' : 'Share'),
               onTap: () {
                 Navigator.pop(context);
                 onShare();
@@ -282,7 +298,8 @@ class _CardTile extends StatelessWidget {
             ),
             ListTile(
               leading: const Icon(Icons.delete, color: Colors.red),
-              title: const Text('删除', style: TextStyle(color: Colors.red)),
+              title: Text(isZh ? '删除' : 'Delete',
+                  style: const TextStyle(color: Colors.red)),
               onTap: () {
                 Navigator.pop(context);
                 onDelete();

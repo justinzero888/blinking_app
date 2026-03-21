@@ -1,6 +1,8 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/jar_provider.dart';
+import '../providers/locale_provider.dart';
 import '../core/services/llm_service.dart';
 
 /// A stylised glass jar widget showing the day's emotions as emoji.
@@ -10,57 +12,88 @@ class EmojiJarWidget extends StatelessWidget {
 
   const EmojiJarWidget({super.key, required this.date, this.size = 160});
 
+  static const int _maxVisible = 30;
+
   @override
   Widget build(BuildContext context) {
+    final isZh = context.watch<LocaleProvider>().locale.languageCode == 'zh';
     final emotions = context.watch<JarProvider>().getDayEmotions(date);
+
+    final int overflowCount =
+        emotions.length > _maxVisible ? emotions.length - _maxVisible : 0;
+    final List<String> visible = overflowCount > 0
+        ? emotions.sublist(0, _maxVisible)
+        : emotions;
+
+    // Adaptive font size: shrink when jar is dense
+    final double emojiFontSize = visible.length > 15
+        ? size * 0.085
+        : size * 0.12;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        SizedBox(
-          width: size,
-          height: size * 1.1,
-          child: CustomPaint(
-            painter: _JarPainter(),
-            child: ClipPath(
-              clipper: _JarClipper(),
-              child: Container(
-                padding: EdgeInsets.fromLTRB(
-                    size * 0.1, size * 0.18, size * 0.1, size * 0.08),
-                child: emotions.isEmpty
-                    ? Center(
-                        child: Text(
-                          '空',
-                          style: TextStyle(
-                            color: Colors.grey[400],
-                            fontSize: size * 0.18,
-                          ),
-                        ),
-                      )
-                    : Wrap(
-                        alignment: WrapAlignment.center,
-                        spacing: 2,
-                        runSpacing: 2,
-                        children: emotions
-                            .map(
-                              (e) => Text(
-                                e,
-                                style: TextStyle(fontSize: size * 0.12),
+        Stack(
+          alignment: Alignment.topRight,
+          children: [
+            SizedBox(
+              width: size,
+              height: size * 1.1,
+              child: CustomPaint(
+                painter: _JarPainter(),
+                child: ClipPath(
+                  clipper: _JarClipper(),
+                  child: Container(
+                    padding: EdgeInsets.fromLTRB(
+                        size * 0.1, size * 0.18, size * 0.1, size * 0.08),
+                    child: visible.isEmpty
+                        ? Center(
+                            child: Text(
+                              isZh ? '空' : 'empty',
+                              style: TextStyle(
+                                color: Colors.grey[400],
+                                fontSize: size * 0.18,
                               ),
-                            )
-                            .toList(),
-                      ),
+                            ),
+                          )
+                        : _EmojiGrid(
+                            emojis: visible,
+                            fontSize: emojiFontSize,
+                            seed: date.millisecondsSinceEpoch,
+                          ),
+                  ),
+                ),
               ),
             ),
-          ),
+            if (overflowCount > 0)
+              Positioned(
+                top: size * 0.18,
+                right: size * 0.06,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.shade700.withValues(alpha: 0.85),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    '+$overflowCount',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: size * 0.07,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+          ],
         ),
         const SizedBox(height: 4),
         TextButton.icon(
           icon: const Text('✨', style: TextStyle(fontSize: 14)),
-          label: const Text('问问 AI', style: TextStyle(fontSize: 13)),
-          onPressed: emotions.isEmpty
-              ? null
-              : () => _openAIBottomSheet(context, emotions),
+          label: Text(isZh ? '问问 AI' : 'Ask AI',
+              style: const TextStyle(fontSize: 13)),
+          onPressed: () => _openAIBottomSheet(context, emotions),
         ),
       ],
     );
@@ -115,14 +148,21 @@ class _AiBottomSheetState extends State<_AiBottomSheet>
   }
 
   String _buildPrompt(int tabIndex) {
-    final emojiStr = widget.emotions.join(' ');
+    final emojiStr =
+        widget.emotions.isNotEmpty ? widget.emotions.join(' ') : null;
     switch (tabIndex) {
       case 0:
-        return '我今天的情绪有：$emojiStr。请给我一句温暖的鼓励话语（不超过50字）。';
+        return emojiStr != null
+            ? '我今天的情绪有：$emojiStr。请给我一句温暖的鼓励话语（不超过50字）。'
+            : '请给我一句温暖的鼓励话语（不超过50字）。';
       case 1:
-        return '我今天的情绪有：$emojiStr。请给我一句创意灵感或思考方向（不超过50字）。';
+        return emojiStr != null
+            ? '我今天的情绪有：$emojiStr。请给我一句创意灵感或思考方向（不超过50字）。'
+            : '请给我一句创意灵感或思考方向（不超过50字）。';
       case 2:
-        return '我今天的情绪有：$emojiStr。请给我一句增强行动力的动力语句（不超过50字）。';
+        return emojiStr != null
+            ? '我今天的情绪有：$emojiStr。请给我一句增强行动力的动力语句（不超过50字）。'
+            : '请给我一句增强行动力的动力语句（不超过50字）。';
       default:
         return '';
     }
@@ -145,6 +185,7 @@ class _AiBottomSheetState extends State<_AiBottomSheet>
 
   @override
   Widget build(BuildContext context) {
+    final isZh = context.watch<LocaleProvider>().locale.languageCode == 'zh';
     return Padding(
       padding: EdgeInsets.only(
         bottom: MediaQuery.of(context).viewInsets.bottom,
@@ -164,10 +205,10 @@ class _AiBottomSheetState extends State<_AiBottomSheet>
             ),
             TabBar(
               controller: _tabController,
-              tabs: const [
-                Tab(text: '鼓励'),
-                Tab(text: '灵感'),
-                Tab(text: '动力'),
+              tabs: [
+                Tab(text: isZh ? '鼓励' : 'Encourage'),
+                Tab(text: isZh ? '灵感' : 'Inspire'),
+                Tab(text: isZh ? '动力' : 'Motivate'),
               ],
             ),
             Expanded(
@@ -189,17 +230,19 @@ class _AiBottomSheetState extends State<_AiBottomSheet>
                         ),
                       )
                     else
-                      const Expanded(
+                      Expanded(
                         child: Center(
                           child: Text(
-                            '点击下方按钮，让 AI 为你生成',
-                            style: TextStyle(color: Colors.grey),
+                            isZh
+                                ? '点击下方按钮，让 AI 为你生成'
+                                : 'Tap the button below to generate',
+                            style: const TextStyle(color: Colors.grey),
                           ),
                         ),
                       ),
                     ElevatedButton(
                       onPressed: _loading ? null : _generate,
-                      child: const Text('生成'),
+                      child: Text(isZh ? '生成' : 'Generate'),
                     ),
                   ],
                 ),
@@ -209,6 +252,57 @@ class _AiBottomSheetState extends State<_AiBottomSheet>
         ),
       ),
     );
+  }
+}
+
+/// Lays emojis out in a deterministic grid so they never overlap.
+/// Cells are arranged left-to-right, top-to-bottom. A seeded random shuffle
+/// gives variety while remaining stable for the same [seed] value.
+class _EmojiGrid extends StatelessWidget {
+  final List<String> emojis;
+  final double fontSize;
+  final int seed;
+
+  const _EmojiGrid({
+    required this.emojis,
+    required this.fontSize,
+    required this.seed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(builder: (context, constraints) {
+      final w = constraints.maxWidth;
+      final h = constraints.maxHeight;
+
+      // Cell size: give each emoji a square cell based on font size + padding
+      final cellSize = fontSize + 4;
+      final cols = math.max(1, (w / cellSize).floor());
+      final rows = math.max(1, (h / cellSize).floor());
+      final maxCells = cols * rows;
+
+      final display =
+          emojis.length > maxCells ? emojis.sublist(0, maxCells) : emojis;
+
+      // Build a shuffled list of grid positions using seeded random
+      final positions = List.generate(cols * rows, (i) => i)..shuffle(math.Random(seed));
+      final usedPositions = positions.sublist(0, display.length);
+
+      return Stack(
+        children: List.generate(display.length, (i) {
+          final pos = usedPositions[i];
+          final col = pos % cols;
+          final row = pos ~/ cols;
+          final left = col * cellSize + (w - cols * cellSize) / 2;
+          final top = row * cellSize;
+          return Positioned(
+            left: left,
+            top: top,
+            child: Text(display[i], style: TextStyle(fontSize: fontSize)),
+          );
+        }),
+      );
+    });
   }
 }
 

@@ -1,4 +1,7 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/ai_persona_provider.dart';
 import '../screens/assistant/assistant_screen.dart';
 
 /// Floating animated robot widget overlaid on the main screen.
@@ -50,7 +53,8 @@ class _FloatingRobotWidgetState extends State<FloatingRobotWidget>
       TweenSequenceItem(tween: Tween(begin: 0.0, end: 0.3), weight: 1),
       TweenSequenceItem(tween: Tween(begin: 0.3, end: -0.3), weight: 2),
       TweenSequenceItem(tween: Tween(begin: -0.3, end: 0.0), weight: 1),
-    ]).animate(CurvedAnimation(parent: _waveController, curve: Curves.easeInOut));
+    ]).animate(
+        CurvedAnimation(parent: _waveController, curve: Curves.easeInOut));
   }
 
   @override
@@ -74,11 +78,16 @@ class _FloatingRobotWidgetState extends State<FloatingRobotWidget>
 
   @override
   Widget build(BuildContext context) {
+    final avatarPath = context.watch<AiPersonaProvider>().avatarPath;
+    final avatarFile = avatarPath != null ? File(avatarPath) : null;
+    final hasAvatar = avatarFile != null && avatarFile.existsSync();
+
     return Positioned(
       right: 16,
       bottom: 90,
       child: AnimatedBuilder(
-        animation: Listenable.merge([_bobAnimation, _pulseAnimation, _waveAnimation]),
+        animation: Listenable.merge(
+            [_bobAnimation, _pulseAnimation, _waveAnimation]),
         builder: (context, child) {
           return Transform.translate(
             offset: Offset(0, _bobAnimation.value),
@@ -107,9 +116,13 @@ class _FloatingRobotWidgetState extends State<FloatingRobotWidget>
                 ),
               ],
             ),
-            child: const Center(
-              child: Text('🤖', style: TextStyle(fontSize: 28)),
-            ),
+            child: hasAvatar
+                ? ClipOval(
+                    child: Image.file(avatarFile, fit: BoxFit.cover),
+                  )
+                : const Center(
+                    child: Text('🤖', style: TextStyle(fontSize: 28)),
+                  ),
           ),
         ),
       ),

@@ -4,8 +4,14 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
+import '../../providers/ai_persona_provider.dart';
 import '../../providers/tag_provider.dart';
 import '../../providers/locale_provider.dart';
+import '../legal_doc_screen.dart';
+import '../../core/constants/legal_content.dart';
 import '../../providers/entry_provider.dart';
 import '../../providers/routine_provider.dart';
 import '../../models/tag.dart';
@@ -72,14 +78,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _saveAiSettings() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('ai_assistant_name', _aiName);
-    await prefs.setString('ai_assistant_personality', _aiPersonality);
+    await context
+        .read<AiPersonaProvider>()
+        .saveNameAndPersonality(_aiName, _aiPersonality);
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('AI 设置已保存')),
       );
     }
+  }
+
+  Future<void> _pickAiAvatar() async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(source: ImageSource.gallery);
+    if (picked == null) return;
+
+    try {
+      await context.read<AiPersonaProvider>().setAvatarFromPath(picked.path);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('头像保存失败: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _clearAiAvatar() async {
+    await context.read<AiPersonaProvider>().clearAvatar();
   }
 
   Future<void> _loadLlmSettings() async {
@@ -177,6 +203,67 @@ class _SettingsScreenState extends State<SettingsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Avatar picker
+                  Consumer<AiPersonaProvider>(
+                    builder: (context, persona, _) {
+                      final avatarPath = persona.avatarPath;
+                      final hasAvatar = avatarPath != null &&
+                          File(avatarPath).existsSync();
+                      return Row(
+                        children: [
+                          GestureDetector(
+                            onTap: _pickAiAvatar,
+                            child: CircleAvatar(
+                              radius: 32,
+                              backgroundImage: hasAvatar
+                                  ? FileImage(File(avatarPath))
+                                  : null,
+                              child: !hasAvatar
+                                  ? const Text('🤖',
+                                      style: TextStyle(fontSize: 28))
+                                  : null,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              TextButton.icon(
+                                icon: const Icon(Icons.image, size: 16),
+                                label: Text(
+                                    isZh ? '更换头像' : 'Change Avatar',
+                                    style: const TextStyle(fontSize: 13)),
+                                onPressed: _pickAiAvatar,
+                                style: TextButton.styleFrom(
+                                  padding: EdgeInsets.zero,
+                                  minimumSize: Size.zero,
+                                  tapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
+                                ),
+                              ),
+                              if (hasAvatar)
+                                TextButton.icon(
+                                  icon: const Icon(Icons.delete_outline,
+                                      size: 16, color: Colors.red),
+                                  label: Text(
+                                      isZh ? '移除头像' : 'Remove',
+                                      style: const TextStyle(
+                                          fontSize: 13, color: Colors.red)),
+                                  onPressed: _clearAiAvatar,
+                                  style: TextButton.styleFrom(
+                                    padding: EdgeInsets.zero,
+                                    minimumSize: Size.zero,
+                                    tapTargetSize:
+                                        MaterialTapTargetSize.shrinkWrap,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 16),
                   TextField(
                     decoration: InputDecoration(
                       labelText: isZh ? '助手名称' : 'Assistant Name',
@@ -244,12 +331,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
               );
             },
           ),
-          ListTile(
-            leading: const Icon(Icons.notifications),
-            title: Text(isZh ? '通知设置' : 'Notifications'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () {},
-          ),
           const Divider(),
 
           // Data Portability
@@ -278,14 +359,54 @@ class _SettingsScreenState extends State<SettingsScreen> {
             subtitle: Text(isZh ? '从备份文件导入' : 'Import from backup file'),
             onTap: () => _handleRestore(context, isZh),
           ),
+          ListTile(
+            leading: const Icon(Icons.fitness_center_outlined),
+            title: Text(isZh ? '导出习惯数据' : 'Export Habits'),
+            subtitle: Text(isZh ? '导出所有习惯为 JSON 文件' : 'Export all habits as JSON'),
+            onTap: () => _handleExportHabits(context, isZh),
+          ),
+          ListTile(
+            leading: const Icon(Icons.upload_outlined),
+            title: Text(isZh ? '导入习惯数据' : 'Import Habits'),
+            subtitle: Text(isZh ? '从 JSON 文件导入习惯' : 'Import habits from JSON file'),
+            onTap: () => _handleImportHabits(context, isZh),
+          ),
           const Divider(),
 
           // About
           _buildSectionHeader(isZh ? '关于' : 'About'),
           ListTile(
+            leading: const Icon(Icons.privacy_tip_outlined),
+            title: Text(isZh ? '隐私政策' : 'Privacy Policy'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => LegalDocScreen(
+                  title: isZh ? '隐私政策' : 'Privacy Policy',
+                  content: kPrivacyPolicyContent,
+                ),
+              ),
+            ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.gavel_outlined),
+            title: Text(isZh ? '服务条款' : 'Terms of Service'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => LegalDocScreen(
+                  title: isZh ? '服务条款' : 'Terms of Service',
+                  content: kTermsOfServiceContent,
+                ),
+              ),
+            ),
+          ),
+          ListTile(
             leading: const Icon(Icons.info),
             title: const Text('Blinking (记忆闪烁)'),
-            subtitle: Text(isZh ? '版本 1.0.3' : 'Version 1.0.3'),
+            subtitle: Text(isZh ? '版本 1.1.0' : 'Version 1.1.0'),
           ),
         ],
       ),
@@ -768,6 +889,49 @@ class _SettingsScreenState extends State<SettingsScreen> {
     } catch (e) {
       if (mounted) Navigator.pop(context);
       _showError(context, isZh, e.toString());
+    }
+  }
+
+  Future<void> _handleExportHabits(BuildContext context, bool isZh) async {
+    try {
+      final provider = context.read<RoutineProvider>();
+      final json = provider.exportRoutinesJson();
+      final dir = await getTemporaryDirectory();
+      final file = File('${dir.path}/habits_export.json');
+      await file.writeAsString(json);
+      await Share.shareXFiles(
+        [XFile(file.path)],
+        subject: isZh ? '习惯数据导出' : 'Habits Export',
+      );
+    } catch (e) {
+      if (mounted) _showError(context, isZh, e.toString());
+    }
+  }
+
+  Future<void> _handleImportHabits(BuildContext context, bool isZh) async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['json'],
+      );
+      if (result == null || result.files.single.path == null) return;
+
+      final file = File(result.files.single.path!);
+      final json = await file.readAsString();
+
+      if (!mounted) return;
+      final provider = context.read<RoutineProvider>();
+      final counts = await provider.importRoutinesJson(json);
+
+      if (mounted) {
+        final msg = isZh
+            ? '导入完成：${counts.imported} 条已导入，${counts.skipped} 条已跳过'
+            : 'Import complete: ${counts.imported} imported, ${counts.skipped} skipped';
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(msg)));
+      }
+    } catch (e) {
+      if (mounted) _showError(context, isZh, e.toString());
     }
   }
 

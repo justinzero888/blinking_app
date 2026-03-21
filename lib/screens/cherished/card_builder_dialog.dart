@@ -10,6 +10,7 @@ import '../../models/card_folder.dart';
 import '../../models/note_card.dart';
 import '../../providers/card_provider.dart';
 import '../../providers/entry_provider.dart';
+import '../../providers/locale_provider.dart';
 import '../../core/services/llm_service.dart';
 
 /// Full-screen dialog for creating or editing a note card from entries.
@@ -102,6 +103,7 @@ class _CardBuilderDialogState extends State<CardBuilderDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final isZh = context.watch<LocaleProvider>().locale.languageCode == 'zh';
     final cardProvider = context.watch<CardProvider>();
     final entryProvider = context.watch<EntryProvider>();
     final templates = cardProvider.templates;
@@ -109,7 +111,9 @@ class _CardBuilderDialogState extends State<CardBuilderDialog> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(_isEditMode ? '编辑卡片' : '制作记忆卡片'),
+        title: Text(_isEditMode
+            ? (isZh ? '编辑卡片' : 'Edit Card')
+            : (isZh ? '制作记忆卡片' : 'Create Card')),
         leading: IconButton(
           icon: const Icon(Icons.close),
           onPressed: () => Navigator.pop(context),
@@ -119,7 +123,10 @@ class _CardBuilderDialogState extends State<CardBuilderDialog> {
         padding: const EdgeInsets.all(16),
         children: [
           // Selected entries
-          Text('已选记录 (${_selectedEntries.length})',
+          Text(
+              isZh
+                  ? '已选记录 (${_selectedEntries.length})'
+                  : 'Selected (${_selectedEntries.length})',
               style: const TextStyle(fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
           ..._selectedEntries.map((entry) => Card(
@@ -141,7 +148,7 @@ class _CardBuilderDialogState extends State<CardBuilderDialog> {
               )),
           TextButton.icon(
             icon: const Icon(Icons.add),
-            label: const Text('添加更多笔记'),
+            label: Text(isZh ? '添加更多笔记' : 'Add more entries'),
             onPressed: () => _showEntryPicker(entryProvider),
           ),
           const Divider(height: 24),
@@ -150,11 +157,11 @@ class _CardBuilderDialogState extends State<CardBuilderDialog> {
           if (_selectedEntries.isNotEmpty) ...[
             Row(
               children: [
-                const Text('内容模式',
-                    style: TextStyle(fontWeight: FontWeight.bold)),
+                Text(isZh ? '内容模式' : 'Content mode',
+                    style: const TextStyle(fontWeight: FontWeight.bold)),
                 const Spacer(),
                 ChoiceChip(
-                  label: const Text('原文'),
+                  label: Text(isZh ? '原文' : 'Original'),
                   selected: !_useAiMerge,
                   onSelected: (_) => setState(() {
                     _useAiMerge = false;
@@ -164,7 +171,7 @@ class _CardBuilderDialogState extends State<CardBuilderDialog> {
                 ),
                 const SizedBox(width: 8),
                 ChoiceChip(
-                  label: const Text('AI 生成'),
+                  label: Text(isZh ? 'AI 生成' : 'AI Generate'),
                   selected: _useAiMerge,
                   onSelected: (_) => setState(() => _useAiMerge = true),
                 ),
@@ -176,7 +183,9 @@ class _CardBuilderDialogState extends State<CardBuilderDialog> {
                 controller: _aiController,
                 maxLines: 4,
                 decoration: InputDecoration(
-                  hintText: 'AI 生成的内容将显示在这里，你可以直接编辑',
+                  hintText: isZh
+                      ? 'AI 生成的内容将显示在这里，你可以直接编辑'
+                      : 'AI-generated content will appear here. You can edit it.',
                   border: const OutlineInputBorder(),
                   suffixIcon: _generatingAi
                       ? const Padding(
@@ -189,7 +198,7 @@ class _CardBuilderDialogState extends State<CardBuilderDialog> {
                         )
                       : IconButton(
                           icon: const Icon(Icons.auto_awesome),
-                          tooltip: '用 AI 生成',
+                          tooltip: isZh ? '用 AI 生成' : 'Generate with AI',
                           onPressed: _generateAiSummary,
                         ),
                 ),
@@ -199,7 +208,9 @@ class _CardBuilderDialogState extends State<CardBuilderDialog> {
               Align(
                 alignment: Alignment.centerRight,
                 child: Text(
-                  '${_countWords(_aiController.text)} / 100 字',
+                  isZh
+                      ? '${_countWords(_aiController.text)} / 100 字'
+                      : '${_countWords(_aiController.text)} / 100 words',
                   style: TextStyle(
                     fontSize: 12,
                     color: _countWords(_aiController.text) > 100
@@ -215,12 +226,12 @@ class _CardBuilderDialogState extends State<CardBuilderDialog> {
           // Template picker
           Row(
             children: [
-              const Text('选择模板',
-                  style: TextStyle(fontWeight: FontWeight.bold)),
+              Text(isZh ? '选择模板' : 'Select template',
+                  style: const TextStyle(fontWeight: FontWeight.bold)),
               const Spacer(),
               TextButton.icon(
                 icon: const Icon(Icons.edit, size: 16),
-                label: const Text('编辑模板'),
+                label: Text(isZh ? '编辑模板' : 'Edit template'),
                 onPressed: _selectedTemplate != null
                     ? () => _showTemplateEditor(_selectedTemplate!)
                     : null,
@@ -291,8 +302,8 @@ class _CardBuilderDialogState extends State<CardBuilderDialog> {
           const SizedBox(height: 16),
 
           // Folder picker
-          const Text('选择文件夹',
-              style: TextStyle(fontWeight: FontWeight.bold)),
+          Text(isZh ? '选择文件夹' : 'Select folder',
+              style: const TextStyle(fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
           if (folders.isNotEmpty)
             DropdownButtonFormField<CardFolder>(
@@ -324,7 +335,10 @@ class _CardBuilderDialogState extends State<CardBuilderDialog> {
                       height: 20,
                       width: 20,
                       child: CircularProgressIndicator(strokeWidth: 2))
-                  : Text(_isEditMode ? '保存卡片' : '生成卡片',
+                  : Text(
+                      _isEditMode
+                          ? (isZh ? '保存卡片' : 'Save Card')
+                          : (isZh ? '生成卡片' : 'Create Card'),
                       style: const TextStyle(fontSize: 16)),
             ),
           ),
@@ -363,8 +377,10 @@ class _CardBuilderDialogState extends State<CardBuilderDialog> {
       });
     } catch (e) {
       if (mounted) {
+        final isZhErr = context.read<LocaleProvider>().locale.languageCode == 'zh';
         ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('AI 生成失败: $e')));
+            SnackBar(
+                content: Text(isZhErr ? 'AI 生成失败: $e' : 'AI generation failed: $e')));
       }
     } finally {
       if (mounted) setState(() => _generatingAi = false);
@@ -372,20 +388,21 @@ class _CardBuilderDialogState extends State<CardBuilderDialog> {
   }
 
   void _showEntryPicker(EntryProvider entryProvider) {
+    final isZh = context.read<LocaleProvider>().locale.languageCode == 'zh';
     final available = entryProvider.allEntries
         .where((e) => !_selectedEntries.any((s) => s.id == e.id))
         .toList();
 
     if (available.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('没有更多可添加的记录')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(isZh ? '没有更多可添加的记录' : 'No more entries to add')));
       return;
     }
 
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('选择笔记'),
+        title: Text(isZh ? '选择笔记' : 'Select Entry'),
         content: SizedBox(
           width: double.maxFinite,
           height: 300,
@@ -415,7 +432,7 @@ class _CardBuilderDialogState extends State<CardBuilderDialog> {
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text('取消')),
+              child: Text(isZh ? '取消' : 'Cancel')),
         ],
       ),
     );
@@ -453,15 +470,20 @@ class _CardBuilderDialogState extends State<CardBuilderDialog> {
       }
 
       if (mounted) {
+        final isZhDone = context.read<LocaleProvider>().locale.languageCode == 'zh';
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(_isEditMode ? '卡片已更新！' : '卡片已生成！')),
+          SnackBar(
+              content: Text(_isEditMode
+                  ? (isZhDone ? '卡片已更新！' : 'Card updated!')
+                  : (isZhDone ? '卡片已生成！' : 'Card created!'))),
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('操作失败：$e')));
+        final isZhErr = context.read<LocaleProvider>().locale.languageCode == 'zh';
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(isZhErr ? '操作失败：$e' : 'Operation failed: $e')));
       }
     } finally {
       if (mounted) setState(() => _building = false);
@@ -538,6 +560,7 @@ class _TemplateEditorSheetState extends State<_TemplateEditorSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final isZh = context.watch<LocaleProvider>().locale.languageCode == 'zh';
     return Padding(
       padding: EdgeInsets.only(
         left: 16,
@@ -550,20 +573,23 @@ class _TemplateEditorSheetState extends State<_TemplateEditorSheet> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            widget.template.isBuiltIn ? '编辑模板（将创建副本）' : '编辑模板',
+            widget.template.isBuiltIn
+                ? (isZh ? '编辑模板（将创建副本）' : 'Edit template (a copy will be created)')
+                : (isZh ? '编辑模板' : 'Edit template'),
             style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
           ),
           const SizedBox(height: 12),
           TextField(
             controller: _nameController,
-            decoration: const InputDecoration(
-                labelText: '模板名称', border: OutlineInputBorder()),
+            decoration: InputDecoration(
+                labelText: isZh ? '模板名称' : 'Template name',
+                border: const OutlineInputBorder()),
           ),
           const SizedBox(height: 12),
           // Background: color swatch or image thumbnail
           Row(
             children: [
-              const Text('背景：'),
+              Text(isZh ? '背景：' : 'Background:'),
               const SizedBox(width: 8),
               GestureDetector(
                 onTap: () async {
@@ -599,7 +625,9 @@ class _TemplateEditorSheetState extends State<_TemplateEditorSheet> {
               const SizedBox(width: 8),
               TextButton.icon(
                 icon: const Icon(Icons.image, size: 18),
-                label: Text(_customImagePath != null ? '已选择图片' : '上传图片'),
+                label: Text(_customImagePath != null
+                    ? (isZh ? '已选择图片' : 'Image selected')
+                    : (isZh ? '上传图片' : 'Upload image')),
                 onPressed: _pickImage,
               ),
               if (_customImagePath != null) ...[
@@ -621,7 +649,7 @@ class _TemplateEditorSheetState extends State<_TemplateEditorSheet> {
                       height: 20,
                       width: 20,
                       child: CircularProgressIndicator(strokeWidth: 2))
-                  : const Text('保存'),
+                  : Text(isZh ? '保存' : 'Save'),
             ),
           ),
         ],

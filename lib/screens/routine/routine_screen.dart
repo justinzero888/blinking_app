@@ -1,8 +1,27 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'package:image_picker/image_picker.dart';
+import '../../core/services/file_service.dart';
 import '../../providers/routine_provider.dart';
+import '../../providers/locale_provider.dart';
 import '../../models/routine.dart';
+
+/// Renders a routine's icon: custom image if set, else emoji fallback.
+Widget _buildRoutineIcon(Routine routine, {double size = 20}) {
+  if (routine.iconImagePath != null) {
+    final file = File(routine.iconImagePath!);
+    if (file.existsSync()) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(4),
+        child: Image.file(file,
+            width: size, height: size, fit: BoxFit.cover),
+      );
+    }
+  }
+  return Text(routine.effectiveIcon, style: TextStyle(fontSize: size));
+}
 
 class RoutineScreen extends StatefulWidget {
   const RoutineScreen({super.key});
@@ -31,9 +50,10 @@ class _RoutineScreenState extends State<RoutineScreen>
 
   @override
   Widget build(BuildContext context) {
+    final isZh = context.watch<LocaleProvider>().locale.languageCode == 'zh';
     return Scaffold(
       appBar: AppBar(
-        title: const Text('日常'),
+        title: Text(isZh ? '日常' : 'Routines'),
         actions: [
           IconButton(
             icon: const Icon(Icons.add),
@@ -42,10 +62,10 @@ class _RoutineScreenState extends State<RoutineScreen>
         ],
         bottom: TabBar(
           controller: _tabController,
-          tabs: const [
-            Tab(text: '全部'),
-            Tab(text: '今日'),
-            Tab(text: '记录'),
+          tabs: [
+            Tab(text: isZh ? '全部' : 'All'),
+            Tab(text: isZh ? '今日' : 'Today'),
+            Tab(text: isZh ? '记录' : 'History'),
           ],
         ),
       ),
@@ -81,6 +101,7 @@ class _AllTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isZh = context.watch<LocaleProvider>().locale.languageCode == 'zh';
     final routines = context.watch<RoutineProvider>().routines;
     final active = routines.where((r) => r.isActive).toList();
     final paused = routines.where((r) => !r.isActive).toList();
@@ -92,7 +113,7 @@ class _AllTab extends StatelessWidget {
           children: [
             Icon(Icons.check_circle_outline, size: 64, color: Colors.grey[400]),
             const SizedBox(height: 16),
-            Text('还没有日常习惯',
+            Text(isZh ? '还没有日常习惯' : 'No routines yet',
                 style: TextStyle(color: Colors.grey[600], fontSize: 16)),
           ],
         ),
@@ -103,7 +124,7 @@ class _AllTab extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       children: [
         if (active.isNotEmpty) ...[
-          _sectionHeader('活跃'),
+          _sectionHeader(isZh ? '活跃' : 'Active'),
           const SizedBox(height: 8),
           ...active.map((r) => _RoutineTile(
                 routine: r,
@@ -112,7 +133,7 @@ class _AllTab extends StatelessWidget {
           const SizedBox(height: 16),
         ],
         if (paused.isNotEmpty) ...[
-          _sectionHeader('已暂停'),
+          _sectionHeader(isZh ? '已暂停' : 'Paused'),
           const SizedBox(height: 8),
           ...paused.map((r) => _RoutineTile(
                 routine: r,
@@ -135,6 +156,7 @@ class _TodayTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isZh = context.watch<LocaleProvider>().locale.languageCode == 'zh';
     final provider = context.watch<RoutineProvider>();
     final today = DateTime.now();
     final scheduled = provider.getRoutinesForDate(today);
@@ -152,13 +174,13 @@ class _TodayTab extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       children: [
         if (pending.isNotEmpty) ...[
-          _sectionHeader('待完成'),
+          _sectionHeader(isZh ? '待完成' : 'Pending'),
           const SizedBox(height: 8),
           ...pending.map((r) => _TodayRoutineTile(routine: r, isCompleted: false)),
           const SizedBox(height: 16),
         ],
         if (completed.isNotEmpty) ...[
-          _sectionHeader('已完成'),
+          _sectionHeader(isZh ? '已完成' : 'Completed'),
           const SizedBox(height: 8),
           ...completed.map((r) => _TodayRoutineTile(routine: r, isCompleted: true)),
           const SizedBox(height: 16),
@@ -167,7 +189,9 @@ class _TodayTab extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 32),
             child: Text(
-              '今日无安排\n点击"手动加入"添加临时习惯',
+              isZh
+                  ? '今日无安排\n点击"手动加入"添加临时习惯'
+                  : 'Nothing scheduled today\nTap "Add" to include an ad-hoc routine',
               textAlign: TextAlign.center,
               style: TextStyle(color: Colors.grey[500]),
             ),
@@ -212,10 +236,7 @@ class _TodayRoutineTile extends StatelessWidget {
             child: isCompleted
                 ? const Icon(Icons.check_circle, color: Colors.green, size: 24)
                 : Center(
-                    child: Text(
-                      routine.effectiveIcon,
-                      style: const TextStyle(fontSize: 20),
-                    ),
+                    child: _buildRoutineIcon(routine, size: 20),
                   ),
           ),
         ),
@@ -242,29 +263,30 @@ class _ManualAddButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isZh = context.watch<LocaleProvider>().locale.languageCode == 'zh';
     final adhoc = context.read<RoutineProvider>().adhocRoutines;
     if (adhoc.isEmpty) return const SizedBox.shrink();
 
     return TextButton.icon(
       onPressed: () => _showPicker(context, adhoc),
       icon: const Icon(Icons.add),
-      label: const Text('手动加入'),
+      label: Text(isZh ? '手动加入' : 'Add'),
     );
   }
 
   void _showPicker(BuildContext context, List<Routine> adhoc) {
+    final isZh = context.read<LocaleProvider>().locale.languageCode == 'zh';
     showModalBottomSheet(
       context: context,
       builder: (_) => ListView(
         shrinkWrap: true,
         padding: const EdgeInsets.all(16),
         children: [
-          const Text('选择临时习惯',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          Text(isZh ? '选择临时习惯' : 'Select Ad-hoc Routine',
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
           const SizedBox(height: 12),
           ...adhoc.map((r) => ListTile(
-                leading: Text(r.effectiveIcon,
-                    style: const TextStyle(fontSize: 22)),
+                leading: _buildRoutineIcon(r, size: 22),
                 title: Text(r.name),
                 trailing: manuallyAdded.contains(r.id)
                     ? const Icon(Icons.check, color: Colors.green)
@@ -302,10 +324,11 @@ class _RecordTab extends StatelessWidget {
       return provider.getRoutinesForDate(day).isNotEmpty;
     }).toList();
 
+    final isZh = context.watch<LocaleProvider>().locale.languageCode == 'zh';
     if (daysWithData.isEmpty) {
       return Center(
         child: Text(
-          '还没有历史记录',
+          isZh ? '还没有历史记录' : 'No history yet',
           style: TextStyle(color: Colors.grey[500]),
         ),
       );
@@ -336,7 +359,10 @@ class _DayRecord extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final label = DateFormat('M月d日 (EEE)', 'zh').format(day);
+    final isZh = context.watch<LocaleProvider>().locale.languageCode == 'zh';
+    final label = isZh
+        ? DateFormat('M月d日 (EEE)', 'zh').format(day)
+        : DateFormat('MMM d (EEE)').format(day);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -361,8 +387,7 @@ class _DayRecord extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 4),
             child: Row(
               children: [
-                Text(r.effectiveIcon,
-                    style: const TextStyle(fontSize: 18)),
+                _buildRoutineIcon(r, size: 18),
                 const SizedBox(width: 12),
                 Expanded(child: Text(r.name)),
                 if (done)
@@ -404,8 +429,7 @@ class _RoutineTile extends StatelessWidget {
             borderRadius: BorderRadius.circular(8),
           ),
           child: Center(
-            child: Text(routine.effectiveIcon,
-                style: const TextStyle(fontSize: 20)),
+            child: _buildRoutineIcon(routine, size: 20),
           ),
         ),
         title: Text(
@@ -416,22 +440,30 @@ class _RoutineTile extends StatelessWidget {
           routine.frequencyLabel,
           style: TextStyle(color: Colors.grey[600], fontSize: 12),
         ),
-        trailing: PopupMenuButton<String>(
-          onSelected: (value) => _onMenuSelected(context, value),
-          itemBuilder: (_) => [
-            PopupMenuItem(
-              value: 'edit',
-              child: const Text('编辑'),
-            ),
-            PopupMenuItem(
-              value: 'toggle',
-              child: Text(routine.isActive ? '暂停' : '恢复'),
-            ),
-            const PopupMenuItem(
-              value: 'delete',
-              child: Text('删除', style: TextStyle(color: Colors.red)),
-            ),
-          ],
+        trailing: Builder(
+          builder: (ctx) {
+            final isZh = ctx.watch<LocaleProvider>().locale.languageCode == 'zh';
+            return PopupMenuButton<String>(
+              onSelected: (value) => _onMenuSelected(context, value),
+              itemBuilder: (_) => [
+                PopupMenuItem(
+                  value: 'edit',
+                  child: Text(isZh ? '编辑' : 'Edit'),
+                ),
+                PopupMenuItem(
+                  value: 'toggle',
+                  child: Text(routine.isActive
+                      ? (isZh ? '暂停' : 'Pause')
+                      : (isZh ? '恢复' : 'Resume')),
+                ),
+                PopupMenuItem(
+                  value: 'delete',
+                  child: Text(isZh ? '删除' : 'Delete',
+                      style: const TextStyle(color: Colors.red)),
+                ),
+              ],
+            );
+          },
         ),
       ),
     );
@@ -450,23 +482,24 @@ class _RoutineTile extends StatelessWidget {
   }
 
   void _confirmDelete(BuildContext context, RoutineProvider provider) {
+    final isZh = context.read<LocaleProvider>().locale.languageCode == 'zh';
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('确认删除'),
-        content: const Text('确定要删除这个习惯吗？'),
+        title: Text(isZh ? '确认删除' : 'Confirm Delete'),
+        content: Text(isZh ? '确定要删除这个习惯吗？' : 'Delete this routine?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('取消'),
+            child: Text(isZh ? '取消' : 'Cancel'),
           ),
           TextButton(
             onPressed: () {
               provider.deleteRoutine(routine.id);
               Navigator.pop(ctx);
             },
-            child:
-                const Text('删除', style: TextStyle(color: Colors.red)),
+            child: Text(isZh ? '删除' : 'Delete',
+                style: const TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -511,6 +544,7 @@ class _RoutineDialogWidgetState extends State<_RoutineDialogWidget> {
   late List<int> _selectedDays; // for weekly
   DateTime? _scheduledDate;     // for scheduled
   RoutineCategory? _category;
+  String? _iconImagePath;
 
   static const List<String> _dayLabels = ['', '一', '二', '三', '四', '五', '六', '日'];
 
@@ -524,6 +558,7 @@ class _RoutineDialogWidgetState extends State<_RoutineDialogWidget> {
     _selectedDays = List<int>.from(r?.scheduledDaysOfWeek ?? []);
     _scheduledDate = r?.scheduledDate;
     _category = r?.category;
+    _iconImagePath = r?.iconImagePath;
   }
 
   @override
@@ -535,20 +570,67 @@ class _RoutineDialogWidgetState extends State<_RoutineDialogWidget> {
 
   @override
   Widget build(BuildContext context) {
+    final isZh = context.watch<LocaleProvider>().locale.languageCode == 'zh';
     final isEdit = widget.existing != null;
     return AlertDialog(
-      title: Text(isEdit ? '编辑习惯' : '添加习惯'),
+      title: Text(isEdit ? (isZh ? '编辑习惯' : 'Edit Routine') : (isZh ? '添加习惯' : 'Add Routine')),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Icon picker
+            Center(
+              child: GestureDetector(
+                onTap: _pickIcon,
+                onLongPress: () => setState(() => _iconImagePath = null),
+                child: Stack(
+                  children: [
+                    Container(
+                      width: 64,
+                      height: 64,
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: _iconImagePath != null &&
+                              File(_iconImagePath!).existsSync()
+                          ? ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: Image.file(File(_iconImagePath!),
+                                  fit: BoxFit.cover),
+                            )
+                          : Center(
+                              child: Text(
+                                widget.existing?.effectiveIcon ?? '⭐',
+                                style: const TextStyle(fontSize: 32),
+                              ),
+                            ),
+                    ),
+                    Positioned(
+                      right: 0,
+                      bottom: 0,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: const BoxDecoration(
+                          color: Colors.blue,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.camera_alt,
+                            size: 12, color: Colors.white),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
             // Name
             TextField(
               controller: _nameController,
-              decoration: const InputDecoration(
-                labelText: '名称',
-                hintText: '例如: 喝水',
+              decoration: InputDecoration(
+                labelText: isZh ? '名称' : 'Name',
+                hintText: isZh ? '例如: 喝水' : 'e.g. Drink water',
               ),
             ),
             const SizedBox(height: 12),
@@ -556,24 +638,33 @@ class _RoutineDialogWidgetState extends State<_RoutineDialogWidget> {
             // Reminder
             TextField(
               controller: _reminderController,
-              decoration: const InputDecoration(
-                labelText: '提醒时间 (可选)',
-                hintText: '例如: 09:00',
+              decoration: InputDecoration(
+                labelText: isZh ? '提醒时间 (可选)' : 'Reminder (optional)',
+                hintText: isZh ? '例如: 09:00' : 'e.g. 09:00',
               ),
             ),
             const SizedBox(height: 12),
 
             // Frequency
-            const Text('频率', style: TextStyle(fontSize: 13, color: Colors.grey)),
+            Text(isZh ? '频率' : 'Frequency',
+                style: const TextStyle(fontSize: 13, color: Colors.grey)),
             const SizedBox(height: 6),
             DropdownButton<RoutineFrequency>(
               value: _frequency,
               isExpanded: true,
-              items: const [
-                DropdownMenuItem(value: RoutineFrequency.daily, child: Text('每天')),
-                DropdownMenuItem(value: RoutineFrequency.weekly, child: Text('每周 (指定星期)')),
-                DropdownMenuItem(value: RoutineFrequency.scheduled, child: Text('指定日期 (一次性)')),
-                DropdownMenuItem(value: RoutineFrequency.adhoc, child: Text('随时 (手动加入)')),
+              items: [
+                DropdownMenuItem(
+                    value: RoutineFrequency.daily,
+                    child: Text(isZh ? '每天' : 'Daily')),
+                DropdownMenuItem(
+                    value: RoutineFrequency.weekly,
+                    child: Text(isZh ? '每周 (指定星期)' : 'Weekly (select days)')),
+                DropdownMenuItem(
+                    value: RoutineFrequency.scheduled,
+                    child: Text(isZh ? '指定日期 (一次性)' : 'Scheduled (one-time)')),
+                DropdownMenuItem(
+                    value: RoutineFrequency.adhoc,
+                    child: Text(isZh ? '随时 (手动加入)' : 'Ad-hoc (manual)')),
               ],
               onChanged: (v) => setState(() {
                 _frequency = v!;
@@ -583,7 +674,8 @@ class _RoutineDialogWidgetState extends State<_RoutineDialogWidget> {
             // Day-of-week picker (for weekly)
             if (_frequency == RoutineFrequency.weekly) ...[
               const SizedBox(height: 8),
-              const Text('选择星期', style: TextStyle(fontSize: 13, color: Colors.grey)),
+              Text(isZh ? '选择星期' : 'Select days',
+                  style: const TextStyle(fontSize: 13, color: Colors.grey)),
               const SizedBox(height: 6),
               Wrap(
                 spacing: 6,
@@ -612,8 +704,10 @@ class _RoutineDialogWidgetState extends State<_RoutineDialogWidget> {
                 children: [
                   Text(
                     _scheduledDate == null
-                        ? '未选择日期'
-                        : '${_scheduledDate!.year}年${_scheduledDate!.month}月${_scheduledDate!.day}日',
+                        ? (isZh ? '未选择日期' : 'No date selected')
+                        : isZh
+                            ? '${_scheduledDate!.year}年${_scheduledDate!.month}月${_scheduledDate!.day}日'
+                            : '${_scheduledDate!.year}-${_scheduledDate!.month.toString().padLeft(2, '0')}-${_scheduledDate!.day.toString().padLeft(2, '0')}',
                     style: TextStyle(
                       color: _scheduledDate == null ? Colors.grey : null,
                     ),
@@ -621,7 +715,7 @@ class _RoutineDialogWidgetState extends State<_RoutineDialogWidget> {
                   const Spacer(),
                   TextButton(
                     onPressed: _pickDate,
-                    child: const Text('选择日期'),
+                    child: Text(isZh ? '选择日期' : 'Pick date'),
                   ),
                 ],
               ),
@@ -630,7 +724,8 @@ class _RoutineDialogWidgetState extends State<_RoutineDialogWidget> {
             const SizedBox(height: 12),
 
             // Category
-            const Text('分类 (可选)', style: TextStyle(fontSize: 13, color: Colors.grey)),
+            Text(isZh ? '分类 (可选)' : 'Category (optional)',
+                style: const TextStyle(fontSize: 13, color: Colors.grey)),
             const SizedBox(height: 6),
             Wrap(
               spacing: 6,
@@ -658,14 +753,34 @@ class _RoutineDialogWidgetState extends State<_RoutineDialogWidget> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('取消'),
+          child: Text(isZh ? '取消' : 'Cancel'),
         ),
         TextButton(
           onPressed: _save,
-          child: Text(widget.existing != null ? '保存' : '添加'),
+          child: Text(widget.existing != null
+              ? (isZh ? '保存' : 'Save')
+              : (isZh ? '添加' : 'Add')),
         ),
       ],
     );
+  }
+
+  Future<void> _pickIcon() async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(source: ImageSource.gallery);
+    if (picked == null) return;
+    try {
+      final savedRelative = await FileService().saveFile(picked.path);
+      final fullPath = await FileService().getFullPath(savedRelative);
+      if (mounted) setState(() => _iconImagePath = fullPath);
+    } catch (e) {
+      if (mounted) {
+        final isZhPick = context.read<LocaleProvider>().locale.languageCode == 'zh';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(isZhPick ? '图片保存失败: $e' : 'Failed to save image: $e')),
+        );
+      }
+    }
   }
 
   Future<void> _pickDate() async {
@@ -679,16 +794,17 @@ class _RoutineDialogWidgetState extends State<_RoutineDialogWidget> {
   }
 
   void _save() {
+    final isZh = context.read<LocaleProvider>().locale.languageCode == 'zh';
     final name = _nameController.text.trim();
     if (name.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('请输入习惯名称')),
+        SnackBar(content: Text(isZh ? '请输入习惯名称' : 'Please enter a name')),
       );
       return;
     }
     if (_frequency == RoutineFrequency.scheduled && _scheduledDate == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('请选择指定日期')),
+        SnackBar(content: Text(isZh ? '请选择指定日期' : 'Please select a date')),
       );
       return;
     }
@@ -716,6 +832,8 @@ class _RoutineDialogWidgetState extends State<_RoutineDialogWidget> {
         scheduledDaysOfWeek: days,
         scheduledDate: schedDate,
         clearScheduledDate: schedDate == null,
+        iconImagePath: _iconImagePath,
+        clearIconImagePath: _iconImagePath == null,
       );
       provider.updateRoutine(updated);
     } else {
@@ -727,12 +845,16 @@ class _RoutineDialogWidgetState extends State<_RoutineDialogWidget> {
         category: _category,
         scheduledDaysOfWeek: days,
         scheduledDate: schedDate,
+        iconImagePath: _iconImagePath,
       );
     }
 
     Navigator.pop(context);
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(widget.existing != null ? '习惯已更新' : '习惯已添加')),
+      SnackBar(
+          content: Text(widget.existing != null
+              ? (isZh ? '习惯已更新' : 'Routine updated')
+              : (isZh ? '习惯已添加' : 'Routine added'))),
     );
   }
 }

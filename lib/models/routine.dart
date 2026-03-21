@@ -79,6 +79,7 @@ class Routine {
   final RoutineCategory? category; // null = auto-detect at display time
   final List<int>? scheduledDaysOfWeek;  // 1=Mon…7=Sun (ISO 8601). Used when frequency==weekly.
   final DateTime? scheduledDate;          // Used when frequency==scheduled.
+  final String? iconImagePath;
 
   Routine({
     required this.id,
@@ -100,6 +101,7 @@ class Routine {
     this.category,
     this.scheduledDaysOfWeek,
     this.scheduledDate,
+    this.iconImagePath,
   });
 
   /// Effective icon: explicit icon > category icon > auto-detect > fallback
@@ -150,6 +152,8 @@ class Routine {
     List<int>? scheduledDaysOfWeek,
     DateTime? scheduledDate,
     bool clearScheduledDate = false,
+    String? iconImagePath,
+    bool clearIconImagePath = false,
   }) {
     return Routine(
       id: id ?? this.id,
@@ -171,6 +175,7 @@ class Routine {
       category: clearCategory ? null : (category ?? this.category),
       scheduledDaysOfWeek: scheduledDaysOfWeek ?? this.scheduledDaysOfWeek,
       scheduledDate: clearScheduledDate ? null : (scheduledDate ?? this.scheduledDate),
+      iconImagePath: clearIconImagePath ? null : (iconImagePath ?? this.iconImagePath),
     );
   }
 
@@ -267,6 +272,7 @@ class Routine {
       'category': category?.name,
       'scheduledDaysOfWeek': scheduledDaysOfWeek,
       'scheduledDate': scheduledDate?.toIso8601String(),
+      'iconImagePath': iconImagePath,
     };
   }
 
@@ -307,6 +313,7 @@ class Routine {
       scheduledDate: json['scheduledDate'] != null
           ? DateTime.parse(json['scheduledDate'] as String)
           : null,
+      iconImagePath: json['iconImagePath'] as String?,
     );
   }
 }

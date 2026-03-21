@@ -5,9 +5,9 @@ Personal memory/habit-tracking Flutter app (记忆闪烁). Path: `/home/justin/.
 ## Quick Reference
 
 - **Flutter SDK:** `^3.11.0`
-- **Current version:** `1.0.6+7` (pubspec.yaml)
-- **DB version:** 7 (sequential migrations in `DatabaseService.onUpgrade`)
-- **Build:** `flutter build apk --debug`
+- **Current version:** `1.1.0+8` (pubspec.yaml)
+- **DB version:** 8 (sequential migrations in `DatabaseService.onUpgrade`)
+- **Build:** `flutter build apk --debug` (release: `flutter build apk --release`)
 - **Lint:** `flutter analyze --no-pub` (target: 0 errors)
 
 ---
@@ -40,7 +40,7 @@ Calendar | Moment | Routine | 珍藏 | Settings
 
 ### Storage Layers
 - **SQLite** via `DatabaseService` singleton (accessed through `StorageService`)
-  - DB version 7; migration blocks: `< 2` (entries/routines), `< 3` (emotion/category), `< 4` (card tables), `< 5` (routine scheduling), `< 6` (template image + card AI summary), `< 7` (card rich content)
+  - DB version 8; migration blocks: `< 2` (entries/routines), `< 3` (emotion/category), `< 4` (card tables), `< 5` (routine scheduling), `< 6` (template image + card AI summary), `< 7` (card rich content), `< 8` (routine `icon_image_path`)
   - Tables: `entries`, `routines`, `tags`, `templates`, `card_folders`, `note_cards`, `note_card_entries`
 - **SharedPreferences** for: theme, locale, LLM provider config (`llm_providers`, `llm_selected_index`), AI persona (`ai_assistant_name`, `ai_assistant_personality`)
 - **File system** via `FileService` for media attachments, rendered card PNGs, custom template images, and card inline images (`card_images/`)
@@ -63,7 +63,9 @@ Calendar | Moment | Routine | 珍藏 | Settings
 | `lib/providers/jar_provider.dart` | `getDayEmotions`, `getMonthEmotionMap`, `getYearEmotions`, `getYearEntryCount` |
 | `lib/providers/card_provider.dart` | Folders + templates + note cards CRUD; `updateCard()`, `copyBuiltInTemplate()` |
 | `lib/providers/summary_provider.dart` | `noteCounts`, `routineCompletionRates`, `emotionTrend`, `topTags` |
-| `lib/screens/add_entry_screen.dart` | Add/edit entry (emotion picker, tag picker, image/audio) |
+| `lib/core/constants/legal_content.dart` | `kPrivacyPolicyContent` + `kTermsOfServiceContent` string constants |
+| `lib/screens/legal_doc_screen.dart` | Shared scrollable legal document viewer (Privacy Policy, Terms of Service) |
+| `lib/screens/add_entry_screen.dart` | Add/edit entry (emotion picker, tag picker, image — video/audio removed in v1.1.0) |
 | `lib/screens/assistant/assistant_screen.dart` | Multi-turn LLM chat; dynamic system prompt from AI persona; Save Reflection |
 | `lib/screens/moment/moment_screen.dart` | Entry list with live search + tag/date filter |
 | `lib/screens/routine/routine_screen.dart` | 3-tab: 全部 / 今日 / 记录; add/edit dialog with frequency/day/date pickers |
@@ -71,7 +73,8 @@ Calendar | Moment | Routine | 珍藏 | Settings
 | `lib/screens/cherished/shelf_tab.dart` | Yearly jar cards → `YearJarDetailScreen` |
 | `lib/screens/cherished/cards_tab.dart` | Card grid + folder filter; tap → `CardEditorScreen`; long-press → Edit/Share/Delete |
 | `lib/screens/cherished/card_builder_dialog.dart` | Create card; AI merge (≤100 words); template editor sheet |
-| `lib/screens/cherished/card_editor_screen.dart` | flutter_quill rich text editor; word counter (X/100); image insert |
+| `lib/screens/cherished/card_editor_screen.dart` | flutter_quill rich text editor; word counter (X/100); image insert; save navigates to `CardPreviewScreen` |
+| `lib/screens/cherished/card_preview_screen.dart` | PNG preview of rendered card; Share + Save actions |
 | `lib/screens/cherished/summary_tab.dart` | fl_chart visualizations (scope: 日/周/月) |
 | `lib/screens/settings/settings_screen.dart` | LLM config, tags, language, export, AI 个性化 |
 | `lib/widgets/emoji_jar.dart` | `EmojiJarWidget` CustomPainter + AI bottom sheet |
@@ -84,7 +87,7 @@ Calendar | Moment | Routine | 珍藏 | Settings
 ## Important Conventions
 
 ### Database Migrations
-Always use sequential `if (oldVersion < N)` blocks in `DatabaseService.onUpgrade`. Never nest or use `else if`. `_onCreate` always creates the full v7 schema.
+Always use sequential `if (oldVersion < N)` blocks in `DatabaseService.onUpgrade`. Never nest or use `else if`. `_onCreate` always creates the full v8 schema.
 
 ### LLM Provider Config
 Stored as JSON list in SharedPreferences key `llm_providers`. Use **merge-on-load** strategy in Settings: start from saved list (preserving API keys), then append any defaults not already present by name. Never discard saved providers on load.
@@ -130,13 +133,11 @@ Word counting for the 100-word limit uses mixed CJK+English logic: each CJK char
 
 | Priority | Item |
 |----------|------|
-| P2 | Wire image picker → `FileService.saveFile()` → `entry.mediaUrls` → display in `EntryCard` |
-| P2 | Implement audio recording with `flutter_sound` (currently a snackbar stub) |
 | P2 | Dedicated entry detail / read-only view |
 | P3 | Firebase / Cloud Sync (all deps commented out in pubspec) |
 | P3 | Tests (currently a single placeholder) |
-| P3 | CSV export UI trigger |
-| P3 | Backup import UI |
+| P3 | Card generation AI multi-design suggestions (deferred from v1.1.0 beta) |
+| P3 | Custom emoji images E-1/E-2 (deferred from v1.1.0 beta) |
 
 ---
 
@@ -151,3 +152,4 @@ Word counting for the 100-word limit uses mixed CJK+English logic: each CJK char
 | v1.0.4 | 78d2c7b | Phase 1: habit system overhaul (RoutineFrequency, 3-tab screen, calendar badges) |
 | v1.0.5 | 7bb251c | Phases 2–4: card edit/AI merge/template image, social sharing, AI personalization |
 | v1.0.6 | ddf89d5 | Rich card editor (flutter_quill), 100-word limit, card tap → edit, 3 bug fixes |
+| v1.1.0 | beta    | Public beta: remove video/audio, legal docs, full bilingual UI, emoji jar fix, habit import/export, card preview screen |

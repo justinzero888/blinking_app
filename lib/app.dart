@@ -11,6 +11,7 @@ import 'providers/locale_provider.dart';
 import 'providers/jar_provider.dart';
 import 'providers/card_provider.dart';
 import 'providers/summary_provider.dart';
+import 'providers/ai_persona_provider.dart';
 import 'screens/home/home_screen.dart';
 import 'screens/moment/moment_screen.dart';
 import 'screens/routine/routine_screen.dart';
@@ -83,6 +84,9 @@ class BlinkingApp extends StatelessWidget {
           create: (context) =>
               CardProvider(context.read<StorageService>())..load(),
         ),
+
+        // AiPersonaProvider — avatar, name, personality
+        ChangeNotifierProvider(create: (_) => AiPersonaProvider()),
 
         // SummaryProvider — depends on EntryProvider + RoutineProvider
         ChangeNotifierProxyProvider2<EntryProvider, RoutineProvider,

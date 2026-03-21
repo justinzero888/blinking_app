@@ -307,6 +307,7 @@ class StorageService {
       routineMap['targetCount'] = map['target_count'];
       routineMap['currentCount'] = map['current_count'];
       routineMap['category'] = map['category'];
+      routineMap['iconImagePath'] = map['icon_image_path'];
       routineMap['scheduledDaysOfWeek'] = map['scheduled_days_of_week'] != null
           ? (json.decode(map['scheduled_days_of_week'] as String) as List<dynamic>)
               .map((e) => e as int)
@@ -349,6 +350,7 @@ class StorageService {
         'current_count': routine.currentCount,
         'is_counter': routine.isCounter ? 1 : 0,
         'unit': routine.unit,
+        'icon_image_path': routine.iconImagePath,
         'category': routine.category?.name,
         'scheduled_days_of_week': routine.scheduledDaysOfWeek != null
             ? json.encode(routine.scheduledDaysOfWeek)
@@ -386,6 +388,7 @@ class StorageService {
         'current_count': routine.currentCount,
         'is_counter': routine.isCounter ? 1 : 0,
         'unit': routine.unit,
+        'icon_image_path': routine.iconImagePath,
         'category': routine.category?.name,
         'scheduled_days_of_week': routine.scheduledDaysOfWeek != null
             ? json.encode(routine.scheduledDaysOfWeek)

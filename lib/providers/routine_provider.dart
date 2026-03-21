@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import '../models/routine.dart';
 import '../models/schedule.dart';
@@ -95,6 +96,7 @@ class RoutineProvider extends ChangeNotifier {
     RoutineCategory? category,
     List<int>? scheduledDaysOfWeek,
     DateTime? scheduledDate,
+    String? iconImagePath,
   }) async {
     _error = null;
 
@@ -110,6 +112,7 @@ class RoutineProvider extends ChangeNotifier {
         category: category,
         scheduledDaysOfWeek: scheduledDaysOfWeek,
         scheduledDate: scheduledDate,
+        iconImagePath: iconImagePath,
       );
       if (routine.isActive && routine.reminderTime != null) {
         await _notificationService.scheduleRoutineReminder(routine);
@@ -313,6 +316,50 @@ class RoutineProvider extends ChangeNotifier {
 
   List<Routine> get adhocRoutines =>
       _routines.where((r) => r.isActive && r.frequency == RoutineFrequency.adhoc).toList();
+
+  /// Export all routines as a JSON string (version-stamped).
+  String exportRoutinesJson() {
+    final payload = {
+      'version': 1,
+      'exportedAt': DateTime.now().toIso8601String(),
+      'routines': _routines.map((r) => r.toJson()).toList(),
+    };
+    const encoder = JsonEncoder.withIndent('  ');
+    return encoder.convert(payload);
+  }
+
+  /// Import routines from a JSON string.
+  /// Returns a record with (imported, skipped) counts.
+  Future<({int imported, int skipped})> importRoutinesJson(String json) async {
+    int imported = 0;
+    int skipped = 0;
+    final existingIds = _routines.map((r) => r.id).toSet();
+
+    final Map<String, dynamic> payload = jsonDecode(json) as Map<String, dynamic>;
+    final List<dynamic> list = payload['routines'] as List<dynamic>? ?? [];
+
+    for (final item in list) {
+      final map = item as Map<String, dynamic>;
+      final id = map['id'] as String?;
+      if (id != null && existingIds.contains(id)) {
+        skipped++;
+        continue;
+      }
+      try {
+        final routine = Routine.fromJson(map);
+        // Insert via repository with all existing fields preserved
+        await _repository.insertFull(routine);
+        _routines.add(routine);
+        existingIds.add(routine.id);
+        imported++;
+      } catch (_) {
+        skipped++;
+      }
+    }
+
+    if (imported > 0) notifyListeners();
+    return (imported: imported, skipped: skipped);
+  }
 
   /// Sync all active routine reminders with the notification service
   Future<void> syncAllReminders() async {

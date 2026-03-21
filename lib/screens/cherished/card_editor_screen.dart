@@ -11,6 +11,8 @@ import '../../models/entry.dart';
 import '../../models/card_template.dart';
 import '../../models/note_card.dart';
 import '../../providers/card_provider.dart';
+import '../../providers/locale_provider.dart';
+import 'card_preview_screen.dart';
 
 /// Full-screen rich text editor for a NoteCard.
 class CardEditorScreen extends StatefulWidget {
@@ -90,12 +92,12 @@ class _CardEditorScreenState extends State<CardEditorScreen> {
     return count;
   }
 
-  String _appBarTitle() {
+  String _appBarTitle(bool isZh) {
     final summary = widget.card.aiSummary;
     if (summary != null && summary.isNotEmpty) {
       return summary.substring(0, min(20, summary.length));
     }
-    return '编辑卡片';
+    return isZh ? '编辑卡片' : 'Edit Card';
   }
 
   Future<void> _insertImage() async {
@@ -129,18 +131,30 @@ class _CardEditorScreenState extends State<CardEditorScreen> {
           jsonEncode(_quillController.document.toDelta().toJson());
       final plainText = _quillController.document.toPlainText().trim();
       final cardProvider = context.read<CardProvider>();
-      await cardProvider.updateCard(
-        widget.card.copyWith(
-          richContent: deltaJson,
-          aiSummary: plainText,
-          updatedAt: DateTime.now(),
-        ),
+      final updatedCard = widget.card.copyWith(
+        richContent: deltaJson,
+        aiSummary: plainText,
+        updatedAt: DateTime.now(),
       );
-      if (mounted) Navigator.pop(context);
+      await cardProvider.updateCard(updatedCard);
+      if (mounted) {
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => CardPreviewScreen(
+              card: updatedCard,
+              template: widget.template,
+              entries: widget.entries,
+            ),
+          ),
+        );
+        if (mounted) Navigator.pop(context);
+      }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('保存失败：$e')));
+        final isZh = context.read<LocaleProvider>().locale.languageCode == 'zh';
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(isZh ? '保存失败：$e' : 'Save failed: $e')));
       }
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -156,10 +170,11 @@ class _CardEditorScreenState extends State<CardEditorScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isZh = context.watch<LocaleProvider>().locale.languageCode == 'zh';
     final bool overLimit = _wordCount > 100;
     return Scaffold(
       appBar: AppBar(
-        title: Text(_appBarTitle()),
+        title: Text(_appBarTitle(isZh)),
         leading: IconButton(
           icon: const Icon(Icons.close),
           onPressed: () => Navigator.pop(context),
@@ -172,7 +187,7 @@ class _CardEditorScreenState extends State<CardEditorScreen> {
                     height: 20,
                     child: CircularProgressIndicator(strokeWidth: 2))
                 : const Icon(Icons.save),
-            tooltip: '保存',
+            tooltip: isZh ? '保存并预览' : 'Save & Preview',
             onPressed: overLimit || _saving ? null : _save,
           ),
         ],
@@ -196,7 +211,7 @@ class _CardEditorScreenState extends State<CardEditorScreen> {
             child: Align(
               alignment: Alignment.centerRight,
               child: Text(
-                '$_wordCount / 100 字',
+                isZh ? '$_wordCount / 100 字' : '$_wordCount / 100 words',
                 style: TextStyle(
                   fontSize: 12,
                   color: overLimit ? Colors.red : Colors.grey,
@@ -235,7 +250,7 @@ class _CardEditorScreenState extends State<CardEditorScreen> {
               embedButtons: [
                 (context, embedContext) => IconButton(
                       icon: const Icon(Icons.image, size: 18),
-                      tooltip: '插入图片',
+                      tooltip: isZh ? '插入图片' : 'Insert image',
                       onPressed: _insertImage,
                     ),
               ],
