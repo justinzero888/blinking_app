@@ -3,13 +3,10 @@ import 'package:flutter/foundation.dart';
 import '../models/routine.dart';
 import '../models/schedule.dart';
 import '../repositories/routine_repository.dart';
-import '../core/services/notification_service.dart';
-
 /// Provider for managing routines (daily habits)
 /// Uses RoutineRepository for data access
 class RoutineProvider extends ChangeNotifier {
   final RoutineRepository _repository;
-  final NotificationService _notificationService = NotificationService();
   
   List<Routine> _routines = [];
   bool _isLoading = false;
@@ -114,9 +111,6 @@ class RoutineProvider extends ChangeNotifier {
         scheduledDate: scheduledDate,
         iconImagePath: iconImagePath,
       );
-      if (routine.isActive && routine.reminderTime != null) {
-        await _notificationService.scheduleRoutineReminder(routine);
-      }
       _routines.add(routine);
       notifyListeners();
     } catch (e) {
@@ -132,12 +126,6 @@ class RoutineProvider extends ChangeNotifier {
     try {
       final updated = await _repository.update(routine);
       if (updated != null) {
-        // Update notification
-        await _notificationService.cancelRoutineReminder(updated.id);
-        if (updated.isActive && updated.reminderTime != null) {
-          await _notificationService.scheduleRoutineReminder(updated);
-        }
-
         final index = _routines.indexWhere((r) => r.id == routine.id);
         if (index != -1) {
           _routines[index] = updated;
@@ -156,7 +144,6 @@ class RoutineProvider extends ChangeNotifier {
     
     try {
       await _repository.delete(id);
-      await _notificationService.cancelRoutineReminder(id);
       _routines.removeWhere((r) => r.id == id);
       notifyListeners();
     } catch (e) {
@@ -172,12 +159,6 @@ class RoutineProvider extends ChangeNotifier {
     try {
       final updated = await _repository.toggleActive(id);
       if (updated != null) {
-        if (updated.isActive && updated.reminderTime != null) {
-          await _notificationService.scheduleRoutineReminder(updated);
-        } else {
-          await _notificationService.cancelRoutineReminder(updated.id);
-        }
-
         final index = _routines.indexWhere((r) => r.id == id);
         if (index != -1) {
           _routines[index] = updated;
@@ -361,13 +342,4 @@ class RoutineProvider extends ChangeNotifier {
     return (imported: imported, skipped: skipped);
   }
 
-  /// Sync all active routine reminders with the notification service
-  Future<void> syncAllReminders() async {
-    await _notificationService.cancelAll();
-    for (final routine in _routines) {
-      if (routine.isActive && routine.reminderTime != null) {
-        await _notificationService.scheduleRoutineReminder(routine);
-      }
-    }
-  }
 }

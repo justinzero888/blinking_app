@@ -65,8 +65,7 @@ class BlinkingApp extends StatelessWidget {
         ),
         ChangeNotifierProvider(
           create: (_) => RoutineProvider(routineRepository)
-            ..loadRoutines()
-            ..syncAllReminders(),
+            ..loadRoutines(),
         ),
         ChangeNotifierProvider(
           create: (_) => TagProvider(tagRepository)..loadTags(),
