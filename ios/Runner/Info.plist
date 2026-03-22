@@ -2,6 +2,18 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<!-- Photo & camera access — required by image_picker and card PNG save -->
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Blinking uses your photo library to attach images to journal entries and memory cards.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Blinking uses your camera to capture photos for journal entries and memory cards.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Blinking saves rendered memory cards to your photo library when you choose to save them.</string>
+	<!-- Files.app access — required by file_picker for ZIP import/export -->
+	<key>UIFileSharingEnabled</key>
+	<true/>
+	<key>LSSupportsOpeningDocumentsInPlace</key>
+	<true/>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>
@@ -56,13 +68,6 @@
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
-		<string>UIInterfaceOrientationLandscapeLeft</string>
-		<string>UIInterfaceOrientationLandscapeRight</string>
-	</array>
-	<key>UISupportedInterfaceOrientations~ipad</key>
-	<array>
-		<string>UIInterfaceOrientationPortrait</string>
-		<string>UIInterfaceOrientationPortraitUpsideDown</string>
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>

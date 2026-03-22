@@ -82,8 +82,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
         .read<AiPersonaProvider>()
         .saveNameAndPersonality(_aiName, _aiPersonality);
     if (mounted) {
+      final isZh = context.read<LocaleProvider>().locale.languageCode == 'zh';
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('AI 设置已保存')),
+        SnackBar(content: Text(isZh ? 'AI 设置已保存' : 'AI settings saved')),
       );
     }
   }
@@ -422,7 +423,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               MaterialPageRoute(
                 builder: (_) => LegalDocScreen(
                   title: isZh ? '隐私政策' : 'Privacy Policy',
-                  content: kPrivacyPolicyContent,
+                  content: isZh ? kPrivacyPolicyContentZh : kPrivacyPolicyContent,
                 ),
               ),
             ),
@@ -436,7 +437,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               MaterialPageRoute(
                 builder: (_) => LegalDocScreen(
                   title: isZh ? '服务条款' : 'Terms of Service',
-                  content: kTermsOfServiceContent,
+                  content: isZh ? kTermsOfServiceContentZh : kTermsOfServiceContent,
                 ),
               ),
             ),
@@ -444,7 +445,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ListTile(
             leading: const Icon(Icons.info),
             title: const Text('Blinking (记忆闪烁)'),
-            subtitle: Text(isZh ? '版本 1.1.0' : 'Version 1.1.0'),
+            subtitle: Text(isZh ? '版本 1.1.0-beta.1' : 'Version 1.1.0-beta.1'),
           ),
         ],
       ),

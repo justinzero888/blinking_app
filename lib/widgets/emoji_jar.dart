@@ -5,19 +5,35 @@ import '../providers/jar_provider.dart';
 import '../providers/locale_provider.dart';
 import '../core/services/llm_service.dart';
 
-/// A stylised glass jar widget showing the day's emotions as emoji.
+/// A stylised glass jar widget showing emotions as emoji.
+///
+/// By default loads today's emotions from [JarProvider] via [date].
+/// Pass [emotionsOverride] to supply an explicit list instead (e.g. yearly
+/// aggregates in the shelf view). Set [showAskAi] to false to suppress the
+/// "Ask AI" button when used as a decorative mini-jar.
 class EmojiJarWidget extends StatelessWidget {
   final DateTime date;
   final double size;
+  /// If non-null, used in place of the provider lookup.
+  final List<String>? emotionsOverride;
+  /// Whether to show the "Ask AI" button below the jar. Defaults to true.
+  final bool showAskAi;
 
-  const EmojiJarWidget({super.key, required this.date, this.size = 160});
+  const EmojiJarWidget({
+    super.key,
+    required this.date,
+    this.size = 160,
+    this.emotionsOverride,
+    this.showAskAi = true,
+  });
 
   static const int _maxVisible = 30;
 
   @override
   Widget build(BuildContext context) {
     final isZh = context.watch<LocaleProvider>().locale.languageCode == 'zh';
-    final emotions = context.watch<JarProvider>().getDayEmotions(date);
+    final emotions = emotionsOverride ??
+        context.watch<JarProvider>().getDayEmotions(date);
 
     final int overflowCount =
         emotions.length > _maxVisible ? emotions.length - _maxVisible : 0;
@@ -88,13 +104,15 @@ class EmojiJarWidget extends StatelessWidget {
               ),
           ],
         ),
-        const SizedBox(height: 4),
-        TextButton.icon(
-          icon: const Text('✨', style: TextStyle(fontSize: 14)),
-          label: Text(isZh ? '问问 AI' : 'Ask AI',
-              style: const TextStyle(fontSize: 13)),
-          onPressed: () => _openAIBottomSheet(context, emotions),
-        ),
+        if (showAskAi) ...[
+          const SizedBox(height: 4),
+          TextButton.icon(
+            icon: const Text('✨', style: TextStyle(fontSize: 14)),
+            label: Text(isZh ? '问问 AI' : 'Ask AI',
+                style: const TextStyle(fontSize: 13)),
+            onPressed: () => _openAIBottomSheet(context, emotions),
+          ),
+        ],
       ],
     );
   }
@@ -148,21 +166,40 @@ class _AiBottomSheetState extends State<_AiBottomSheet>
   }
 
   String _buildPrompt(int tabIndex) {
+    final isZh = context.read<LocaleProvider>().locale.languageCode == 'zh';
     final emojiStr =
         widget.emotions.isNotEmpty ? widget.emotions.join(' ') : null;
     switch (tabIndex) {
       case 0:
-        return emojiStr != null
-            ? '我今天的情绪有：$emojiStr。请给我一句温暖的鼓励话语（不超过50字）。'
-            : '请给我一句温暖的鼓励话语（不超过50字）。';
+        if (isZh) {
+          return emojiStr != null
+              ? '我今天的情绪有：$emojiStr。请给我一句温暖的鼓励话语（不超过50字）。'
+              : '请给我一句温暖的鼓励话语（不超过50字）。';
+        } else {
+          return emojiStr != null
+              ? 'My mood today: $emojiStr. Give me one warm, encouraging sentence (under 30 words). Respond in English.'
+              : 'Give me one warm, encouraging sentence (under 30 words). Respond in English.';
+        }
       case 1:
-        return emojiStr != null
-            ? '我今天的情绪有：$emojiStr。请给我一句创意灵感或思考方向（不超过50字）。'
-            : '请给我一句创意灵感或思考方向（不超过50字）。';
+        if (isZh) {
+          return emojiStr != null
+              ? '我今天的情绪有：$emojiStr。请给我一句创意灵感或思考方向（不超过50字）。'
+              : '请给我一句创意灵感或思考方向（不超过50字）。';
+        } else {
+          return emojiStr != null
+              ? 'My mood today: $emojiStr. Give me one creative insight or thought to explore (under 30 words). Respond in English.'
+              : 'Give me one creative insight or thought to explore (under 30 words). Respond in English.';
+        }
       case 2:
-        return emojiStr != null
-            ? '我今天的情绪有：$emojiStr。请给我一句增强行动力的动力语句（不超过50字）。'
-            : '请给我一句增强行动力的动力语句（不超过50字）。';
+        if (isZh) {
+          return emojiStr != null
+              ? '我今天的情绪有：$emojiStr。请给我一句增强行动力的动力语句（不超过50字）。'
+              : '请给我一句增强行动力的动力语句（不超过50字）。';
+        } else {
+          return emojiStr != null
+              ? 'My mood today: $emojiStr. Give me one motivating sentence to boost action (under 30 words). Respond in English.'
+              : 'Give me one motivating sentence to boost action (under 30 words). Respond in English.';
+        }
       default:
         return '';
     }

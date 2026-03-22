@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/jar_provider.dart';
 import '../../providers/locale_provider.dart';
+import '../../widgets/emoji_jar.dart';
 import 'year_jar_detail_screen.dart';
 
 /// 书架 tab — shows a vertical list of year cards with mini emoji jars
@@ -62,7 +63,6 @@ class _YearCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final emotions = jarProvider.getYearEmotions(year);
     final count = jarProvider.getYearEntryCount(year);
-    final displayEmotions = emotions.take(20).toList();
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -80,33 +80,12 @@ class _YearCard extends StatelessWidget {
           padding: const EdgeInsets.all(16),
           child: Row(
             children: [
-              // Mini emoji jar display
-              Container(
-                width: 80,
-                height: 90,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFFE082).withValues(alpha: 0.3),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: const Color(0xFFFFB300).withValues(alpha: 0.5),
-                  ),
-                ),
-                child: displayEmotions.isEmpty
-                    ? Center(
-                        child: Text(isZh ? '空' : 'empty',
-                            style: const TextStyle(color: Colors.grey)))
-                    : Padding(
-                        padding: const EdgeInsets.all(4),
-                        child: Wrap(
-                          alignment: WrapAlignment.center,
-                          spacing: 1,
-                          runSpacing: 1,
-                          children: displayEmotions
-                              .map((e) =>
-                                  Text(e, style: const TextStyle(fontSize: 12)))
-                              .toList(),
-                        ),
-                      ),
+              // Mini emoji jar — reuses EmojiJarWidget with yearly aggregates
+              EmojiJarWidget(
+                date: DateTime(year),
+                size: 80,
+                emotionsOverride: emotions,
+                showAskAi: false,
               ),
               const SizedBox(width: 16),
               // Year info

@@ -458,6 +458,7 @@ class _CardBuilderDialogState extends State<CardBuilderDialog> {
           folderId: _selectedFolder!.id,
           aiSummary: finalAiSummary,
           updatedAt: DateTime.now(),
+          clearImagePath: true, // stale PNG must be regenerated after edit
         );
         await cardProvider.updateCard(updated);
       } else {

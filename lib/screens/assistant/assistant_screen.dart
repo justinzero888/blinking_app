@@ -44,11 +44,14 @@ class _AssistantScreenState extends State<AssistantScreen> {
 
   void _postNoteLoadMessage() {
     if (!mounted) return;
+    final isZh = context.read<LocaleProvider>().locale.languageCode == 'zh';
     final entries = context.read<EntryProvider>().allEntries;
     final count = _countEntriesInRange(entries, _notesStartDate, _notesEndDate);
     setState(() {
       _messages.add(ChatMessage(
-        text: '📖 已加载最近 $_defaultDays 天的 $count 条笔记',
+        text: isZh
+            ? '📖 已加载最近 $_defaultDays 天的 $count 条笔记'
+            : '📖 Loaded $count ${count == 1 ? 'entry' : 'entries'} from the past $_defaultDays days',
         isUser: false,
         isSystem: true,
         timestamp: DateTime.now(),
@@ -79,10 +82,12 @@ class _AssistantScreenState extends State<AssistantScreen> {
       ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
   }
 
-  String _buildNotesBlock(List<Entry> filtered) {
+  String _buildNotesBlock(List<Entry> filtered, bool isZh) {
     if (filtered.isEmpty) return '';
-    final buf = StringBuffer(
-        '以下是用户在 ${_fmtDate(_notesStartDate)} 至 ${_fmtDate(_notesEndDate)} 的笔记记录：\n\n');
+    final header = isZh
+        ? '以下是用户在 ${_fmtDate(_notesStartDate)} 至 ${_fmtDate(_notesEndDate)} 的笔记记录：\n\n'
+        : 'User journal entries from ${_fmtDate(_notesStartDate)} to ${_fmtDate(_notesEndDate)}:\n\n';
+    final buf = StringBuffer(header);
     for (final e in filtered) {
       buf.write('[${_fmtDate(e.createdAt)}');
       if (e.emotion != null) buf.write(' ${e.emotion}');
@@ -92,14 +97,23 @@ class _AssistantScreenState extends State<AssistantScreen> {
   }
 
   String _buildSystemPrompt() {
+    final isZh = context.read<LocaleProvider>().locale.languageCode == 'zh';
     final persona = context.read<AiPersonaProvider>();
-    final base = '你是 Blinking 日记应用的 AI 助手，名字叫 ${persona.name}。'
-        '${persona.personality.isNotEmpty ? "你的性格特点：${persona.personality}。" : ""}'
-        '帮助用户回顾每日记录、提供情绪支持和成长建议。请用温暖、简洁的中文回答。如果用户分享了心情或记录，给出有共鸣的回应。';
+    final String base;
+    if (isZh) {
+      base = '你是 Blinking 日记应用的 AI 助手，名字叫 ${persona.name}。'
+          '${persona.personality.isNotEmpty ? "你的性格特点：${persona.personality}。" : ""}'
+          '帮助用户回顾每日记录、提供情绪支持和成长建议。请用温暖、简洁的中文回答。如果用户分享了心情或记录，给出有共鸣的回应。';
+    } else {
+      base = 'You are ${persona.name}, the AI assistant for the Blinking journal app.'
+          '${persona.personality.isNotEmpty ? " Your personality: ${persona.personality}." : ""}'
+          ' Help users reflect on their daily entries, provide emotional support and growth suggestions.'
+          ' Respond warmly and concisely in English. When the user shares feelings or entries, give an empathetic response.';
+    }
 
     final entries = context.read<EntryProvider>().allEntries;
     final filtered = _filterEntriesInRange(entries, _notesStartDate, _notesEndDate);
-    final notesBlock = _buildNotesBlock(filtered);
+    final notesBlock = _buildNotesBlock(filtered, isZh);
     return notesBlock.isEmpty ? base : '$base\n\n$notesBlock';
   }
 
@@ -194,17 +208,26 @@ class _AssistantScreenState extends State<AssistantScreen> {
   // ─── Quick action handlers ───────────────────────────────────────────────────
 
   void _showReflectionPrompt() {
-    final prompts = [
-      '今天最让你开心的事是什么？',
-      '今天遇到了什么挑战？你是如何应对的？',
-      '今天学到了什么新东西？',
-      '有什么想对明天的自己说的话吗？',
-      '今天有什么值得感恩的事情？',
-    ];
+    final isZh = context.read<LocaleProvider>().locale.languageCode == 'zh';
+    final prompts = isZh
+        ? [
+            '今天最让你开心的事是什么？',
+            '今天遇到了什么挑战？你是如何应对的？',
+            '今天学到了什么新东西？',
+            '有什么想对明天的自己说的话吗？',
+            '今天有什么值得感恩的事情？',
+          ]
+        : [
+            'What made you happiest today?',
+            'What challenge did you face today, and how did you handle it?',
+            'What new thing did you learn today?',
+            'Is there anything you want to tell your future self?',
+            'What are you grateful for today?',
+          ];
     final prompt = prompts[DateTime.now().second % prompts.length];
     setState(() {
       _messages.add(ChatMessage(
-        text: '💭 反思时刻\n\n$prompt',
+        text: '💭 ${isZh ? '反思时刻' : 'Reflection'}\n\n$prompt',
         isUser: false,
         timestamp: DateTime.now(),
       ));
@@ -213,12 +236,15 @@ class _AssistantScreenState extends State<AssistantScreen> {
   }
 
   void _sendTodayEmotion() {
+    final isZh = context.read<LocaleProvider>().locale.languageCode == 'zh';
     final today = DateTime.now();
     final todayEntries =
         context.read<EntryProvider>().getEntriesForDate(today);
 
     if (todayEntries.isEmpty) {
-      _sendText('今天还没有记录。请根据我最近的笔记帮我分析近期情绪趋势，并给出建议。');
+      _sendText(isZh
+          ? '今天还没有记录。请根据我最近的笔记帮我分析近期情绪趋势，并给出建议。'
+          : "I haven't logged anything today. Based on my recent entries, can you help me analyze my recent mood trends and offer suggestions?");
       return;
     }
 
@@ -227,9 +253,11 @@ class _AssistantScreenState extends State<AssistantScreen> {
       if (e.emotion != null) buf.write('${e.emotion} ');
       buf.write(e.content);
       return buf.toString();
-    }).join('；');
+    }).join(isZh ? '；' : '; ');
 
-    _sendText('今天我记录了 ${todayEntries.length} 条笔记：$parts。请帮我回顾今日情绪并给出建议。');
+    _sendText(isZh
+        ? '今天我记录了 ${todayEntries.length} 条笔记：$parts。请帮我回顾今日情绪并给出建议。'
+        : "Today I logged ${todayEntries.length} ${todayEntries.length == 1 ? 'entry' : 'entries'}: $parts. Can you help me reflect on today's mood and offer suggestions?");
   }
 
   // ─── Date range picker ───────────────────────────────────────────────────────
@@ -243,6 +271,7 @@ class _AssistantScreenState extends State<AssistantScreen> {
           DateTimeRange(start: _notesStartDate, end: _notesEndDate),
     );
     if (picked != null && mounted) {
+      final isZh = context.read<LocaleProvider>().locale.languageCode == 'zh';
       final entries = context.read<EntryProvider>().allEntries;
       final count = _countEntriesInRange(entries, picked.start, picked.end);
       setState(() {
@@ -253,8 +282,9 @@ class _AssistantScreenState extends State<AssistantScreen> {
       // Post system feedback
       setState(() {
         _messages.add(ChatMessage(
-          text:
-              '📖 已切换至 ${_fmtDate(picked.start)} – ${_fmtDate(picked.end)}，共 $count 条笔记',
+          text: isZh
+              ? '📖 已切换至 ${_fmtDate(picked.start)} – ${_fmtDate(picked.end)}，共 $count 条笔记'
+              : '📖 Switched to ${_fmtDate(picked.start)} – ${_fmtDate(picked.end)}, $count ${count == 1 ? 'entry' : 'entries'}',
           isUser: false,
           isSystem: true,
           timestamp: DateTime.now(),
@@ -265,13 +295,16 @@ class _AssistantScreenState extends State<AssistantScreen> {
   }
 
   void _resetDateRange() {
+    final isZh = context.read<LocaleProvider>().locale.languageCode == 'zh';
     final entries = context.read<EntryProvider>().allEntries;
     _resetToDefaultRange();
     final count =
         _countEntriesInRange(entries, _notesStartDate, _notesEndDate);
     setState(() {
       _messages.add(ChatMessage(
-        text: '📖 已恢复最近 $_defaultDays 天，共 $count 条笔记',
+        text: isZh
+            ? '📖 已恢复最近 $_defaultDays 天，共 $count 条笔记'
+            : '📖 Reset to last $_defaultDays days, $count ${count == 1 ? 'entry' : 'entries'}',
         isUser: false,
         isSystem: true,
         timestamp: DateTime.now(),
@@ -287,9 +320,15 @@ class _AssistantScreenState extends State<AssistantScreen> {
     final filtered =
         _filterEntriesInRange(entries, _notesStartDate, _notesEndDate);
 
+    final isZh = context.read<LocaleProvider>().locale.languageCode == 'zh';
+
     if (filtered.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('所选日期范围内没有笔记')),
+        SnackBar(
+          content: Text(isZh
+              ? '所选日期范围内没有笔记'
+              : 'No entries in the selected date range'),
+        ),
       );
       return;
     }
@@ -299,9 +338,11 @@ class _AssistantScreenState extends State<AssistantScreen> {
             '[${_fmtDate(e.createdAt)}${e.emotion != null ? " ${e.emotion}" : ""}] ${e.content}')
         .join('\n');
 
-    final prompt =
-        '请对以下 ${_fmtDate(_notesStartDate)} 至 ${_fmtDate(_notesEndDate)} 期间的笔记做一个深度总结，'
-        '分析情绪变化、主要事件和成长点（200字以内）：\n\n$notesText';
+    final prompt = isZh
+        ? '请对以下 ${_fmtDate(_notesStartDate)} 至 ${_fmtDate(_notesEndDate)} 期间的笔记做一个深度总结，'
+            '分析情绪变化、主要事件和成长点（200字以内）：\n\n$notesText'
+        : 'Please provide a deep summary of the following journal entries from ${_fmtDate(_notesStartDate)} to ${_fmtDate(_notesEndDate)}. '
+            'Analyze mood patterns, key events, and growth points (within 200 words):\n\n$notesText';
 
     setState(() => _isSending = true);
     try {
@@ -319,13 +360,12 @@ class _AssistantScreenState extends State<AssistantScreen> {
         setState(() {
           _messages.add(ChatMessage(
             text:
-                '📋 总结 (${_fmtDate(_notesStartDate)}–${_fmtDate(_notesEndDate)})\n\n$summary',
+                '📋 ${isZh ? '总结' : 'Summary'} (${_fmtDate(_notesStartDate)}–${_fmtDate(_notesEndDate)})\n\n$summary',
             isUser: false,
             timestamp: DateTime.now(),
           ));
         });
         _scrollToBottom();
-        final isZh = context.read<LocaleProvider>().locale.languageCode == 'zh';
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(isZh ? '总结已保存到记录 ✨' : 'Summary saved to entries ✨')),
         );
@@ -352,8 +392,10 @@ class _AssistantScreenState extends State<AssistantScreen> {
         .join('\n\n');
     if (conversation.isEmpty) return;
 
-    final prompt =
-        '请将以下对话总结成一段简洁的反思笔记（100-200字），用第一人称，以"今天"或"这次"开头：\n\n$conversation';
+    final isZh = context.read<LocaleProvider>().locale.languageCode == 'zh';
+    final prompt = isZh
+        ? '请将以下对话总结成一段简洁的反思笔记（100-200字），用第一人称，以"今天"或"这次"开头：\n\n$conversation'
+        : 'Summarize the following conversation into a concise personal reflection note (100-200 words), written in first person, starting with "Today" or "This time":\n\n$conversation';
 
     setState(() => _isSending = true);
     String summary;
@@ -384,8 +426,9 @@ class _AssistantScreenState extends State<AssistantScreen> {
       tagIds: ['tag_reflection'],
     );
     if (mounted) {
+      final isZhSnack = context.read<LocaleProvider>().locale.languageCode == 'zh';
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('反思已保存到记录 ✨')),
+        SnackBar(content: Text(isZhSnack ? '反思已保存到记录 ✨' : 'Reflection saved ✨')),
       );
     }
   }
@@ -397,8 +440,9 @@ class _AssistantScreenState extends State<AssistantScreen> {
       tagIds: ['tag_reflection'],
     );
     if (mounted) {
+      final isZh = context.read<LocaleProvider>().locale.languageCode == 'zh';
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('已保存到记录 ✨')),
+        SnackBar(content: Text(isZh ? '已保存到记录 ✨' : 'Saved to entries ✨')),
       );
     }
   }
@@ -489,7 +533,9 @@ class _AssistantScreenState extends State<AssistantScreen> {
                 size: 18, color: Colors.black87),
             label: Text(isZh ? '激励一下' : 'Motivate me',
                 style: const TextStyle(color: Colors.black87)),
-            onPressed: () => _sendText('给我一句温暖的鼓励'),
+            onPressed: () => _sendText(isZh
+                ? '给我一句温暖的鼓励'
+                : 'Give me a warm word of encouragement'),
           ),
           const SizedBox(width: 8),
           ActionChip(
