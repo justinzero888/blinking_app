@@ -4,6 +4,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:archive/archive.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:path/path.dart' as path_pkg;
+import 'package:shared_preferences/shared_preferences.dart';
 import '../config/constants.dart';
 import '../../models/entry.dart';
 import '../../models/tag.dart';
@@ -113,7 +114,29 @@ class ExportService {
     final manifestBytes = utf8.encode(jsonEncode(manifest));
     archive.addFile(ArchiveFile('manifest.json', manifestBytes.length, manifestBytes));
 
-    // 3. Add Media Files
+    // 3. Add AI persona settings
+    final prefs = await SharedPreferences.getInstance();
+    final personaName = prefs.getString('ai_assistant_name');
+    final personaPersonality = prefs.getString('ai_assistant_personality');
+    final avatarPath = prefs.getString('ai_avatar_path');
+    final personaMap = <String, dynamic>{};
+    if (personaName != null) personaMap['ai_assistant_name'] = personaName;
+    if (personaPersonality != null) personaMap['ai_assistant_personality'] = personaPersonality;
+    if (avatarPath != null) {
+      final avatarFile = File(avatarPath);
+      if (await avatarFile.exists()) {
+        final avatarBasename = path_pkg.basename(avatarPath);
+        final avatarBytes = await avatarFile.readAsBytes();
+        archive.addFile(ArchiveFile('avatar/$avatarBasename', avatarBytes.length, avatarBytes));
+        personaMap['ai_avatar_zip_path'] = 'avatar/$avatarBasename';
+      }
+    }
+    if (personaMap.isNotEmpty) {
+      final personaBytes = utf8.encode(jsonEncode(personaMap));
+      archive.addFile(ArchiveFile('persona.json', personaBytes.length, personaBytes));
+    }
+
+    // 4. Add Media Files
     final docDir = await getApplicationDocumentsDirectory();
     final mediaDir = Directory(path_pkg.join(docDir.path, 'media'));
     

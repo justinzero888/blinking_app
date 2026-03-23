@@ -981,7 +981,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
         context.read<EntryProvider>().loadEntries();
         context.read<RoutineProvider>().loadRoutines();
         context.read<TagProvider>().loadTags();
+        await context.read<AiPersonaProvider>().reload();
 
+        if (!mounted) return;
         Navigator.pop(context); // Close loading
 
         ScaffoldMessenger.of(context).showSnackBar(

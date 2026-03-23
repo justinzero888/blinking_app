@@ -32,6 +32,9 @@ class AiPersonaProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Call after a backup restore to pick up newly written prefs.
+  Future<void> reload() => _load();
+
   Future<void> saveNameAndPersonality(
       String newName, String newPersonality) async {
     name = newName;
