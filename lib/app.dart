@@ -12,6 +12,7 @@ import 'providers/jar_provider.dart';
 import 'providers/card_provider.dart';
 import 'providers/summary_provider.dart';
 import 'providers/ai_persona_provider.dart';
+import 'providers/llm_config_notifier.dart';
 import 'screens/home/home_screen.dart';
 import 'screens/moment/moment_screen.dart';
 import 'screens/routine/routine_screen.dart';
@@ -87,6 +88,9 @@ class BlinkingApp extends StatelessWidget {
         // AiPersonaProvider — avatar, name, personality
         ChangeNotifierProvider(create: (_) => AiPersonaProvider()),
 
+        // LlmConfigNotifier — signals when API key / provider changes
+        ChangeNotifierProvider(create: (_) => LlmConfigNotifier()),
+
         // SummaryProvider — depends on EntryProvider + RoutineProvider
         ChangeNotifierProxyProvider2<EntryProvider, RoutineProvider,
             SummaryProvider>(
@@ -154,8 +158,8 @@ class _MainScreenState extends State<MainScreen> {
             index: _currentIndex,
             children: _screens,
           ),
-          // Floating AI robot — overlaid above all content
-          const FloatingRobotWidget(),
+          // Floating AI robot — visible on Calendar/Moments/Routine only
+          FloatingRobotWidget(currentTabIndex: _currentIndex),
         ],
       ),
       bottomNavigationBar: BottomNavigationBar(

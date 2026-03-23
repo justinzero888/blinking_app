@@ -213,6 +213,7 @@ class _TodayRoutineTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isZh = context.watch<LocaleProvider>().locale.languageCode == 'zh';
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       child: ListTile(
@@ -248,7 +249,7 @@ class _TodayRoutineTile extends StatelessWidget {
           ),
         ),
         subtitle: Text(
-          routine.frequencyLabel,
+          routine.frequencyLabelFor(isZh),
           style: TextStyle(color: Colors.grey[600], fontSize: 12),
         ),
       ),
@@ -416,6 +417,7 @@ class _RoutineTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isZh = context.watch<LocaleProvider>().locale.languageCode == 'zh';
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       child: ListTile(
@@ -437,7 +439,7 @@ class _RoutineTile extends StatelessWidget {
           style: TextStyle(color: routine.isActive ? null : Colors.grey),
         ),
         subtitle: Text(
-          routine.frequencyLabel,
+          routine.frequencyLabelFor(isZh),
           style: TextStyle(color: Colors.grey[600], fontSize: 12),
         ),
         trailing: Builder(
@@ -546,7 +548,8 @@ class _RoutineDialogWidgetState extends State<_RoutineDialogWidget> {
   RoutineCategory? _category;
   String? _iconImagePath;
 
-  static const List<String> _dayLabels = ['', '一', '二', '三', '四', '五', '六', '日'];
+  static const List<String> _dayLabelsZh = ['', '一', '二', '三', '四', '五', '六', '日'];
+  static const List<String> _dayLabelsEn = ['', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
   @override
   void initState() {
@@ -641,6 +644,7 @@ class _RoutineDialogWidgetState extends State<_RoutineDialogWidget> {
               decoration: InputDecoration(
                 labelText: isZh ? '提醒时间 (可选)' : 'Reminder (optional)',
                 hintText: isZh ? '例如: 09:00' : 'e.g. 09:00',
+                helperText: isZh ? '仅本地提醒，不发送任何数据' : 'Local only — no data is sent anywhere',
               ),
             ),
             const SizedBox(height: 12),
@@ -683,7 +687,7 @@ class _RoutineDialogWidgetState extends State<_RoutineDialogWidget> {
                   final day = i + 1; // 1=Mon…7=Sun
                   final selected = _selectedDays.contains(day);
                   return FilterChip(
-                    label: Text(_dayLabels[day]),
+                    label: Text((isZh ? _dayLabelsZh : _dayLabelsEn)[day]),
                     selected: selected,
                     onSelected: (v) => setState(() {
                       if (v) {

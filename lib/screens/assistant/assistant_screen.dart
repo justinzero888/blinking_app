@@ -47,11 +47,20 @@ class _AssistantScreenState extends State<AssistantScreen> {
     final isZh = context.read<LocaleProvider>().locale.languageCode == 'zh';
     final entries = context.read<EntryProvider>().allEntries;
     final count = _countEntriesInRange(entries, _notesStartDate, _notesEndDate);
+    final secretCount = _countSecretEntries(entries, _notesStartDate, _notesEndDate);
+    String text;
+    if (secretCount > 0) {
+      text = isZh
+          ? '📖 已加载最近 $_defaultDays 天的 $count 条笔记（已排除 $secretCount 条私密笔记）'
+          : '📖 Loaded $count ${count == 1 ? 'entry' : 'entries'} from the past $_defaultDays days ($secretCount private ${secretCount == 1 ? 'entry' : 'entries'} excluded)';
+    } else {
+      text = isZh
+          ? '📖 已加载最近 $_defaultDays 天的 $count 条笔记'
+          : '📖 Loaded $count ${count == 1 ? 'entry' : 'entries'} from the past $_defaultDays days';
+    }
     setState(() {
       _messages.add(ChatMessage(
-        text: isZh
-            ? '📖 已加载最近 $_defaultDays 天的 $count 条笔记'
-            : '📖 Loaded $count ${count == 1 ? 'entry' : 'entries'} from the past $_defaultDays days',
+        text: text,
         isUser: false,
         isSystem: true,
         timestamp: DateTime.now(),
@@ -77,9 +86,22 @@ class _AssistantScreenState extends State<AssistantScreen> {
         DateTime(end.year, end.month, end.day, 23, 59, 59);
     return entries
         .where((e) =>
-            !e.createdAt.isBefore(start) && !e.createdAt.isAfter(endOfDay))
+            !e.createdAt.isBefore(start) &&
+            !e.createdAt.isAfter(endOfDay) &&
+            !e.tagIds.contains('tag_secrets'))
         .toList()
       ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+  }
+
+  /// Count entries excluded from AI due to Secrets tag (for display only)
+  int _countSecretEntries(List<Entry> entries, DateTime start, DateTime end) {
+    final endOfDay = DateTime(end.year, end.month, end.day, 23, 59, 59);
+    return entries
+        .where((e) =>
+            !e.createdAt.isBefore(start) &&
+            !e.createdAt.isAfter(endOfDay) &&
+            e.tagIds.contains('tag_secrets'))
+        .length;
   }
 
   String _buildNotesBlock(List<Entry> filtered, bool isZh) {
@@ -470,7 +492,7 @@ class _AssistantScreenState extends State<AssistantScreen> {
                   backgroundImage: FileImage(avatarFile),
                 ),
               ),
-            Text(persona.name),
+            Text(persona.displayNameFor(isZh)),
           ],
         ),
         actions: [
@@ -489,7 +511,7 @@ class _AssistantScreenState extends State<AssistantScreen> {
           const Divider(height: 1),
           Expanded(
             child: _messages.isEmpty
-                ? _buildEmptyState(hasAvatar, avatarFile, persona.name, isZh)
+                ? _buildEmptyState(hasAvatar, avatarFile, persona.displayNameFor(isZh), isZh)
                 : ListView.builder(
                     controller: _scrollController,
                     padding: const EdgeInsets.all(16),
@@ -517,13 +539,15 @@ class _AssistantScreenState extends State<AssistantScreen> {
           ActionChip(
             avatar: const Icon(Icons.psychology, size: 18, color: Colors.black87),
             label: Text(isZh ? '反思提示' : 'Reflect',
+                overflow: TextOverflow.ellipsis,
                 style: const TextStyle(color: Colors.black87)),
             onPressed: _showReflectionPrompt,
           ),
           const SizedBox(width: 8),
           ActionChip(
             avatar: const Icon(Icons.mood, size: 18, color: Colors.black87),
-            label: Text(isZh ? '今日情绪' : "Today's mood",
+            label: Text(isZh ? '今日情绪' : "Mood",
+                overflow: TextOverflow.ellipsis,
                 style: const TextStyle(color: Colors.black87)),
             onPressed: _sendTodayEmotion,
           ),
@@ -531,7 +555,8 @@ class _AssistantScreenState extends State<AssistantScreen> {
           ActionChip(
             avatar: const Icon(Icons.lightbulb_outline,
                 size: 18, color: Colors.black87),
-            label: Text(isZh ? '激励一下' : 'Motivate me',
+            label: Text(isZh ? '激励一下' : 'Motivate',
+                overflow: TextOverflow.ellipsis,
                 style: const TextStyle(color: Colors.black87)),
             onPressed: () => _sendText(isZh
                 ? '给我一句温暖的鼓励'
@@ -539,7 +564,9 @@ class _AssistantScreenState extends State<AssistantScreen> {
           ),
           const SizedBox(width: 8),
           ActionChip(
-            label: Text(label, style: const TextStyle(fontSize: 12)),
+            label: Text(label,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 12)),
             onPressed: _pickCustomDateRange,
           ),
         ],

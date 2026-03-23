@@ -41,6 +41,7 @@ dependencies:
   # Export/Import
   archive: ^4.0.4
   share_plus: ^10.1.4
+  url_launcher: ^6.3.1
 
   # HTTP (for future LLM API calls)
   http: ^1.2.0

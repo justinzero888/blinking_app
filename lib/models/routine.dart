@@ -112,21 +112,34 @@ class Routine {
     return '⭐';
   }
 
-  /// Human-readable frequency label (Chinese)
-  String get frequencyLabel {
+  /// Human-readable frequency label (Chinese) — kept for compatibility.
+  String get frequencyLabel => frequencyLabelFor(true);
+
+  /// Locale-aware frequency label.
+  String frequencyLabelFor(bool isZh) {
     switch (frequency) {
       case RoutineFrequency.daily:
-        return '每天';
+        return isZh ? '每天' : 'Daily';
       case RoutineFrequency.weekly:
-        if (scheduledDaysOfWeek == null || scheduledDaysOfWeek!.isEmpty) return '每周';
-        const dayNames = ['', '一', '二', '三', '四', '五', '六', '日'];
-        final days = scheduledDaysOfWeek!.map((d) => dayNames[d]).join('、');
-        return '每周$days';
+        if (scheduledDaysOfWeek == null || scheduledDaysOfWeek!.isEmpty) {
+          return isZh ? '每周' : 'Weekly';
+        }
+        if (isZh) {
+          const dayNamesZh = ['', '一', '二', '三', '四', '五', '六', '日'];
+          final days = scheduledDaysOfWeek!.map((d) => dayNamesZh[d]).join('、');
+          return '每周$days';
+        } else {
+          const dayNamesEn = ['', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+          final days = scheduledDaysOfWeek!.map((d) => dayNamesEn[d]).join(', ');
+          return 'Weekly: $days';
+        }
       case RoutineFrequency.scheduled:
-        if (scheduledDate == null) return '指定日期';
-        return '${scheduledDate!.month}月${scheduledDate!.day}日';
+        if (scheduledDate == null) return isZh ? '指定日期' : 'Scheduled';
+        return isZh
+            ? '${scheduledDate!.month}月${scheduledDate!.day}日'
+            : '${scheduledDate!.year}-${scheduledDate!.month.toString().padLeft(2, '0')}-${scheduledDate!.day.toString().padLeft(2, '0')}';
       case RoutineFrequency.adhoc:
-        return '随时';
+        return isZh ? '随时' : 'On demand';
     }
   }
 

@@ -39,6 +39,14 @@ class StorageService {
       for (final tag in _getDefaultTags()) {
         await addTag(tag);
       }
+    } else {
+      // Ensure system tags exist for existing users (migration)
+      final tagIds = tags.map((t) => t.id).toSet();
+      for (final tag in _getSystemTags()) {
+        if (!tagIds.contains(tag.id)) {
+          await addTag(tag);
+        }
+      }
     }
 
     // Initialize default routines if none exist
@@ -122,7 +130,15 @@ class StorageService {
             createdAt: DateTime.now()),
       ];
 
-  /// Get default tags
+  /// System tags that must always exist (seeded for new AND existing users)
+  List<Tag> _getSystemTags() {
+    return [
+      Tag(id: 'tag_reflection', name: '反思', nameEn: 'Reflection', color: '#AF52DE', category: 'reflection', createdAt: DateTime.now()),
+      Tag(id: 'tag_secrets', name: '私密', nameEn: 'Secrets', color: '#9E9E9E', category: 'system', createdAt: DateTime.now()),
+    ];
+  }
+
+  /// Get default tags (new install)
   List<Tag> _getDefaultTags() {
     return [
       Tag(id: 'tag_work', name: '工作', nameEn: 'Work', color: '#34C759', category: 'custom', createdAt: DateTime.now()),
@@ -131,7 +147,7 @@ class StorageService {
       Tag(id: 'tag_learning', name: '学习', nameEn: 'Learning', color: '#5856D6', category: 'learning', createdAt: DateTime.now()),
       Tag(id: 'tag_family_menu', name: '家庭菜单', nameEn: 'Family Menu', color: '#FF2D55', category: 'custom', createdAt: DateTime.now()),
       Tag(id: 'tag_sleep', name: '睡眠', nameEn: 'Sleep', color: '#5AC8FA', category: 'sleeping', createdAt: DateTime.now()),
-      Tag(id: 'tag_reflection', name: '反思', nameEn: 'Reflection', color: '#AF52DE', category: 'reflection', createdAt: DateTime.now()),
+      ..._getSystemTags(),
     ];
   }
 

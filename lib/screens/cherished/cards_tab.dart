@@ -84,9 +84,10 @@ class _CardsTabState extends State<CardsTab> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Text('🎴', style: TextStyle(fontSize: 64)),
+          Icon(Icons.style_outlined, size: 64,
+              color: Theme.of(context).colorScheme.primary),
           const SizedBox(height: 16),
-          Text(isZh ? '还没有卡片' : 'No cards yet',
+          Text(isZh ? '还没有卡片' : 'Your first card is a tap away',
               style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
           Text(

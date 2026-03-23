@@ -90,9 +90,10 @@ class _CardPreviewScreenState extends State<CardPreviewScreen> {
     final path = _imagePath;
     if (path == null) return;
     final isZh = context.read<LocaleProvider>().locale.languageCode == 'zh';
+    final suffix = isZh ? '来自 Blinking ✨' : 'From Blinking ✨';
     final text = (widget.card.aiSummary?.isNotEmpty == true)
-        ? '${widget.card.aiSummary}\n\n— 来自 Blinking ✨'
-        : '来自 Blinking ✨';
+        ? '${widget.card.aiSummary}\n\n— $suffix'
+        : suffix;
     await Share.shareXFiles(
       [XFile(path)],
       text: text,

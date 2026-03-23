@@ -130,6 +130,24 @@ class LlmService {
     }
   }
 
+  /// Returns true if the currently selected provider has a non-empty API key.
+  static Future<bool> hasApiKey() async {
+    final prefs = await SharedPreferences.getInstance();
+    final jsonStr = prefs.getString('llm_providers');
+    if (jsonStr == null) return false;
+    try {
+      final providers = jsonDecode(jsonStr) as List<dynamic>;
+      if (providers.isEmpty) return false;
+      final selectedIdx = prefs.getInt('llm_selected_index') ?? 0;
+      final idx = selectedIdx.clamp(0, providers.length - 1);
+      final provider = providers[idx] as Map<String, dynamic>;
+      final apiKey = provider['apiKey'] as String? ?? '';
+      return apiKey.isNotEmpty;
+    } catch (_) {
+      return false;
+    }
+  }
+
   Future<Map<String, dynamic>> _loadConfig() async {
     final prefs = await SharedPreferences.getInstance();
     final jsonStr = prefs.getString('llm_providers');

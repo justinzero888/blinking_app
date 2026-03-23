@@ -190,7 +190,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                     child: Row(
                       children: [
-                        const Icon(Icons.cancel, color: Colors.red, size: 18),
+                        const Icon(Icons.radio_button_unchecked, color: Colors.grey, size: 18),
                         const SizedBox(width: 8),
                         Wrap(
                           spacing: 6,

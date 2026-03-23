@@ -14,9 +14,19 @@ class AiPersonaProvider extends ChangeNotifier {
     _load();
   }
 
+  static const _defaultNameZh = 'AI 助手';
+  static const _defaultNameEn = 'AI Assistant';
+
+  /// Returns locale-appropriate name, substituting the EN default when the
+  /// stored name is still the factory Chinese default.
+  String displayNameFor(bool isZh) {
+    if (!isZh && name == _defaultNameZh) return _defaultNameEn;
+    return name;
+  }
+
   Future<void> _load() async {
     final prefs = await SharedPreferences.getInstance();
-    name = prefs.getString('ai_assistant_name') ?? 'AI 助手';
+    name = prefs.getString('ai_assistant_name') ?? _defaultNameZh;
     personality = prefs.getString('ai_assistant_personality') ?? '';
     avatarPath = prefs.getString('ai_avatar_path');
     notifyListeners();

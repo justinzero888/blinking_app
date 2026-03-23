@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
+import '../providers/locale_provider.dart';
 
 /// Calendar widget for home screen
 /// Displays month view with indicators for days with entries
@@ -34,6 +36,9 @@ class CalendarWidget extends StatelessWidget {
     );
   }
 
+  bool _isZh(BuildContext context) =>
+      context.watch<LocaleProvider>().locale.languageCode == 'zh';
+
   Widget _buildHeader(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -51,7 +56,9 @@ class CalendarWidget extends StatelessWidget {
             },
           ),
           Text(
-            DateFormat('yyyy年M月').format(focusedMonth),
+            _isZh(context)
+                ? DateFormat('yyyy年M月').format(focusedMonth)
+                : DateFormat('MMMM yyyy').format(focusedMonth),
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.bold,
                 ),
@@ -72,7 +79,9 @@ class CalendarWidget extends StatelessWidget {
   }
 
   Widget _buildWeekdayLabels(BuildContext context) {
-    const weekdays = ['日', '一', '二', '三', '四', '五', '六'];
+    final weekdays = _isZh(context)
+        ? ['日', '一', '二', '三', '四', '五', '六']
+        : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8),
       child: Row(

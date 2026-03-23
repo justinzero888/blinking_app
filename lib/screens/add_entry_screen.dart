@@ -9,6 +9,7 @@ import '../models/entry.dart';
 import '../models/media.dart';
 import '../core/services/file_service.dart';
 import '../core/config/emotions.dart';
+import '../l10n/app_localizations.dart';
 import 'package:open_filex/open_filex.dart';
 
 class AddEntryScreen extends StatefulWidget {
@@ -117,6 +118,23 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
         _selectedTagIds.add(tagId);
       }
     });
+  }
+
+  String _moodLabel(BuildContext context, String emoji) {
+    final l = AppLocalizations.of(context)!;
+    switch (emoji) {
+      case '😊': return l.moodHappy;
+      case '😢': return l.moodSad;
+      case '😡': return l.moodAngry;
+      case '😰': return l.moodAnxious;
+      case '😴': return l.moodTired;
+      case '🤩': return l.moodExcited;
+      case '😌': return l.moodCalm;
+      case '😤': return l.moodFrustrated;
+      case '🥰': return l.moodLoving;
+      case '😐': return l.moodNeutral;
+      default: return emoji;
+    }
   }
 
   Future<void> _saveEntry() async {
@@ -274,30 +292,49 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
                 itemBuilder: (context, index) {
                   final emoji = kDefaultEmotions[index];
                   final isSelected = _selectedEmotion == emoji;
-                  return GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        _selectedEmotion = isSelected ? null : emoji;
-                      });
-                    },
-                    child: Container(
-                      margin: const EdgeInsets.only(right: 8),
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? Theme.of(context).colorScheme.primaryContainer
-                            : Theme.of(context).colorScheme.surfaceContainerHighest,
-                        borderRadius: BorderRadius.circular(20),
-                        border: isSelected
-                            ? Border.all(color: Theme.of(context).colorScheme.primary, width: 2)
-                            : null,
+                  final label = _moodLabel(context, emoji);
+                  return Semantics(
+                    label: label,
+                    button: true,
+                    selected: isSelected,
+                    child: GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _selectedEmotion = isSelected ? null : emoji;
+                        });
+                      },
+                      child: Container(
+                        margin: const EdgeInsets.only(right: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? Theme.of(context).colorScheme.primaryContainer
+                              : Theme.of(context).colorScheme.surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(20),
+                          border: isSelected
+                              ? Border.all(color: Theme.of(context).colorScheme.primary, width: 2)
+                              : null,
+                        ),
+                        child: Text(emoji, style: const TextStyle(fontSize: 22)),
                       ),
-                      child: Text(emoji, style: const TextStyle(fontSize: 22)),
                     ),
                   );
                 },
               ),
             ),
+            // Show label only when an emotion is selected
+            if (_selectedEmotion != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Text(
+                  '$_selectedEmotion  ${_moodLabel(context, _selectedEmotion!)}',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Theme.of(context).colorScheme.primary,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
             const SizedBox(height: 16),
 
             // Tags
