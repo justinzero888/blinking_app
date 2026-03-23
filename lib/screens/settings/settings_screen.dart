@@ -7,7 +7,9 @@ import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../providers/ai_persona_provider.dart';
+import '../../providers/llm_config_notifier.dart';
 import '../../providers/tag_provider.dart';
 import '../../providers/locale_provider.dart';
 import '../legal_doc_screen.dart';
@@ -28,7 +30,14 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   // LLM Provider settings (persisted via SharedPreferences)
+  // OpenRouter is first — lowest friction for new users (free trial key)
   final List<Map<String, String>> _llmProviders = [
+    {
+      'name': 'Open Router',
+      'model': 'qwen/qwen3.5-flash-02-23',
+      'apiKey': '',
+      'baseUrl': 'https://openrouter.ai/api/v1',
+    },
     {
       'name': 'OpenAI',
       'model': 'gpt-4o',
@@ -46,12 +55,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       'model': 'gemini-pro',
       'apiKey': '',
       'baseUrl': 'https://generativelanguage.googleapis.com/v1',
-    },
-    {
-      'name': 'Open Router',
-      'model': 'qwen/qwen3.5-flash-02-23',
-      'apiKey': '',
-      'baseUrl': 'https://openrouter.ai/api/v1',
     },
   ];
 
@@ -143,6 +146,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('llm_providers', jsonEncode(_llmProviders));
     await prefs.setInt('llm_selected_index', _selectedLlmIndex);
+    if (mounted) {
+      context.read<LlmConfigNotifier>().notify();
+    }
   }
 
   @override
@@ -164,28 +170,57 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ...List.generate(_llmProviders.length, (index) {
             final provider = _llmProviders[index];
             final isSelected = _selectedLlmIndex == index;
-            return ListTile(
-              leading: Radio<int>(
-                value: index,
-                groupValue: _selectedLlmIndex,
-                onChanged: (value) {
-                  setState(() => _selectedLlmIndex = value!);
+            final hasKey = (provider['apiKey'] ?? '').isNotEmpty;
+            return Container(
+              color: (isSelected && hasKey)
+                  ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.08)
+                  : null,
+              child: ListTile(
+                leading: Radio<int>(
+                  value: index,
+                  groupValue: _selectedLlmIndex,
+                  onChanged: (value) {
+                    setState(() => _selectedLlmIndex = value!);
+                    _saveLlmSettings();
+                  },
+                ),
+                title: Row(
+                  children: [
+                    Text(provider['name']!),
+                    if (isSelected && hasKey) ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.primary,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          isZh ? '使用中' : 'Active',
+                          style: const TextStyle(
+                              fontSize: 10,
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                subtitle: Text(
+                  hasKey
+                      ? '${isZh ? "模型" : "Model"}: ${provider['model']}'
+                      : isZh ? '模型: ${provider['model']} · 未配置 Key' : 'Model: ${provider['model']} · No key set',
+                ),
+                trailing: IconButton(
+                  icon: const Icon(Icons.edit, size: 20),
+                  onPressed: () => _showEditLlmDialog(context, index, isZh),
+                ),
+                selected: isSelected,
+                onTap: () {
+                  setState(() => _selectedLlmIndex = index);
                   _saveLlmSettings();
                 },
               ),
-              title: Text(provider['name']!),
-              subtitle: Text(
-                '${isZh ? "模型" : "Model"}: ${provider['model']}',
-              ),
-              trailing: IconButton(
-                icon: const Icon(Icons.edit, size: 20),
-                onPressed: () => _showEditLlmDialog(context, index, isZh),
-              ),
-              selected: isSelected,
-              onTap: () {
-                setState(() => _selectedLlmIndex = index);
-                _saveLlmSettings();
-              },
             );
           }),
           ListTile(
@@ -468,9 +503,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   // ============ TAG MANAGEMENT ============
 
+  static const _systemTagIds = {'tag_reflection', 'tag_secrets'};
+
   Widget _buildTagTile(
     BuildContext context, Tag tag, TagProvider provider, bool isZh,
   ) {
+    final isSystem = _systemTagIds.contains(tag.id);
     return ListTile(
       leading: CircleAvatar(
         backgroundColor: AppTheme.hexColor(tag.color),
@@ -480,14 +518,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          IconButton(
-            icon: const Icon(Icons.edit, size: 20),
-            onPressed: () => _showEditTagDialog(context, tag, provider, isZh),
-          ),
-          IconButton(
-            icon: const Icon(Icons.delete, size: 20, color: Colors.red),
-            onPressed: () => _confirmDeleteTag(context, tag, provider, isZh),
-          ),
+          if (!isSystem)
+            IconButton(
+              icon: const Icon(Icons.edit, size: 20),
+              onPressed: () => _showEditTagDialog(context, tag, provider, isZh),
+            ),
+          if (!isSystem)
+            IconButton(
+              icon: const Icon(Icons.delete, size: 20, color: Colors.red),
+              onPressed: () => _confirmDeleteTag(context, tag, provider, isZh),
+            ),
+          if (isSystem)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: Icon(Icons.lock_outline, size: 16, color: Colors.grey[400]),
+            ),
         ],
       ),
     );
@@ -724,6 +769,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 obscureText: true,
               ),
+              if ((provider['baseUrl'] ?? '').contains('openrouter'))
+                Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: GestureDetector(
+                    onTap: () => launchUrl(
+                      Uri.parse('https://openrouter.ai/keys'),
+                      mode: LaunchMode.externalApplication,
+                    ),
+                    child: Text(
+                      isZh ? '🔑 免费获取 API Key →' : '🔑 Get a free API key →',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Theme.of(context).colorScheme.primary,
+                        decoration: TextDecoration.underline,
+                      ),
+                    ),
+                  ),
+                ),
               const SizedBox(height: 12),
               TextField(
                 controller: baseUrlController,
