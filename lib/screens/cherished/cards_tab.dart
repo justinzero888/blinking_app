@@ -53,7 +53,7 @@ class _CardsTabState extends State<CardsTab> {
                   ...folders.map((f) => Padding(
                         padding: const EdgeInsets.only(right: 8),
                         child: _FolderChip(
-                          label: f.name,
+                          label: (f.isDefault && !isZh) ? 'My Cards' : f.name,
                           icon: f.icon,
                           isSelected: _selectedFolderId == f.id,
                           onTap: () =>

@@ -230,7 +230,26 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
               maxLines: 6,
               decoration: InputDecoration(
                 hintText: isZh ? '今天有什么想记录的？' : 'What\'s on your mind?',
-                border: const OutlineInputBorder(),
+                filled: true,
+                fillColor: Theme.of(context)
+                    .colorScheme
+                    .surfaceContainerHighest
+                    .withValues(alpha: 0.3),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(
+                    color: Theme.of(context).colorScheme.primary,
+                    width: 1.5,
+                  ),
+                ),
               ),
             ),
             const SizedBox(height: 16),

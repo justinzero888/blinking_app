@@ -148,11 +148,29 @@ class _AllTab extends StatelessWidget {
 // ─────────────────────────────────────────────
 // Tab 2 — 今日
 // ─────────────────────────────────────────────
-class _TodayTab extends StatelessWidget {
+class _TodayTab extends StatefulWidget {
   final Set<String> manuallyAdded;
   final void Function(String id) onManualAdd;
 
   const _TodayTab({required this.manuallyAdded, required this.onManualAdd});
+
+  @override
+  State<_TodayTab> createState() => _TodayTabState();
+}
+
+class _TodayTabState extends State<_TodayTab> {
+  // IDs of routines that were recently completed (within last 600ms)
+  final Set<String> _recentlyCompleted = {};
+
+  void _onRoutineToggle(BuildContext context, Routine routine, bool wasCompleted) {
+    if (!wasCompleted) {
+      // Was incomplete, now completing — trigger flash
+      setState(() => _recentlyCompleted.add(routine.id));
+      Future.delayed(const Duration(milliseconds: 600), () {
+        if (mounted) setState(() => _recentlyCompleted.remove(routine.id));
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -163,7 +181,7 @@ class _TodayTab extends StatelessWidget {
 
     // Include manually-added adhoc routines
     final adhocAdded = provider.adhocRoutines
-        .where((r) => manuallyAdded.contains(r.id))
+        .where((r) => widget.manuallyAdded.contains(r.id))
         .toList();
     final allToday = [...scheduled, ...adhocAdded];
 
@@ -176,13 +194,23 @@ class _TodayTab extends StatelessWidget {
         if (pending.isNotEmpty) ...[
           _sectionHeader(isZh ? '待完成' : 'Pending'),
           const SizedBox(height: 8),
-          ...pending.map((r) => _TodayRoutineTile(routine: r, isCompleted: false)),
+          ...pending.map((r) => _TodayRoutineTile(
+                routine: r,
+                isCompleted: false,
+                isFlashing: _recentlyCompleted.contains(r.id),
+                onToggle: () => _onRoutineToggle(context, r, false),
+              )),
           const SizedBox(height: 16),
         ],
         if (completed.isNotEmpty) ...[
           _sectionHeader(isZh ? '已完成' : 'Completed'),
           const SizedBox(height: 8),
-          ...completed.map((r) => _TodayRoutineTile(routine: r, isCompleted: true)),
+          ...completed.map((r) => _TodayRoutineTile(
+                routine: r,
+                isCompleted: true,
+                isFlashing: _recentlyCompleted.contains(r.id),
+                onToggle: () => _onRoutineToggle(context, r, true),
+              )),
           const SizedBox(height: 16),
         ],
         if (allToday.isEmpty)
@@ -198,8 +226,8 @@ class _TodayTab extends StatelessWidget {
           ),
         // Manual add button for adhoc routines
         _ManualAddButton(
-          manuallyAdded: manuallyAdded,
-          onAdd: onManualAdd,
+          manuallyAdded: widget.manuallyAdded,
+          onAdd: widget.onManualAdd,
         ),
       ],
     );
@@ -209,48 +237,69 @@ class _TodayTab extends StatelessWidget {
 class _TodayRoutineTile extends StatelessWidget {
   final Routine routine;
   final bool isCompleted;
-  const _TodayRoutineTile({required this.routine, required this.isCompleted});
+  final bool isFlashing;
+  final VoidCallback onToggle;
+
+  const _TodayRoutineTile({
+    required this.routine,
+    required this.isCompleted,
+    required this.isFlashing,
+    required this.onToggle,
+  });
 
   @override
   Widget build(BuildContext context) {
     final isZh = context.watch<LocaleProvider>().locale.languageCode == 'zh';
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: ListTile(
-        leading: GestureDetector(
-          onTap: () {
-            if (isCompleted) {
-              context.read<RoutineProvider>().unmarkRoutine(routine.id);
-            } else {
-              context.read<RoutineProvider>().completeRoutine(routine.id);
-            }
-          },
-          child: Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: isCompleted
-                  ? Colors.green.withValues(alpha: 0.15)
-                  : Theme.of(context).colorScheme.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(8),
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      decoration: BoxDecoration(
+        color: isFlashing
+            ? Colors.green.withValues(alpha: 0.15)
+            : Colors.transparent,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Card(
+        margin: const EdgeInsets.only(bottom: 8),
+        color: isFlashing
+            ? Colors.green.withValues(alpha: 0.08)
+            : null,
+        child: ListTile(
+          leading: GestureDetector(
+            onTap: () {
+              if (isCompleted) {
+                context.read<RoutineProvider>().unmarkRoutine(routine.id);
+              } else {
+                onToggle();
+                context.read<RoutineProvider>().completeRoutine(routine.id);
+              }
+            },
+            child: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: isCompleted
+                    ? Colors.green.withValues(alpha: 0.15)
+                    : Theme.of(context).colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: isCompleted
+                  ? const Icon(Icons.check_circle, color: Colors.green, size: 24)
+                  : Center(
+                      child: _buildRoutineIcon(routine, size: 20),
+                    ),
             ),
-            child: isCompleted
-                ? const Icon(Icons.check_circle, color: Colors.green, size: 24)
-                : Center(
-                    child: _buildRoutineIcon(routine, size: 20),
-                  ),
           ),
-        ),
-        title: Text(
-          routine.name,
-          style: TextStyle(
-            decoration: isCompleted ? TextDecoration.lineThrough : null,
-            color: isCompleted ? Colors.grey : null,
+          title: Text(
+            routine.name,
+            style: TextStyle(
+              decoration: isCompleted ? TextDecoration.lineThrough : null,
+              color: isCompleted ? Colors.grey : null,
+            ),
           ),
-        ),
-        subtitle: Text(
-          routine.frequencyLabelFor(isZh),
-          style: TextStyle(color: Colors.grey[600], fontSize: 12),
+          subtitle: Text(
+            routine.frequencyLabelFor(isZh),
+            style: TextStyle(color: Colors.grey[600], fontSize: 12),
+          ),
         ),
       ),
     );

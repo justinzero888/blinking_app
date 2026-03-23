@@ -382,8 +382,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     (tag) => _buildTagTile(context, tag, tagProvider, isZh),
                   ),
                   ListTile(
-                    leading: const Icon(Icons.add, color: Colors.blue),
-                    title: Text(isZh ? '添加标签' : 'Add Tag'),
+                    leading: Icon(Icons.add,
+                        color: Theme.of(context).colorScheme.primary),
+                    title: Text(
+                      isZh ? '添加标签' : 'Add Tag',
+                      style: TextStyle(
+                          color: Theme.of(context).colorScheme.primary),
+                    ),
                     onTap: () => _showAddTagDialog(context, tagProvider, isZh),
                   ),
                 ],

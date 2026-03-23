@@ -18,7 +18,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get calendar => 'Calendar';
 
   @override
-  String get moment => 'Moment';
+  String get moment => 'Moments';
 
   @override
   String get timeline => 'Timeline';

@@ -119,7 +119,7 @@ abstract class AppLocalizations {
   /// No description provided for @moment.
   ///
   /// In en, this message translates to:
-  /// **'Moment'**
+  /// **'Moments'**
   String get moment;
 
   /// No description provided for @timeline.

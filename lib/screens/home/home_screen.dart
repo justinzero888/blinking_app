@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../providers/routine_provider.dart';
 import '../../providers/entry_provider.dart';
 import '../../providers/locale_provider.dart';
@@ -25,6 +26,27 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   DateTime _selectedDate = DateTime.now();
   DateTime _focusedMonth = DateTime.now();
+  bool _showOnboarding = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkOnboarding();
+  }
+
+  Future<void> _checkOnboarding() async {
+    final prefs = await SharedPreferences.getInstance();
+    final done = prefs.getBool('onboarding_done') ?? false;
+    if (!done && mounted) {
+      setState(() => _showOnboarding = true);
+    }
+  }
+
+  Future<void> _dismissOnboarding() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('onboarding_done', true);
+    if (mounted) setState(() => _showOnboarding = false);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -45,6 +67,8 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       body: Column(
         children: [
+          // Onboarding banner (first-launch only)
+          if (_showOnboarding) _OnboardingBanner(onDismiss: _dismissOnboarding),
           // Calendar
           CalendarWidget(
             focusedMonth: _focusedMonth,
@@ -348,6 +372,50 @@ class _HomeScreenState extends State<HomeScreen> {
 
   bool _isSameDay(DateTime a, DateTime b) {
     return a.year == b.year && a.month == b.month && a.day == b.day;
+  }
+}
+
+/// First-launch onboarding banner shown at the top of the Calendar screen
+class _OnboardingBanner extends StatelessWidget {
+  final VoidCallback onDismiss;
+  const _OnboardingBanner({required this.onDismiss});
+
+  @override
+  Widget build(BuildContext context) {
+    final isZh = context.watch<LocaleProvider>().locale.languageCode == 'zh';
+    final primaryColor = Theme.of(context).colorScheme.primary;
+    return Container(
+      margin: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+      padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
+      decoration: BoxDecoration(
+        color: primaryColor.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Text(
+              isZh
+                  ? '欢迎使用 Blinking ✨\n记录生活片段，追踪习惯，与 AI 一起反思成长。'
+                  : 'Welcome to Blinking ✨\nCapture your moments, track habits, and reflect with AI.',
+              style: TextStyle(
+                color: primaryColor,
+                fontSize: 13,
+                height: 1.5,
+              ),
+            ),
+          ),
+          GestureDetector(
+            onTap: onDismiss,
+            child: Padding(
+              padding: const EdgeInsets.only(left: 8),
+              child: Icon(Icons.close, size: 18, color: primaryColor),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
