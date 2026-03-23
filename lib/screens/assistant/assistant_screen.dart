@@ -46,8 +46,8 @@ class _AssistantScreenState extends State<AssistantScreen> {
     if (!mounted) return;
     final isZh = context.read<LocaleProvider>().locale.languageCode == 'zh';
     final entries = context.read<EntryProvider>().allEntries;
-    final count = _countEntriesInRange(entries, _notesStartDate, _notesEndDate);
     final secretCount = _countSecretEntries(entries, _notesStartDate, _notesEndDate);
+    final count = _countEntriesInRange(entries, _notesStartDate, _notesEndDate) - secretCount;
     String text;
     if (secretCount > 0) {
       text = isZh
