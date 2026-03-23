@@ -443,7 +443,7 @@ class _DayRecord extends StatelessWidget {
                 if (done)
                   const Icon(Icons.check_circle, color: Colors.green, size: 20)
                 else if (missed)
-                  const Icon(Icons.cancel, color: Colors.red, size: 20)
+                  Icon(Icons.radio_button_unchecked, color: Colors.grey[400], size: 20)
                 else
                   Icon(Icons.remove, color: Colors.grey[400], size: 20),
               ],

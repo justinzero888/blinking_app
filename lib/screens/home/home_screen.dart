@@ -338,8 +338,8 @@ class _HomeScreenState extends State<HomeScreen> {
       child: CheckboxListTile(
         secondary: readOnly
             ? Icon(
-                isCompleted ? Icons.check_circle : Icons.cancel,
-                color: isCompleted ? Colors.green : Colors.red,
+                isCompleted ? Icons.check_circle : Icons.radio_button_unchecked,
+                color: isCompleted ? Colors.green : Colors.grey,
               )
             : Icon(
                 isCompleted ? Icons.check_circle : Icons.radio_button_unchecked,
