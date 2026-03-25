@@ -190,6 +190,7 @@ class _MainScreenState extends State<MainScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton(
+        heroTag: 'main_add_entry_fab',
         onPressed: () {
           Navigator.push(
             context,

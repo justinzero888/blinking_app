@@ -489,7 +489,7 @@ class _AssistantScreenState extends State<AssistantScreen> {
                 padding: const EdgeInsets.only(right: 8),
                 child: CircleAvatar(
                   radius: 14,
-                  backgroundImage: FileImage(avatarFile),
+                  backgroundImage: FileImage(avatarFile!),
                 ),
               ),
             Text(persona.displayNameFor(isZh)),

@@ -71,6 +71,7 @@ class _CardsTabState extends State<CardsTab> {
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: 'cards_tab_new_card_fab',
         onPressed: () => _openCardBuilder(context),
         icon: const Icon(Icons.add),
         label: Text(isZh ? '制作卡片' : 'New Card'),
