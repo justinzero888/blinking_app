@@ -180,14 +180,11 @@ class _CardsTabState extends State<CardsTab> {
   Future<void> _shareCard(BuildContext context, NoteCard card,
       CardTemplate? template, List<Entry> entries) async {
     final isZh = context.read<LocaleProvider>().locale.languageCode == 'zh';
-    final shareText = (card.aiSummary?.isNotEmpty == true)
-        ? '${card.aiSummary}\n\n— 来自 Blinking ✨'
-        : '来自 Blinking ✨';
 
     // 1. Use cached rendered image if it exists
     if (card.renderedImagePath != null &&
         File(card.renderedImagePath!).existsSync()) {
-      await Share.shareXFiles([XFile(card.renderedImagePath!)], text: shareText);
+      await Share.shareXFiles([XFile(card.renderedImagePath!)]);
       return;
     }
 
@@ -207,24 +204,18 @@ class _CardsTabState extends State<CardsTab> {
                 card.copyWith(renderedImagePath: path, updatedAt: DateTime.now()),
               );
         }
-        await Share.shareXFiles([XFile(path)], text: shareText);
+        await Share.shareXFiles([XFile(path)]);
         return;
       } catch (_) {
-        // fall through to text share
+        // fall through to error snackbar
       }
     }
 
-    // 3. Last resort: text only
-    if (shareText.isNotEmpty) {
-      await Share.share(shareText);
-    } else {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(isZh
-              ? '卡片内容为空，无法分享'
-              : 'Card has no content to share'),
-        ));
-      }
+    // 3. No image available — inform user
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(isZh ? '无法生成卡片图片' : 'Could not generate card image'),
+      ));
     }
   }
 

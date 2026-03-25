@@ -81,10 +81,11 @@ class CardProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<CardTemplate> copyBuiltInTemplate(CardTemplate source) async {
+  Future<CardTemplate> copyBuiltInTemplate(CardTemplate source, {bool isZh = true}) async {
+    final prefix = isZh ? '自定义' : 'Custom';
     final copy = source.copyWith(
       id: _uuid.v4(),
-      name: '自定义 — ${source.name}',
+      name: '$prefix — ${source.displayNameFor(isZh)}',
       isBuiltIn: false,
       createdAt: DateTime.now(),
     );

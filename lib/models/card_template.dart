@@ -22,6 +22,24 @@ class CardTemplate {
     required this.createdAt,
   });
 
+  /// Returns a locale-aware display name. Built-in IDs are mapped to English;
+  /// user-created templates return their stored name unchanged.
+  String displayNameFor(bool isZh) {
+    if (!isZh) {
+      const en = {
+        'tpl_spring': 'Spring Day',
+        'tpl_midnight': 'Midnight Blue',
+        'tpl_warm': 'Warm Sunrise',
+        'tpl_minimal': 'Minimal',
+        'tpl_forest': 'Forest Green',
+        'tpl_custom': 'Custom',
+      };
+      final mapped = en[id];
+      if (mapped != null) return mapped;
+    }
+    return name;
+  }
+
   CardTemplate copyWith({
     String? id,
     String? name,
@@ -31,6 +49,7 @@ class CardTemplate {
     String? bgColor,
     bool? isBuiltIn,
     String? customImagePath,
+    bool clearCustomImage = false,
     DateTime? createdAt,
   }) {
     return CardTemplate(
@@ -41,7 +60,7 @@ class CardTemplate {
       fontColor: fontColor ?? this.fontColor,
       bgColor: bgColor ?? this.bgColor,
       isBuiltIn: isBuiltIn ?? this.isBuiltIn,
-      customImagePath: customImagePath ?? this.customImagePath,
+      customImagePath: clearCustomImage ? null : (customImagePath ?? this.customImagePath),
       createdAt: createdAt ?? this.createdAt,
     );
   }

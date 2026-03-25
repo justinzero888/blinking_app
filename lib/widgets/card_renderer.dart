@@ -54,11 +54,39 @@ class CardRenderer extends StatelessWidget {
     }
   }
 
+  /// Returns the largest font size where [text] fits within [maxHeight]
+  /// when laid out at [maxWidth]. Short text → large font; long text → small font.
+  static double _autoFontSize(
+    String text,
+    double maxWidth,
+    double maxHeight, {
+    double maxSize = 96.0,
+    double minSize = 9.0,
+  }) {
+    double fontSize = maxSize;
+    while (fontSize > minSize) {
+      final painter = TextPainter(
+        text: TextSpan(
+          text: text,
+          style: TextStyle(fontSize: fontSize, height: 1.5),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout(maxWidth: maxWidth);
+      if (painter.height <= maxHeight) return fontSize;
+      fontSize -= 1.0;
+    }
+    return minSize;
+  }
+
   @override
   Widget build(BuildContext context) {
     final bgColor = _hexToColor(template.bgColor);
     final fontColor = _hexToColor(template.fontColor);
     final firstEntry = entries.isNotEmpty ? entries.first : null;
+    final content = _extractPlainText(card.richContent, card.aiSummary, firstEntry);
+    final textAreaWidth = width * 0.88;
+    final textAreaHeight = height * 0.8;
+    final fontSize = _autoFontSize(content, textAreaWidth, textAreaHeight);
 
     return Container(
       width: width,
@@ -84,17 +112,18 @@ class CardRenderer extends StatelessWidget {
               style: const TextStyle(fontSize: 28),
             ),
           const SizedBox(height: 8),
-          // Entry content
-          Expanded(
+          // Entry content — fills height×0.8 / width×0.88 text area
+          SizedBox(
+            width: textAreaWidth,
+            height: textAreaHeight,
             child: Text(
-              _extractPlainText(card.richContent, card.aiSummary, firstEntry),
+              content,
               style: _fontStyle(template.fontFamily).copyWith(
                 color: fontColor,
-                fontSize: 14,
+                fontSize: fontSize,
                 height: 1.5,
               ),
-              maxLines: 6,
-              overflow: TextOverflow.ellipsis,
+              overflow: TextOverflow.clip,
             ),
           ),
           // Footer: date + branding
@@ -124,7 +153,7 @@ class CardRenderer extends StatelessWidget {
     );
   }
 
-  /// Render the card widget to a PNG byte list and save to documents directory.
+  /// Render the card widget to a PNG and save to documents directory.
   /// Returns the saved file path.
   static Future<String> renderToImage({
     required NoteCard card,
@@ -133,23 +162,46 @@ class CardRenderer extends StatelessWidget {
     double width = 320,
     double height = 200,
   }) async {
-    // Render via direct canvas drawing (offscreen)
     final recorder = ui.PictureRecorder();
     final canvas = Canvas(
         recorder, Rect.fromLTWH(0, 0, width.toDouble(), height.toDouble()));
 
-    // Simple fallback: draw background and text directly
     final bgColor = _hexToColor(template.bgColor);
     final fontColor = _hexToColor(template.fontColor);
 
-    final bgPaint = Paint()..color = bgColor;
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromLTWH(0, 0, width, height),
-        const Radius.circular(12),
-      ),
-      bgPaint,
+    final roundedRect = RRect.fromRectAndRadius(
+      Rect.fromLTWH(0, 0, width, height),
+      const Radius.circular(12),
     );
+
+    // Draw background: custom image or solid color
+    canvas.save();
+    canvas.clipRRect(roundedRect);
+    if (template.customImagePath != null) {
+      final imgFile = File(template.customImagePath!);
+      if (imgFile.existsSync()) {
+        final bytes = await imgFile.readAsBytes();
+        final codec = await ui.instantiateImageCodec(bytes);
+        final frame = await codec.getNextFrame();
+        final img = frame.image;
+        canvas.drawImageRect(
+          img,
+          Rect.fromLTWH(0, 0, img.width.toDouble(), img.height.toDouble()),
+          Rect.fromLTWH(0, 0, width, height),
+          Paint()..filterQuality = FilterQuality.high,
+        );
+        // Semi-transparent overlay so text stays readable over the image
+        canvas.drawRect(
+          Rect.fromLTWH(0, 0, width, height),
+          Paint()..color = Colors.black.withValues(alpha: 0.25),
+        );
+      } else {
+        canvas.drawRect(Rect.fromLTWH(0, 0, width, height), Paint()..color = bgColor);
+      }
+    } else {
+      canvas.drawRect(Rect.fromLTWH(0, 0, width, height), Paint()..color = bgColor);
+    }
+    canvas.restore();
 
     final firstEntry = entries.isNotEmpty ? entries.first : null;
     if (firstEntry != null) {
@@ -165,27 +217,23 @@ class CardRenderer extends StatelessWidget {
         emojiPainter.paint(canvas, const Offset(16, 16));
       }
 
-      // Content text
+      // Auto-size: largest font that fills the text area (height×0.8, width×0.88)
+      final content = _extractPlainText(card.richContent, card.aiSummary, firstEntry);
+      final textAreaWidth = width * 0.88;
+      final fontSize = _autoFontSize(content, textAreaWidth, height * 0.8);
       final textPainter = TextPainter(
         text: TextSpan(
-          text: _extractPlainText(card.richContent, card.aiSummary, firstEntry),
-          style: TextStyle(
-            color: fontColor,
-            fontSize: 14,
-            height: 1.5,
-          ),
+          text: content,
+          style: TextStyle(color: fontColor, fontSize: fontSize, height: 1.5),
         ),
         textDirection: TextDirection.ltr,
-        maxLines: 6,
-        ellipsis: '...',
-      )..layout(maxWidth: width - 32);
+      )..layout(maxWidth: textAreaWidth);
       textPainter.paint(canvas, const Offset(16, 56));
 
       // Footer
       final datePainter = TextPainter(
         text: TextSpan(
-          text:
-              '${firstEntry.createdAt.year}/${firstEntry.createdAt.month}/${firstEntry.createdAt.day}',
+          text: '${firstEntry.createdAt.year}/${firstEntry.createdAt.month}/${firstEntry.createdAt.day}',
           style: TextStyle(
             color: fontColor.withValues(alpha: 0.6),
             fontSize: 11,
@@ -214,7 +262,6 @@ class CardRenderer extends StatelessWidget {
     final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
     final pngBytes = byteData!.buffer.asUint8List();
 
-    // Save to documents directory
     final docDir = await getApplicationDocumentsDirectory();
     final cardsDir = Directory('${docDir.path}/cards');
     if (!await cardsDir.exists()) {

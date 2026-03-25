@@ -284,7 +284,7 @@ class _CardBuilderDialogState extends State<CardBuilderDialog> {
                         left: 0,
                         right: 0,
                         child: Text(
-                          tpl.name,
+                          tpl.displayNameFor(isZh),
                           style: TextStyle(
                               fontSize: 9,
                               color: _hexToColor(tpl.fontColor)),
@@ -501,7 +501,8 @@ class _CardBuilderDialogState extends State<CardBuilderDialog> {
           final cp = context.read<CardProvider>();
           if (updated.isBuiltIn) {
             // Copy-on-edit: create a user copy
-            final copy = await cp.copyBuiltInTemplate(updated);
+            final isZhLocal = context.read<LocaleProvider>().locale.languageCode == 'zh';
+            final copy = await cp.copyBuiltInTemplate(updated, isZh: isZhLocal);
             if (mounted) setState(() => _selectedTemplate = copy);
           } else {
             await cp.updateTemplate(updated);
@@ -666,6 +667,7 @@ class _TemplateEditorSheetState extends State<_TemplateEditorSheet> {
           : widget.template.name,
       bgColor: _bgColor,
       customImagePath: _customImagePath,
+      clearCustomImage: _customImagePath == null,
     );
     await widget.onSave(updated);
     if (mounted) Navigator.pop(context);
