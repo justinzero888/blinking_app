@@ -455,6 +455,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
           // About
           _buildSectionHeader(isZh ? '关于' : 'About'),
           ListTile(
+            leading: const Icon(Icons.feedback_outlined),
+            title: Text(isZh ? '发送反馈' : 'Send Feedback'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => _sendFeedback(context, isZh),
+          ),
+          ListTile(
             leading: const Icon(Icons.privacy_tip_outlined),
             title: Text(isZh ? '隐私政策' : 'Privacy Policy'),
             trailing: const Icon(Icons.chevron_right),
@@ -1041,6 +1047,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
       }
     } catch (e) {
       if (mounted) _showError(context, isZh, e.toString());
+    }
+  }
+
+  Future<void> _sendFeedback(BuildContext context, bool isZh) async {
+    const email = 'blinkingfeedback@gmail.com';
+    const version = '1.1.0-beta.2';
+    final subject = Uri.encodeComponent('Blinking App Feedback - v$version');
+    final body = Uri.encodeComponent(
+      'What happened:\n\n\nSteps to reproduce:\n\n\nExpected behavior:\n\n\nDevice & OS:\n\n',
+    );
+    final uri = Uri.parse('mailto:$email?subject=$subject&body=$body');
+
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+    } else {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            isZh
+                ? '无法打开邮件应用，请发送邮件至 $email'
+                : 'No mail app found. Please email $email',
+          ),
+          duration: const Duration(seconds: 5),
+        ),
+      );
     }
   }
 
