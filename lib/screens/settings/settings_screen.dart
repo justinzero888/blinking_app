@@ -1052,16 +1052,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _sendFeedback(BuildContext context, bool isZh) async {
     const email = 'blinkingfeedback@gmail.com';
-    const version = '1.1.0-beta.2';
+    const version = '1.1.0-beta.2'; // TODO: keep in sync with pubspec.yaml
     final subject = Uri.encodeComponent('Blinking App Feedback - v$version');
     final body = Uri.encodeComponent(
       'What happened:\n\n\nSteps to reproduce:\n\n\nExpected behavior:\n\n\nDevice & OS:\n\n',
     );
     final uri = Uri.parse('mailto:$email?subject=$subject&body=$body');
 
-    if (await canLaunchUrl(uri)) {
+    try {
       await launchUrl(uri);
-    } else {
+    } catch (_) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
