@@ -1,2 +1,6 @@
 #include? "Pods/Target Support Files/Pods-Runner/Pods-Runner.debug.xcconfig"
 #include "Generated.xcconfig"
+// Disable asset catalog thinning for simulator builds (workaround for
+// AssetCatalogSimulatorAgent crash on Xcode 16.2 + macOS 26 beta)
+ENABLE_ONLY_ACTIVE_RESOURCES = NO
+ASSETCATALOG_COMPILER_SKIP_APP_STORE_DEPLOYMENT = YES
