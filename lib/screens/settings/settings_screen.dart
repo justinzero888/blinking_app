@@ -491,7 +491,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ListTile(
             leading: const Icon(Icons.info),
             title: const Text('Blinking (记忆闪烁)'),
-            subtitle: Text(isZh ? '版本 1.1.0-beta.1' : 'Version 1.1.0-beta.1'),
+            subtitle: Text(isZh ? '版本 1.1.0-beta.2' : 'Version 1.1.0-beta.2'),
           ),
         ],
       ),
