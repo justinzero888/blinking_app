@@ -11,6 +11,8 @@ import 'providers/locale_provider.dart';
 import 'providers/jar_provider.dart';
 import 'providers/card_provider.dart';
 import 'providers/summary_provider.dart';
+import 'providers/ai_persona_provider.dart';
+import 'providers/llm_config_notifier.dart';
 import 'screens/home/home_screen.dart';
 import 'screens/moment/moment_screen.dart';
 import 'screens/routine/routine_screen.dart';
@@ -18,6 +20,7 @@ import 'screens/cherished/cherished_memory_screen.dart';
 import 'screens/settings/settings_screen.dart';
 import 'screens/add_entry_screen.dart';
 import 'widgets/floating_robot.dart';
+import 'package:flutter_quill/flutter_quill.dart' show FlutterQuillLocalizations;
 import 'l10n/app_localizations.dart';
 
 import 'core/services/export_service.dart';
@@ -63,8 +66,7 @@ class BlinkingApp extends StatelessWidget {
         ),
         ChangeNotifierProvider(
           create: (_) => RoutineProvider(routineRepository)
-            ..loadRoutines()
-            ..syncAllReminders(),
+            ..loadRoutines(),
         ),
         ChangeNotifierProvider(
           create: (_) => TagProvider(tagRepository)..loadTags(),
@@ -82,6 +84,12 @@ class BlinkingApp extends StatelessWidget {
           create: (context) =>
               CardProvider(context.read<StorageService>())..load(),
         ),
+
+        // AiPersonaProvider — avatar, name, personality
+        ChangeNotifierProvider(create: (_) => AiPersonaProvider()),
+
+        // LlmConfigNotifier — signals when API key / provider changes
+        ChangeNotifierProvider(create: (_) => LlmConfigNotifier()),
 
         // SummaryProvider — depends on EntryProvider + RoutineProvider
         ChangeNotifierProxyProvider2<EntryProvider, RoutineProvider,
@@ -103,7 +111,10 @@ class BlinkingApp extends StatelessWidget {
             themeMode: ThemeMode.light,
             locale: localeProvider.locale,
             supportedLocales: AppLocalizations.supportedLocales,
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            localizationsDelegates: [
+              ...AppLocalizations.localizationsDelegates,
+              FlutterQuillLocalizations.delegate,
+            ],
             home: const MainScreen(),
           );
         },
@@ -139,6 +150,7 @@ class _MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final isZh = context.watch<LocaleProvider>().locale.languageCode == 'zh';
     return Scaffold(
       body: Stack(
         children: [
@@ -146,8 +158,8 @@ class _MainScreenState extends State<MainScreen> {
             index: _currentIndex,
             children: _screens,
           ),
-          // Floating AI robot — overlaid above all content
-          const FloatingRobotWidget(),
+          // Floating AI robot — visible on Calendar/Moments/Routine only
+          FloatingRobotWidget(currentTabIndex: _currentIndex),
         ],
       ),
       bottomNavigationBar: BottomNavigationBar(
@@ -167,9 +179,9 @@ class _MainScreenState extends State<MainScreen> {
             icon: const Icon(Icons.check_circle_outline),
             label: l10n.routine,
           ),
-          const BottomNavigationBarItem(
-            icon: Icon(Icons.auto_awesome),
-            label: '珍藏',
+          BottomNavigationBarItem(
+            icon: const Icon(Icons.auto_awesome),
+            label: isZh ? '珍藏' : 'Keepsakes',
           ),
           BottomNavigationBarItem(
             icon: const Icon(Icons.settings),
@@ -178,6 +190,7 @@ class _MainScreenState extends State<MainScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton(
+        heroTag: 'main_add_entry_fab',
         onPressed: () {
           Navigator.push(
             context,

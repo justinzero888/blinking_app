@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../providers/routine_provider.dart';
 import '../../providers/entry_provider.dart';
 import '../../providers/locale_provider.dart';
@@ -25,6 +26,27 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   DateTime _selectedDate = DateTime.now();
   DateTime _focusedMonth = DateTime.now();
+  bool _showOnboarding = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkOnboarding();
+  }
+
+  Future<void> _checkOnboarding() async {
+    final prefs = await SharedPreferences.getInstance();
+    final done = prefs.getBool('onboarding_done') ?? false;
+    if (!done && mounted) {
+      setState(() => _showOnboarding = true);
+    }
+  }
+
+  Future<void> _dismissOnboarding() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('onboarding_done', true);
+    if (mounted) setState(() => _showOnboarding = false);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -45,12 +67,15 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       body: Column(
         children: [
+          // Onboarding banner (first-launch only)
+          if (_showOnboarding) _OnboardingBanner(onDismiss: _dismissOnboarding),
           // Calendar
           CalendarWidget(
             focusedMonth: _focusedMonth,
             selectedDate: _selectedDate,
             entryCounts: _getEntryCounts(),
             dayEmotions: _getDayEmotions(),
+            dayHabitStatus: _getDayHabitStatus(),
             onDateSelected: _onDateSelected,
             onMonthChanged: _onMonthChanged,
           ),
@@ -93,6 +118,23 @@ class _HomeScreenState extends State<HomeScreen> {
     return emotions;
   }
 
+  /// Compute habit completion status for each date in the focused month.
+  Map<DateTime, ({int completed, int total})> _getDayHabitStatus() {
+    final routineProvider = context.read<RoutineProvider>();
+    final result = <DateTime, ({int completed, int total})>{};
+    final firstDay = DateTime(_focusedMonth.year, _focusedMonth.month, 1);
+    final lastDay = DateTime(_focusedMonth.year, _focusedMonth.month + 1, 0);
+    for (int i = 0; i < lastDay.day; i++) {
+      final day = firstDay.add(Duration(days: i));
+      final dayKey = DateTime(day.year, day.month, day.day);
+      final scheduled = routineProvider.getRoutinesForDate(day);
+      if (scheduled.isEmpty) continue;
+      final completed = scheduled.where((r) => r.isCompletedOn(day)).length;
+      result[dayKey] = (completed: completed, total: scheduled.length);
+    }
+    return result;
+  }
+
   void _goToToday() {
     setState(() {
       _selectedDate = DateTime.now();
@@ -116,16 +158,15 @@ class _HomeScreenState extends State<HomeScreen> {
     final locale = context.watch<LocaleProvider>().locale;
     final isZh = locale.languageCode == 'zh';
     final entries = context.watch<EntryProvider>().entries;
-    final routines = context.watch<RoutineProvider>().routines;
+    final routineProvider = context.watch<RoutineProvider>();
     final isToday = _isSameDay(_selectedDate, DateTime.now());
+    final isPastDay = !isToday && _selectedDate.isBefore(DateTime.now());
+    final dayRoutines = routineProvider.getRoutinesForDate(_selectedDate);
 
     // Get selected day's entries
     final dayEntries = entries.where((e) =>
       _isSameDay(e.createdAt, _selectedDate)
     ).toList();
-
-    // Get selected day's active routines (all routines that should be done daily)
-    final activeRoutines = routines.where((r) => r.isActive).toList();
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -152,17 +193,80 @@ class _HomeScreenState extends State<HomeScreen> {
         const SizedBox(height: 16),
 
         // Routines Section
-        if (activeRoutines.isNotEmpty) ...[
+        if (dayRoutines.isNotEmpty) ...[
           Text(
             isZh ? '✅ 习惯打卡' : '✅ Habit Check-in',
             style: Theme.of(context).textTheme.titleSmall,
           ),
           const SizedBox(height: 8),
-          ...activeRoutines.map((r) => Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: _buildRoutineChecklistItem(context, r),
-          )),
-          const SizedBox(height: 16),
+          // Pending: for past days consolidate into a red icon row;
+          // for today show individually with checkbox
+          Builder(builder: (context) {
+            final pending = dayRoutines
+                .where((r) => !r.isCompletedOn(_selectedDate))
+                .toList();
+            if (pending.isEmpty) return const SizedBox.shrink();
+            if (isPastDay) {
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Card(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.radio_button_unchecked, color: Colors.grey, size: 18),
+                        const SizedBox(width: 8),
+                        Wrap(
+                          spacing: 6,
+                          children: pending
+                              .map((r) => Text(r.effectiveIcon,
+                                  style: const TextStyle(fontSize: 22)))
+                              .toList(),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }
+            return Column(
+              children: pending
+                  .map((r) => Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: _buildRoutineChecklistItem(context, r),
+                      ))
+                  .toList(),
+            );
+          }),
+          // Completed: one consolidated icon row
+          Builder(builder: (context) {
+            final done = dayRoutines
+                .where((r) => r.isCompletedOn(_selectedDate))
+                .toList();
+            if (done.isEmpty) return const SizedBox.shrink();
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Card(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.check_circle, color: Colors.green, size: 18),
+                      const SizedBox(width: 8),
+                      Wrap(
+                        spacing: 6,
+                        children: done
+                            .map((r) => Text(r.effectiveIcon,
+                                style: const TextStyle(fontSize: 22)))
+                            .toList(),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }),
+          const SizedBox(height: 8),
         ],
 
         // Entries Section
@@ -190,7 +294,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
 
         // Empty State
-        if (dayEntries.isEmpty && activeRoutines.isEmpty)
+        if (dayEntries.isEmpty && dayRoutines.isEmpty)
           Center(
             child: Padding(
               padding: const EdgeInsets.all(32),
@@ -226,20 +330,33 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildRoutineChecklistItem(BuildContext context, Routine routine) {
+  Widget _buildRoutineChecklistItem(BuildContext context, Routine routine, {bool readOnly = false}) {
     final isCompleted = routine.isCompletedOn(_selectedDate);
-    
+    final isMissed = readOnly && !isCompleted;
+
     return Card(
       child: CheckboxListTile(
-        secondary: Icon(
-          isCompleted ? Icons.check_circle : Icons.radio_button_unchecked,
-          color: isCompleted ? Colors.green : Colors.grey,
+        secondary: readOnly
+            ? Icon(
+                isCompleted ? Icons.check_circle : Icons.radio_button_unchecked,
+                color: isCompleted ? Colors.green : Colors.grey,
+              )
+            : Icon(
+                isCompleted ? Icons.check_circle : Icons.radio_button_unchecked,
+                color: isCompleted ? Colors.green : Colors.grey,
+              ),
+        title: Text(
+          routine.name,
+          style: TextStyle(
+            color: isMissed ? Colors.red[300] : null,
+          ),
         ),
-        title: Text(routine.name),
         value: isCompleted,
-        onChanged: (value) {
-          context.read<RoutineProvider>().toggleComplete(routine.id, date: _selectedDate);
-        },
+        onChanged: readOnly
+            ? null
+            : (value) {
+                context.read<RoutineProvider>().toggleComplete(routine.id, date: _selectedDate);
+              },
       ),
     );
   }
@@ -258,6 +375,50 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
+/// First-launch onboarding banner shown at the top of the Calendar screen
+class _OnboardingBanner extends StatelessWidget {
+  final VoidCallback onDismiss;
+  const _OnboardingBanner({required this.onDismiss});
+
+  @override
+  Widget build(BuildContext context) {
+    final isZh = context.watch<LocaleProvider>().locale.languageCode == 'zh';
+    final primaryColor = Theme.of(context).colorScheme.primary;
+    return Container(
+      margin: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+      padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
+      decoration: BoxDecoration(
+        color: primaryColor.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Text(
+              isZh
+                  ? '欢迎使用 Blinking ✨\n记录生活片段，追踪习惯，与 AI 一起反思成长。'
+                  : 'Welcome to Blinking ✨\nCapture your moments, track habits, and reflect with AI.',
+              style: TextStyle(
+                color: primaryColor,
+                fontSize: 13,
+                height: 1.5,
+              ),
+            ),
+          ),
+          GestureDetector(
+            onTap: onDismiss,
+            child: Padding(
+              padding: const EdgeInsets.only(left: 8),
+              child: Icon(Icons.close, size: 18, color: primaryColor),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 /// Collapsible "今日情绪罐" section with EmojiJarWidget
 class _EmojiJarSection extends StatefulWidget {
   final DateTime date;
@@ -272,13 +433,14 @@ class _EmojiJarSectionState extends State<_EmojiJarSection> {
 
   @override
   Widget build(BuildContext context) {
+    final isZh = context.watch<LocaleProvider>().locale.languageCode == 'zh';
     return Card(
       child: Column(
         children: [
           ListTile(
             leading: const Text('🫙', style: TextStyle(fontSize: 20)),
-            title: const Text('今日情绪罐',
-                style: TextStyle(fontWeight: FontWeight.bold)),
+            title: Text(isZh ? '今日情绪罐' : "Today's Mood Jar",
+                style: const TextStyle(fontWeight: FontWeight.bold)),
             trailing: IconButton(
               icon: Icon(_expanded ? Icons.expand_less : Icons.expand_more),
               onPressed: () => setState(() => _expanded = !_expanded),

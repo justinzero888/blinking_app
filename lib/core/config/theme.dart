@@ -14,13 +14,15 @@ class AppTheme {
     'error': '#FF3B30',
   };
 
+  static const Color _primary = Color(0xFF2A9D8F);
+
   static ThemeData lightTheme = ThemeData(
     useMaterial3: true,
     colorScheme: ColorScheme.fromSeed(
-      seedColor: const Color(0xFF007AFF),
+      seedColor: _primary,
       brightness: Brightness.light,
     ),
-    scaffoldBackgroundColor: const Color(0xFFF2F2F7),
+    scaffoldBackgroundColor: const Color(0xFFF4F8F7),
     appBarTheme: const AppBarTheme(
       backgroundColor: Colors.white,
       foregroundColor: Colors.black,
@@ -35,12 +37,12 @@ class AppTheme {
       ),
     ),
     floatingActionButtonTheme: const FloatingActionButtonThemeData(
-      backgroundColor: Color(0xFF007AFF),
+      backgroundColor: _primary,
       foregroundColor: Colors.white,
     ),
     bottomNavigationBarTheme: const BottomNavigationBarThemeData(
       backgroundColor: Colors.white,
-      selectedItemColor: Color(0xFF007AFF),
+      selectedItemColor: _primary,
       unselectedItemColor: Color(0xFF8E8E93),
       type: BottomNavigationBarType.fixed,
     ),
@@ -54,8 +56,8 @@ class AppTheme {
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
     ),
     chipTheme: ChipThemeData(
-      backgroundColor: const Color(0xFFF2F2F7),
-      selectedColor: const Color(0xFF007AFF),
+      backgroundColor: const Color(0xFFF4F8F7),
+      selectedColor: _primary,
       labelStyle: const TextStyle(fontSize: 14),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       shape: RoundedRectangleBorder(
@@ -67,7 +69,7 @@ class AppTheme {
   static ThemeData darkTheme = ThemeData(
     useMaterial3: true,
     colorScheme: ColorScheme.fromSeed(
-      seedColor: const Color(0xFF007AFF),
+      seedColor: _primary,
       brightness: Brightness.dark,
     ),
     scaffoldBackgroundColor: const Color(0xFF000000),

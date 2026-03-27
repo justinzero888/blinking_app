@@ -56,6 +56,9 @@ class RoutineRepository {
     bool isCounter = false,
     bool isActive = true,
     RoutineCategory? category,
+    List<int>? scheduledDaysOfWeek,
+    DateTime? scheduledDate,
+    String? iconImagePath,
   }) async {
     final now = DateTime.now();
     final routine = Routine(
@@ -72,9 +75,18 @@ class RoutineRepository {
       createdAt: now,
       updatedAt: now,
       category: category,
+      scheduledDaysOfWeek: scheduledDaysOfWeek,
+      scheduledDate: scheduledDate,
+      iconImagePath: iconImagePath,
     );
     await _storage.addRoutine(routine);
     return routine;
+  }
+
+  /// Insert a fully-constructed routine (used for import).
+  /// Does not generate a new ID — preserves the one from the source.
+  Future<void> insertFull(Routine routine) async {
+    await _storage.addRoutine(routine);
   }
 
   /// Update an existing routine

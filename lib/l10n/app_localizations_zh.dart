@@ -223,4 +223,70 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get updatedAt => '更新时间';
+
+  @override
+  String get summaryNoteCount => '📝 记录数量';
+
+  @override
+  String get summaryHabitCompletion => '✅ 习惯完成率';
+
+  @override
+  String get summaryMoodTrend => '😊 情绪趋势';
+
+  @override
+  String get summaryTopTags => '🏷️ 热门标签';
+
+  @override
+  String get summaryScopeDay => '日';
+
+  @override
+  String get summaryScopeWeek => '周';
+
+  @override
+  String get summaryScopeMonth => '月';
+
+  @override
+  String get summaryNoNotes => '暂无记录数据';
+
+  @override
+  String get summaryNoHabits => '暂无习惯数据';
+
+  @override
+  String get summaryNoMood => '暂无情绪数据（请为记录添加情绪）';
+
+  @override
+  String get summaryNoTags => '暂无标签数据';
+
+  @override
+  String get moodHappy => '开心';
+
+  @override
+  String get moodSad => '悲伤';
+
+  @override
+  String get moodAngry => '愤怒';
+
+  @override
+  String get moodAnxious => '焦虑';
+
+  @override
+  String get moodTired => '疲倦';
+
+  @override
+  String get moodExcited => '兴奋';
+
+  @override
+  String get moodCalm => '平静';
+
+  @override
+  String get moodFrustrated => '沮丧';
+
+  @override
+  String get moodLoving => '温暖';
+
+  @override
+  String get moodNeutral => '平淡';
+
+  @override
+  String get aiSecretsTagName => '私密';
 }

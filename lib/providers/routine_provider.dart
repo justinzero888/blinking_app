@@ -1,14 +1,12 @@
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import '../models/routine.dart';
 import '../models/schedule.dart';
 import '../repositories/routine_repository.dart';
-import '../core/services/notification_service.dart';
-
 /// Provider for managing routines (daily habits)
 /// Uses RoutineRepository for data access
 class RoutineProvider extends ChangeNotifier {
   final RoutineRepository _repository;
-  final NotificationService _notificationService = NotificationService();
   
   List<Routine> _routines = [];
   bool _isLoading = false;
@@ -93,6 +91,9 @@ class RoutineProvider extends ChangeNotifier {
     String? unit,
     bool isCounter = false,
     RoutineCategory? category,
+    List<int>? scheduledDaysOfWeek,
+    DateTime? scheduledDate,
+    String? iconImagePath,
   }) async {
     _error = null;
 
@@ -106,10 +107,10 @@ class RoutineProvider extends ChangeNotifier {
         unit: unit,
         isCounter: isCounter,
         category: category,
+        scheduledDaysOfWeek: scheduledDaysOfWeek,
+        scheduledDate: scheduledDate,
+        iconImagePath: iconImagePath,
       );
-      if (routine.isActive && routine.reminderTime != null) {
-        await _notificationService.scheduleRoutineReminder(routine);
-      }
       _routines.add(routine);
       notifyListeners();
     } catch (e) {
@@ -125,12 +126,6 @@ class RoutineProvider extends ChangeNotifier {
     try {
       final updated = await _repository.update(routine);
       if (updated != null) {
-        // Update notification
-        await _notificationService.cancelRoutineReminder(updated.id);
-        if (updated.isActive && updated.reminderTime != null) {
-          await _notificationService.scheduleRoutineReminder(updated);
-        }
-
         final index = _routines.indexWhere((r) => r.id == routine.id);
         if (index != -1) {
           _routines[index] = updated;
@@ -149,7 +144,6 @@ class RoutineProvider extends ChangeNotifier {
     
     try {
       await _repository.delete(id);
-      await _notificationService.cancelRoutineReminder(id);
       _routines.removeWhere((r) => r.id == id);
       notifyListeners();
     } catch (e) {
@@ -165,12 +159,6 @@ class RoutineProvider extends ChangeNotifier {
     try {
       final updated = await _repository.toggleActive(id);
       if (updated != null) {
-        if (updated.isActive && updated.reminderTime != null) {
-          await _notificationService.scheduleRoutineReminder(updated);
-        } else {
-          await _notificationService.cancelRoutineReminder(updated.id);
-        }
-
         final index = _routines.indexWhere((r) => r.id == id);
         if (index != -1) {
           _routines[index] = updated;
@@ -271,18 +259,87 @@ class RoutineProvider extends ChangeNotifier {
     return _repository.getStreak(routineId);
   }
 
-  /// Get active routines for today
-  List<Routine> getActiveRoutinesForToday() {
-    return activeRoutines.where((r) => r.frequency == RoutineFrequency.daily).toList();
+  /// Get routines that should appear for a given date based on their schedule.
+  List<Routine> getRoutinesForDate(DateTime date) {
+    final weekday = date.weekday; // 1=Mon…7=Sun
+    return _routines.where((r) {
+      if (!r.isActive) return false;
+      switch (r.frequency) {
+        case RoutineFrequency.daily:
+          return true;
+        case RoutineFrequency.weekly:
+          if (r.scheduledDaysOfWeek == null || r.scheduledDaysOfWeek!.isEmpty) {
+            return true; // backward compat: no day set → every day
+          }
+          return r.scheduledDaysOfWeek!.contains(weekday);
+        case RoutineFrequency.scheduled:
+          final sd = r.scheduledDate;
+          return sd != null &&
+              sd.year == date.year &&
+              sd.month == date.month &&
+              sd.day == date.day;
+        case RoutineFrequency.adhoc:
+          return false;
+      }
+    }).toList();
   }
 
-  /// Sync all active routine reminders with the notification service
-  Future<void> syncAllReminders() async {
-    await _notificationService.cancelAll();
-    for (final routine in _routines) {
-      if (routine.isActive && routine.reminderTime != null) {
-        await _notificationService.scheduleRoutineReminder(routine);
+  /// Returns true if a routine was scheduled for [date] but not completed,
+  /// and [date] is strictly before today (i.e., the day has ended).
+  bool isMissedOn(Routine routine, DateTime date) {
+    final today = DateTime.now();
+    final todayNorm = DateTime(today.year, today.month, today.day);
+    final dateNorm = DateTime(date.year, date.month, date.day);
+    return dateNorm.isBefore(todayNorm) &&
+        !routine.isCompletedOn(date) &&
+        getRoutinesForDate(date).any((r) => r.id == routine.id);
+  }
+
+  List<Routine> get adhocRoutines =>
+      _routines.where((r) => r.isActive && r.frequency == RoutineFrequency.adhoc).toList();
+
+  /// Export all routines as a JSON string (version-stamped).
+  String exportRoutinesJson() {
+    final payload = {
+      'version': 1,
+      'exportedAt': DateTime.now().toIso8601String(),
+      'routines': _routines.map((r) => r.toJson()).toList(),
+    };
+    const encoder = JsonEncoder.withIndent('  ');
+    return encoder.convert(payload);
+  }
+
+  /// Import routines from a JSON string.
+  /// Returns a record with (imported, skipped) counts.
+  Future<({int imported, int skipped})> importRoutinesJson(String json) async {
+    int imported = 0;
+    int skipped = 0;
+    final existingIds = _routines.map((r) => r.id).toSet();
+
+    final Map<String, dynamic> payload = jsonDecode(json) as Map<String, dynamic>;
+    final List<dynamic> list = payload['routines'] as List<dynamic>? ?? [];
+
+    for (final item in list) {
+      final map = item as Map<String, dynamic>;
+      final id = map['id'] as String?;
+      if (id != null && existingIds.contains(id)) {
+        skipped++;
+        continue;
+      }
+      try {
+        final routine = Routine.fromJson(map);
+        // Insert via repository with all existing fields preserved
+        await _repository.insertFull(routine);
+        _routines.add(routine);
+        existingIds.add(routine.id);
+        imported++;
+      } catch (_) {
+        skipped++;
       }
     }
+
+    if (imported > 0) notifyListeners();
+    return (imported: imported, skipped: skipped);
   }
+
 }

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../../providers/entry_provider.dart';
 import '../../providers/tag_provider.dart';
+import '../../providers/locale_provider.dart';
 import '../../models/models.dart';
 import '../add_entry_screen.dart';
 import '../cherished/card_builder_dialog.dart';
@@ -28,9 +29,12 @@ class _MomentScreenState extends State<MomentScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isZh = context.watch<LocaleProvider>().locale.languageCode == 'zh';
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('瞬间', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(isZh ? '瞬间' : 'Moments',
+            style: const TextStyle(fontWeight: FontWeight.bold)),
       ),
       body: Consumer<EntryProvider>(
         builder: (context, provider, _) {
@@ -46,7 +50,7 @@ class _MomentScreenState extends State<MomentScreen> {
                 child: TextField(
                   controller: _searchController,
                   decoration: InputDecoration(
-                    hintText: '搜索记录...',
+                    hintText: isZh ? '搜索记录...' : 'Search entries...',
                     prefixIcon: const Icon(Icons.search),
                     suffixIcon: _searchQuery.isNotEmpty
                         ? IconButton(
@@ -69,20 +73,20 @@ class _MomentScreenState extends State<MomentScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Row(
                   children: [
-                    _buildFilterChip('全部', 'all'),
+                    _buildFilterChip(isZh ? '全部' : 'All', 'all'),
                     const SizedBox(width: 8),
-                    _buildFilterChip('今天', 'today'),
+                    _buildFilterChip(isZh ? '今天' : 'Today', 'today'),
                     const SizedBox(width: 8),
-                    _buildFilterChip('本周', 'week'),
+                    _buildFilterChip(isZh ? '本周' : 'This week', 'week'),
                     const SizedBox(width: 8),
-                    _buildFilterChip('标签', 'tag'),
+                    _buildFilterChip(isZh ? '标签' : 'Tags', 'tag'),
                   ],
                 ),
               ),
               const SizedBox(height: 8),
               // Entry List
               Expanded(
-                child: _buildEntryList(provider),
+                child: _buildEntryList(provider, isZh),
               ),
             ],
           );
@@ -117,12 +121,17 @@ class _MomentScreenState extends State<MomentScreen> {
   }
 
   void _showTagPicker() {
+    final isZh = context.read<LocaleProvider>().locale.languageCode == 'zh';
     final tagProvider = context.read<TagProvider>();
     final tags = tagProvider.tags;
 
     if (tags.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('暂无标签，请先在设置中添加标签')),
+        SnackBar(
+          content: Text(isZh
+              ? '暂无标签，请先在设置中添加标签'
+              : 'No tags yet. Add tags in Settings first.'),
+        ),
       );
       return;
     }
@@ -130,7 +139,7 @@ class _MomentScreenState extends State<MomentScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('选择标签'),
+        title: Text(isZh ? '选择标签' : 'Select Tag'),
         content: SizedBox(
           width: double.maxFinite,
           child: ListView(
@@ -164,32 +173,38 @@ class _MomentScreenState extends State<MomentScreen> {
               });
               Navigator.pop(context);
             },
-            child: const Text('取消'),
+            child: Text(isZh ? '取消' : 'Cancel'),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildEntryList(EntryProvider provider) {
+  Widget _buildEntryList(EntryProvider provider, bool isZh) {
     final now = DateTime.now();
 
     // Get base list from date filter
     List<Entry> entries;
     switch (_filter) {
       case 'today':
-        entries = provider.allEntries.where((e) =>
-            e.createdAt.year == now.year &&
-            e.createdAt.month == now.month &&
-            e.createdAt.day == now.day).toList();
+        entries = provider.allEntries
+            .where((e) =>
+                e.createdAt.year == now.year &&
+                e.createdAt.month == now.month &&
+                e.createdAt.day == now.day)
+            .toList();
         break;
       case 'week':
         final weekAgo = now.subtract(const Duration(days: 7));
-        entries = provider.allEntries.where((e) => e.createdAt.isAfter(weekAgo)).toList();
+        entries = provider.allEntries
+            .where((e) => e.createdAt.isAfter(weekAgo))
+            .toList();
         break;
       case 'tag':
         entries = _tagFilterId != null
-            ? provider.allEntries.where((e) => e.tagIds.contains(_tagFilterId)).toList()
+            ? provider.allEntries
+                .where((e) => e.tagIds.contains(_tagFilterId))
+                .toList()
             : provider.allEntries;
         break;
       default:
@@ -199,20 +214,26 @@ class _MomentScreenState extends State<MomentScreen> {
     // Apply search filter
     if (_searchQuery.isNotEmpty) {
       entries = entries
-          .where((e) => e.content.toLowerCase().contains(_searchQuery.toLowerCase()))
+          .where((e) =>
+              e.content.toLowerCase().contains(_searchQuery.toLowerCase()))
           .toList();
     }
 
     if (entries.isEmpty) {
-      return const Center(
-        child: Text('暂无记录\n点击 + 添加第一条', textAlign: TextAlign.center),
+      return Center(
+        child: Text(
+          isZh ? '暂无记录\n点击 + 添加第一条' : 'No entries yet\nTap + to add one',
+          textAlign: TextAlign.center,
+        ),
       );
     }
 
     // Group by date
     final grouped = <String, List<Entry>>{};
     for (var entry in entries) {
-      final dateKey = DateFormat('yyyy年M月d日').format(entry.createdAt);
+      final dateKey = isZh
+          ? DateFormat('yyyy年M月d日').format(entry.createdAt)
+          : DateFormat('MMM d, y').format(entry.createdAt);
       grouped.putIfAbsent(dateKey, () => []).add(entry);
     }
 
@@ -222,6 +243,7 @@ class _MomentScreenState extends State<MomentScreen> {
       itemBuilder: (context, index) {
         final dateKey = grouped.keys.elementAt(index);
         final dateEntries = grouped[dateKey]!;
+        final isToday = _isToday(dateEntries.first.createdAt);
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -229,18 +251,20 @@ class _MomentScreenState extends State<MomentScreen> {
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 8),
               child: Text(
-                _isToday(dateEntries.first.createdAt) ? '今天' : dateKey,
-                style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.grey),
+                isToday ? (isZh ? '今天' : 'Today') : dateKey,
+                style: const TextStyle(
+                    fontWeight: FontWeight.bold, color: Colors.grey),
               ),
             ),
-            ...dateEntries.map((entry) => _buildEntryCard(entry, provider)),
+            ...dateEntries
+                .map((entry) => _buildEntryCard(entry, provider, isZh)),
           ],
         );
       },
     );
   }
 
-  Widget _buildEntryCard(Entry entry, EntryProvider provider) {
+  Widget _buildEntryCard(Entry entry, EntryProvider provider, bool isZh) {
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       child: ListTile(
@@ -265,7 +289,7 @@ class _MomentScreenState extends State<MomentScreen> {
             ],
             IconButton(
               icon: const Icon(Icons.style_outlined, size: 18, color: Colors.grey),
-              tooltip: '制作卡片',
+              tooltip: isZh ? '制作卡片' : 'Make card',
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(),
               onPressed: () {
@@ -306,26 +330,30 @@ class _MomentScreenState extends State<MomentScreen> {
 
   bool _isToday(DateTime date) {
     final now = DateTime.now();
-    return date.year == now.year && date.month == now.month && date.day == now.day;
+    return date.year == now.year &&
+        date.month == now.month &&
+        date.day == now.day;
   }
 
   void _showDeleteDialog(Entry entry, EntryProvider provider) {
+    final isZh = context.read<LocaleProvider>().locale.languageCode == 'zh';
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('删除记录'),
-        content: const Text('确定要删除这条记录吗？'),
+        title: Text(isZh ? '删除记录' : 'Delete Entry'),
+        content: Text(isZh ? '确定要删除这条记录吗？' : 'Delete this entry?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('取消'),
+            child: Text(isZh ? '取消' : 'Cancel'),
           ),
           TextButton(
             onPressed: () {
               provider.deleteEntry(entry.id);
               Navigator.pop(context);
             },
-            child: const Text('删除', style: TextStyle(color: Colors.red)),
+            child: Text(isZh ? '删除' : 'Delete',
+                style: const TextStyle(color: Colors.red)),
           ),
         ],
       ),

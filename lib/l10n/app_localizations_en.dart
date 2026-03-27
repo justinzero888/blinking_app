@@ -18,7 +18,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get calendar => 'Calendar';
 
   @override
-  String get moment => 'Moment';
+  String get moment => 'Moments';
 
   @override
   String get timeline => 'Timeline';
@@ -223,4 +223,70 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get updatedAt => 'Updated';
+
+  @override
+  String get summaryNoteCount => '📝 Notes';
+
+  @override
+  String get summaryHabitCompletion => '✅ Habit Completion';
+
+  @override
+  String get summaryMoodTrend => '😊 Mood Trend';
+
+  @override
+  String get summaryTopTags => '🏷️ Top Tags';
+
+  @override
+  String get summaryScopeDay => 'Day';
+
+  @override
+  String get summaryScopeWeek => 'Week';
+
+  @override
+  String get summaryScopeMonth => 'Month';
+
+  @override
+  String get summaryNoNotes => 'No note data yet';
+
+  @override
+  String get summaryNoHabits => 'No habit data yet';
+
+  @override
+  String get summaryNoMood => 'No mood data yet (add emotions to entries)';
+
+  @override
+  String get summaryNoTags => 'No tag data yet';
+
+  @override
+  String get moodHappy => 'Joyful';
+
+  @override
+  String get moodSad => 'Sad';
+
+  @override
+  String get moodAngry => 'Angry';
+
+  @override
+  String get moodAnxious => 'Anxious';
+
+  @override
+  String get moodTired => 'Tired';
+
+  @override
+  String get moodExcited => 'Excited';
+
+  @override
+  String get moodCalm => 'Calm';
+
+  @override
+  String get moodFrustrated => 'Frustrated';
+
+  @override
+  String get moodLoving => 'Loving';
+
+  @override
+  String get moodNeutral => 'Neutral';
+
+  @override
+  String get aiSecretsTagName => 'Secrets';
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
+import '../../l10n/app_localizations.dart';
 import '../../providers/summary_provider.dart';
 import '../../providers/tag_provider.dart';
 
@@ -12,6 +13,7 @@ class SummaryTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<SummaryProvider>();
+    final l = AppLocalizations.of(context)!;
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -21,25 +23,25 @@ class SummaryTab extends StatelessWidget {
         const SizedBox(height: 20),
 
         // 1. Note counts bar chart
-        _SectionTitle(title: '📝 记录数量'),
+        _SectionTitle(title: l.summaryNoteCount),
         const SizedBox(height: 8),
         _NoteCountChart(provider: provider),
         const SizedBox(height: 24),
 
         // 2. Routine completion horizontal bar chart
-        _SectionTitle(title: '✅ 习惯完成率'),
+        _SectionTitle(title: l.summaryHabitCompletion),
         const SizedBox(height: 8),
         _RoutineCompletionChart(provider: provider),
         const SizedBox(height: 24),
 
         // 3. Emotion trend line chart
-        _SectionTitle(title: '😊 情绪趋势'),
+        _SectionTitle(title: l.summaryMoodTrend),
         const SizedBox(height: 8),
         _EmotionTrendChart(provider: provider),
         const SizedBox(height: 24),
 
         // 4. Top tags
-        _SectionTitle(title: '🏷️ 热门标签'),
+        _SectionTitle(title: l.summaryTopTags),
         const SizedBox(height: 8),
         _TopTagsChart(provider: provider),
         const SizedBox(height: 40),
@@ -63,7 +65,7 @@ class _ScopePicker extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 4),
             child: ChoiceChip(
-              label: Text(_scopeLabel(s)),
+              label: Text(_scopeLabel(s, context)),
               selected: scope == s,
               onSelected: (_) => onChanged(s),
             ),
@@ -72,14 +74,15 @@ class _ScopePicker extends StatelessWidget {
     );
   }
 
-  String _scopeLabel(SummaryScope s) {
+  String _scopeLabel(SummaryScope s, BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     switch (s) {
       case SummaryScope.daily:
-        return '日';
+        return l.summaryScopeDay;
       case SummaryScope.weekly:
-        return '周';
+        return l.summaryScopeWeek;
       case SummaryScope.monthly:
-        return '月';
+        return l.summaryScopeMonth;
     }
   }
 }
@@ -110,9 +113,10 @@ class _NoteCountChart extends StatelessWidget {
     final hasData = data.any((d) => d.count > 0);
 
     if (!hasData) {
-      return const _EmptyPlaceholder(message: '暂无记录数据');
+      return _EmptyPlaceholder(message: AppLocalizations.of(context)!.summaryNoNotes);
     }
 
+    final locale = Localizations.localeOf(context).languageCode;
     final maxCount =
         data.map((d) => d.count).reduce((a, b) => a > b ? a : b).toDouble();
 
@@ -149,7 +153,7 @@ class _NoteCountChart extends StatelessWidget {
                   final idx = value.toInt();
                   if (idx >= 0 && idx < data.length) {
                     return Text(
-                      _formatDate(data[idx].date, provider.scope),
+                      _formatDate(data[idx].date, provider.scope, locale),
                       style: const TextStyle(fontSize: 9),
                     );
                   }
@@ -191,8 +195,9 @@ class _RoutineCompletionChart extends StatelessWidget {
   Widget build(BuildContext context) {
     final rates = provider.routineCompletionRates;
 
-    if (rates.isEmpty) {
-      return const _EmptyPlaceholder(message: '暂无习惯数据');
+    final allZero = rates.values.every((v) => v == 0.0);
+    if (rates.isEmpty || allZero) {
+      return _EmptyPlaceholder(message: AppLocalizations.of(context)!.summaryNoHabits);
     }
 
     final entries = rates.entries.toList();
@@ -282,9 +287,10 @@ class _EmotionTrendChart extends StatelessWidget {
     final hasData = trend.any((d) => d.score > 0);
 
     if (!hasData) {
-      return const _EmptyPlaceholder(message: '暂无情绪数据（请为记录添加情绪）');
+      return _EmptyPlaceholder(message: AppLocalizations.of(context)!.summaryNoMood);
     }
 
+    final locale = Localizations.localeOf(context).languageCode;
     final spots = trend
         .asMap()
         .entries
@@ -319,7 +325,7 @@ class _EmotionTrendChart extends StatelessWidget {
                   final idx = value.toInt();
                   if (idx >= 0 && idx < trend.length) {
                     return Text(
-                      _formatDate(trend[idx].date, provider.scope),
+                      _formatDate(trend[idx].date, provider.scope, locale),
                       style: const TextStyle(fontSize: 9),
                     );
                   }
@@ -363,7 +369,7 @@ class _TopTagsChart extends StatelessWidget {
     final topTags = provider.topTags;
 
     if (topTags.isEmpty) {
-      return const _EmptyPlaceholder(message: '暂无标签数据');
+      return _EmptyPlaceholder(message: AppLocalizations.of(context)!.summaryNoTags);
     }
 
     final maxCount =
@@ -434,13 +440,15 @@ class _EmptyPlaceholder extends StatelessWidget {
   }
 }
 
-String _formatDate(DateTime date, SummaryScope scope) {
+String _formatDate(DateTime date, SummaryScope scope, String locale) {
   switch (scope) {
     case SummaryScope.daily:
       return DateFormat('M/d').format(date);
     case SummaryScope.weekly:
       return DateFormat('M/d').format(date);
     case SummaryScope.monthly:
-      return DateFormat('M月').format(date);
+      return locale.startsWith('zh')
+          ? DateFormat('M月').format(date)
+          : DateFormat('MMM').format(date);
   }
 }

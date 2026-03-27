@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/jar_provider.dart';
 import '../../providers/entry_provider.dart';
+import '../../providers/locale_provider.dart';
 
 /// Detailed view of a year's emotion jars — 3-column month grid
 class YearJarDetailScreen extends StatelessWidget {
@@ -9,18 +10,25 @@ class YearJarDetailScreen extends StatelessWidget {
 
   const YearJarDetailScreen({super.key, required this.year});
 
-  static const List<String> _monthNames = [
+  static const List<String> _monthNamesZh = [
     '一月', '二月', '三月', '四月', '五月', '六月',
     '七月', '八月', '九月', '十月', '十一月', '十二月',
+  ];
+
+  static const List<String> _monthNamesEn = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
   ];
 
   @override
   Widget build(BuildContext context) {
     final jarProvider = context.watch<JarProvider>();
+    final isZh = context.watch<LocaleProvider>().locale.languageCode == 'zh';
+    final monthNames = isZh ? _monthNamesZh : _monthNamesEn;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('$year 年情绪罐'),
+        title: Text(isZh ? '$year 年情绪罐' : '$year Mood Jars'),
         centerTitle: true,
       ),
       body: GridView.builder(
@@ -50,9 +58,10 @@ class YearJarDetailScreen extends StatelessWidget {
           return _MonthCell(
             year: year,
             month: month,
-            monthName: _monthNames[index],
+            monthName: monthNames[index],
             dominantEmotions: dominantEmotions,
             entryCount: entryCount,
+            isZh: isZh,
           );
         },
       ),
@@ -66,6 +75,7 @@ class _MonthCell extends StatelessWidget {
   final String monthName;
   final List<String> dominantEmotions;
   final int entryCount;
+  final bool isZh;
 
   const _MonthCell({
     required this.year,
@@ -73,6 +83,7 @@ class _MonthCell extends StatelessWidget {
     required this.monthName,
     required this.dominantEmotions,
     required this.entryCount,
+    required this.isZh,
   });
 
   @override
@@ -115,12 +126,14 @@ class _MonthCell extends StatelessWidget {
               )
             else
               Text(
-                entryCount > 0 ? '无情绪' : '无记录',
+                entryCount > 0
+                    ? (isZh ? '无情绪' : 'No mood')
+                    : (isZh ? '无记录' : 'Empty'),
                 style: TextStyle(color: Colors.grey[400], fontSize: 11),
               ),
             const SizedBox(height: 4),
             Text(
-              '$entryCount 条',
+              isZh ? '$entryCount 条' : '$entryCount',
               style: TextStyle(
                 fontSize: 11,
                 color: entryCount > 0 ? Colors.grey[600] : Colors.grey[400],
@@ -150,6 +163,8 @@ class _MonthCell extends StatelessWidget {
     }
     final days = grouped.keys.toList()..sort();
 
+    final title = isZh ? '$year年$month月' : '${_monthFull(month)} $year';
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -174,7 +189,7 @@ class _MonthCell extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.all(16),
               child: Text(
-                '$year年$month月',
+                title,
                 style: const TextStyle(
                     fontSize: 18, fontWeight: FontWeight.bold),
               ),
@@ -190,14 +205,21 @@ class _MonthCell extends StatelessWidget {
                       .where((e) => e.createdAt.day == day)
                       .toList();
                   return ListTile(
-                    leading: Text('$day日',
-                        style: const TextStyle(fontWeight: FontWeight.bold)),
+                    leading: Text(
+                      isZh ? '$day日' : '$day',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
                     title: emotions.isNotEmpty
                         ? Text(emotions.join(' '))
-                        : const Text('无情绪',
-                            style: TextStyle(color: Colors.grey)),
-                    subtitle:
-                        Text('${dayEntries.length} 条记录'),
+                        : Text(
+                            isZh ? '无情绪' : 'No mood',
+                            style: const TextStyle(color: Colors.grey),
+                          ),
+                    subtitle: Text(
+                      isZh
+                          ? '${dayEntries.length} 条记录'
+                          : '${dayEntries.length} ${dayEntries.length == 1 ? 'entry' : 'entries'}',
+                    ),
                     trailing: dayEntries.isNotEmpty
                         ? Text(
                             dayEntries.first.content.length > 20
@@ -215,5 +237,13 @@ class _MonthCell extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  String _monthFull(int m) {
+    const months = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December',
+    ];
+    return months[m - 1];
   }
 }

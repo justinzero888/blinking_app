@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
+import '../providers/locale_provider.dart';
 
 /// Calendar widget for home screen
 /// Displays month view with indicators for days with entries
@@ -8,6 +10,7 @@ class CalendarWidget extends StatelessWidget {
   final DateTime focusedMonth;
   final Map<DateTime, int> entryCounts; // date -> count of entries
   final Map<DateTime, String?> dayEmotions; // date -> dominant emotion emoji
+  final Map<DateTime, ({int completed, int total})> dayHabitStatus;
   final Function(DateTime) onDateSelected;
   final Function(DateTime) onMonthChanged;
 
@@ -17,6 +20,7 @@ class CalendarWidget extends StatelessWidget {
     required this.focusedMonth,
     required this.entryCounts,
     this.dayEmotions = const {},
+    this.dayHabitStatus = const {},
     required this.onDateSelected,
     required this.onMonthChanged,
   });
@@ -31,6 +35,9 @@ class CalendarWidget extends StatelessWidget {
       ],
     );
   }
+
+  bool _isZh(BuildContext context) =>
+      context.watch<LocaleProvider>().locale.languageCode == 'zh';
 
   Widget _buildHeader(BuildContext context) {
     return Padding(
@@ -49,7 +56,9 @@ class CalendarWidget extends StatelessWidget {
             },
           ),
           Text(
-            DateFormat('yyyy年M月').format(focusedMonth),
+            _isZh(context)
+                ? DateFormat('yyyy年M月').format(focusedMonth)
+                : DateFormat('MMMM yyyy').format(focusedMonth),
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.bold,
                 ),
@@ -70,7 +79,9 @@ class CalendarWidget extends StatelessWidget {
   }
 
   Widget _buildWeekdayLabels(BuildContext context) {
-    const weekdays = ['日', '一', '二', '三', '四', '五', '六'];
+    final weekdays = _isZh(context)
+        ? ['日', '一', '二', '三', '四', '五', '六']
+        : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8),
       child: Row(
@@ -118,6 +129,7 @@ class CalendarWidget extends StatelessWidget {
     final isCurrentMonth = day.month == focusedMonth.month;
     final dayKey = DateTime(day.year, day.month, day.day);
     final emotion = dayEmotions[dayKey];
+    final habitStatus = dayHabitStatus[dayKey];
 
     return GestureDetector(
       onTap: () => onDateSelected(day),
@@ -156,6 +168,26 @@ class CalendarWidget extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: isSelected ? Colors.white : Theme.of(context).colorScheme.primary,
                   shape: BoxShape.circle,
+                ),
+              ),
+            if (habitStatus != null && habitStatus.total > 0)
+              Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: SizedBox(
+                  width: 24,
+                  height: 3,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(2),
+                    child: LinearProgressIndicator(
+                      value: habitStatus.completed / habitStatus.total,
+                      backgroundColor: Colors.grey[300],
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        habitStatus.completed == habitStatus.total
+                            ? Colors.green
+                            : Colors.orange,
+                      ),
+                    ),
+                  ),
                 ),
               ),
           ],

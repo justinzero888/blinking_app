@@ -23,7 +23,7 @@ class DatabaseService {
 
     return await openDatabase(
       path,
-      version: 4,
+      version: 8,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -78,6 +78,20 @@ class DatabaseService {
           PRIMARY KEY (card_id, entry_id)
         )
       ''');
+    }
+    if (oldVersion < 5) {
+      await db.execute('ALTER TABLE routines ADD COLUMN scheduled_days_of_week TEXT');
+      await db.execute('ALTER TABLE routines ADD COLUMN scheduled_date TEXT');
+    }
+    if (oldVersion < 6) {
+      await db.execute('ALTER TABLE templates ADD COLUMN custom_image_path TEXT');
+      await db.execute('ALTER TABLE note_cards ADD COLUMN ai_summary TEXT');
+    }
+    if (oldVersion < 7) {
+      await db.execute('ALTER TABLE note_cards ADD COLUMN rich_content TEXT');
+    }
+    if (oldVersion < 8) {
+      await db.execute('ALTER TABLE routines ADD COLUMN icon_image_path TEXT');
     }
   }
 
@@ -135,7 +149,10 @@ class DatabaseService {
         current_count INTEGER DEFAULT 0,
         is_counter INTEGER NOT NULL DEFAULT 0,
         unit TEXT,
+        icon_image_path TEXT,
         category TEXT,
+        scheduled_days_of_week TEXT,
+        scheduled_date TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       )
@@ -174,6 +191,7 @@ class DatabaseService {
         font_color TEXT NOT NULL DEFAULT '#222222',
         bg_color TEXT NOT NULL DEFAULT '#FFFFFF',
         is_built_in INTEGER NOT NULL DEFAULT 0,
+        custom_image_path TEXT,
         created_at TEXT NOT NULL
       )
     ''');
@@ -185,6 +203,8 @@ class DatabaseService {
         template_id TEXT NOT NULL,
         folder_id TEXT NOT NULL,
         rendered_image_path TEXT,
+        ai_summary TEXT,
+        rich_content TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       )

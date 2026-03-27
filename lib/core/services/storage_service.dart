@@ -39,6 +39,14 @@ class StorageService {
       for (final tag in _getDefaultTags()) {
         await addTag(tag);
       }
+    } else {
+      // Ensure system tags exist for existing users (migration)
+      final tagIds = tags.map((t) => t.id).toSet();
+      for (final tag in _getSystemTags()) {
+        if (!tagIds.contains(tag.id)) {
+          await addTag(tag);
+        }
+      }
     }
 
     // Initialize default routines if none exist
@@ -122,7 +130,15 @@ class StorageService {
             createdAt: DateTime.now()),
       ];
 
-  /// Get default tags
+  /// System tags that must always exist (seeded for new AND existing users)
+  List<Tag> _getSystemTags() {
+    return [
+      Tag(id: 'tag_reflection', name: '反思', nameEn: 'Reflection', color: '#AF52DE', category: 'reflection', createdAt: DateTime.now()),
+      Tag(id: 'tag_secrets', name: '私密', nameEn: 'Secrets', color: '#9E9E9E', category: 'system', createdAt: DateTime.now()),
+    ];
+  }
+
+  /// Get default tags (new install)
   List<Tag> _getDefaultTags() {
     return [
       Tag(id: 'tag_work', name: '工作', nameEn: 'Work', color: '#34C759', category: 'custom', createdAt: DateTime.now()),
@@ -131,7 +147,7 @@ class StorageService {
       Tag(id: 'tag_learning', name: '学习', nameEn: 'Learning', color: '#5856D6', category: 'learning', createdAt: DateTime.now()),
       Tag(id: 'tag_family_menu', name: '家庭菜单', nameEn: 'Family Menu', color: '#FF2D55', category: 'custom', createdAt: DateTime.now()),
       Tag(id: 'tag_sleep', name: '睡眠', nameEn: 'Sleep', color: '#5AC8FA', category: 'sleeping', createdAt: DateTime.now()),
-      Tag(id: 'tag_reflection', name: '反思', nameEn: 'Reflection', color: '#AF52DE', category: 'reflection', createdAt: DateTime.now()),
+      ..._getSystemTags(),
     ];
   }
 
@@ -307,6 +323,13 @@ class StorageService {
       routineMap['targetCount'] = map['target_count'];
       routineMap['currentCount'] = map['current_count'];
       routineMap['category'] = map['category'];
+      routineMap['iconImagePath'] = map['icon_image_path'];
+      routineMap['scheduledDaysOfWeek'] = map['scheduled_days_of_week'] != null
+          ? (json.decode(map['scheduled_days_of_week'] as String) as List<dynamic>)
+              .map((e) => e as int)
+              .toList()
+          : null;
+      routineMap['scheduledDate'] = map['scheduled_date'];
       routineMap['completionLog'] = completionMaps.map((c) => {
         'id': c['id'],
         'routineId': c['routine_id'],
@@ -343,7 +366,12 @@ class StorageService {
         'current_count': routine.currentCount,
         'is_counter': routine.isCounter ? 1 : 0,
         'unit': routine.unit,
+        'icon_image_path': routine.iconImagePath,
         'category': routine.category?.name,
+        'scheduled_days_of_week': routine.scheduledDaysOfWeek != null
+            ? json.encode(routine.scheduledDaysOfWeek)
+            : null,
+        'scheduled_date': routine.scheduledDate?.toIso8601String(),
         'created_at': routine.createdAt.toIso8601String(),
         'updated_at': routine.updatedAt.toIso8601String(),
       }, conflictAlgorithm: ConflictAlgorithm.replace);
@@ -376,7 +404,12 @@ class StorageService {
         'current_count': routine.currentCount,
         'is_counter': routine.isCounter ? 1 : 0,
         'unit': routine.unit,
+        'icon_image_path': routine.iconImagePath,
         'category': routine.category?.name,
+        'scheduled_days_of_week': routine.scheduledDaysOfWeek != null
+            ? json.encode(routine.scheduledDaysOfWeek)
+            : null,
+        'scheduled_date': routine.scheduledDate?.toIso8601String(),
         'updated_at': routine.updatedAt.toIso8601String(),
       }, where: 'id = ?', whereArgs: [routine.id]);
 
@@ -504,15 +537,32 @@ class StorageService {
         await importData(data);
       }
 
-      // Process media files
+      // Process media and avatar files
       final docDir = await getApplicationDocumentsDirectory();
       for (final file in archive) {
-        if (file.isFile && file.name.startsWith('media/')) {
+        if (file.isFile && (file.name.startsWith('media/') || file.name.startsWith('avatar/'))) {
           final targetFile = File(path_pkg.join(docDir.path, file.name));
           if (!await targetFile.parent.exists()) {
             await targetFile.parent.create(recursive: true);
           }
           await targetFile.writeAsBytes(file.content as List<int>);
+        }
+      }
+
+      // Restore AI persona settings from persona.json
+      final personaFile = archive.findFile('persona.json');
+      if (personaFile != null) {
+        final personaStr = utf8.decode(personaFile.content as List<int>);
+        final personaMap = json.decode(personaStr) as Map<String, dynamic>;
+        if (personaMap.containsKey('ai_assistant_name')) {
+          await _prefs.setString('ai_assistant_name', personaMap['ai_assistant_name'] as String);
+        }
+        if (personaMap.containsKey('ai_assistant_personality')) {
+          await _prefs.setString('ai_assistant_personality', personaMap['ai_assistant_personality'] as String);
+        }
+        if (personaMap.containsKey('ai_avatar_zip_path')) {
+          final restoredPath = path_pkg.join(docDir.path, personaMap['ai_avatar_zip_path'] as String);
+          await _prefs.setString('ai_avatar_path', restoredPath);
         }
       }
     } else {
@@ -599,6 +649,8 @@ class StorageService {
       final entryIds = entryMaps.map((e) => e['entry_id'] as String).toList();
       final cardMap = Map<String, dynamic>.from(map);
       cardMap['entry_ids'] = entryIds;
+      cardMap['ai_summary'] = map['ai_summary'];
+      cardMap['rich_content'] = map['rich_content'];
       cards.add(NoteCard.fromJson(cardMap));
     }
     return cards;
@@ -612,9 +664,33 @@ class StorageService {
         'template_id': card.templateId,
         'folder_id': card.folderId,
         'rendered_image_path': card.renderedImagePath,
+        'ai_summary': card.aiSummary,
+        'rich_content': card.richContent,
         'created_at': card.createdAt.toIso8601String(),
         'updated_at': card.updatedAt.toIso8601String(),
       }, conflictAlgorithm: ConflictAlgorithm.replace);
+      for (final entryId in card.entryIds) {
+        await txn.insert('note_card_entries', {
+          'card_id': card.id,
+          'entry_id': entryId,
+        }, conflictAlgorithm: ConflictAlgorithm.ignore);
+      }
+    });
+  }
+
+  Future<void> updateNoteCard(NoteCard card) async {
+    final db = await _dbService.database;
+    await db.transaction((txn) async {
+      await txn.update('note_cards', {
+        'template_id': card.templateId,
+        'folder_id': card.folderId,
+        'rendered_image_path': card.renderedImagePath,
+        'ai_summary': card.aiSummary,
+        'rich_content': card.richContent,
+        'updated_at': card.updatedAt.toIso8601String(),
+      }, where: 'id = ?', whereArgs: [card.id]);
+      // Refresh entry links
+      await txn.delete('note_card_entries', where: 'card_id = ?', whereArgs: [card.id]);
       for (final entryId in card.entryIds) {
         await txn.insert('note_card_entries', {
           'card_id': card.id,

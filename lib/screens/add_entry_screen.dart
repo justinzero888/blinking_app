@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:flutter_sound/flutter_sound.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'dart:io';
 import '../providers/entry_provider.dart';
+import '../providers/locale_provider.dart';
 import '../providers/tag_provider.dart';
 import '../models/entry.dart';
 import '../models/media.dart';
 import '../core/services/file_service.dart';
 import '../core/config/emotions.dart';
+import '../l10n/app_localizations.dart';
 import 'package:open_filex/open_filex.dart';
 
 class AddEntryScreen extends StatefulWidget {
@@ -23,20 +23,15 @@ class AddEntryScreen extends StatefulWidget {
 class _AddEntryScreenState extends State<AddEntryScreen> {
   final TextEditingController _textController = TextEditingController();
   final ImagePicker _picker = ImagePicker();
-  final FlutterSoundRecorder _recorder = FlutterSoundRecorder();
   final FileService _fileService = FileService();
-  
+
   final List<Media> _mediaItems = [];
   final Set<String> _selectedTagIds = {};
-  bool _isRecording = false;
-  String? _audioPath;
-  bool _recorderInitialized = false;
   String? _selectedEmotion;
 
   @override
   void initState() {
     super.initState();
-    _initRecorder();
     _loadExistingEntry();
   }
 
@@ -73,22 +68,9 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
     return MediaType.image;
   }
 
-  Future<void> _initRecorder() async {
-    final status = await Permission.microphone.request();
-    if (status != PermissionStatus.granted) {
-      return;
-    }
-    
-    await _recorder.openRecorder();
-    setState(() {
-      _recorderInitialized = true;
-    });
-  }
-
   @override
   void dispose() {
     _textController.dispose();
-    _recorder.closeRecorder();
     super.dispose();
   }
 
@@ -122,71 +104,6 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
     }
   }
 
-  Future<void> _pickVideo() async {
-    final XFile? video = await _picker.pickVideo(source: ImageSource.gallery);
-    if (video != null) {
-      final media = Media(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
-        entryId: '',
-        type: MediaType.video,
-        localPath: video.path,
-      );
-      setState(() {
-        _mediaItems.add(media);
-      });
-    }
-  }
-
-  Future<void> _recordVideo() async {
-    final XFile? video = await _picker.pickVideo(source: ImageSource.camera);
-    if (video != null) {
-      final media = Media(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
-        entryId: '',
-        type: MediaType.video,
-        localPath: video.path,
-      );
-      setState(() {
-        _mediaItems.add(media);
-      });
-    }
-  }
-
-  Future<void> _toggleRecording() async {
-    if (!_recorderInitialized) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Microphone permission not granted')),
-      );
-      return;
-    }
-
-    if (_isRecording) {
-      // Stop recording
-      final path = await _recorder.stopRecorder();
-      if (path != null) {
-        final media = Media(
-          id: DateTime.now().millisecondsSinceEpoch.toString(),
-          entryId: '',
-          type: MediaType.audio,
-          localPath: path,
-        );
-        setState(() {
-          _mediaItems.add(media);
-          _isRecording = false;
-        });
-      }
-    } else {
-      // Start recording
-      final tempDir = Directory.systemTemp;
-      final path = '${tempDir.path}/audio_${DateTime.now().millisecondsSinceEpoch}.aac';
-      await _recorder.startRecorder(toFile: path);
-      setState(() {
-        _isRecording = true;
-        _audioPath = path;
-      });
-    }
-  }
-
   void _removeMedia(int index) {
     setState(() {
       _mediaItems.removeAt(index);
@@ -203,10 +120,30 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
     });
   }
 
+  String _moodLabel(BuildContext context, String emoji) {
+    final l = AppLocalizations.of(context)!;
+    switch (emoji) {
+      case '😊': return l.moodHappy;
+      case '😢': return l.moodSad;
+      case '😡': return l.moodAngry;
+      case '😰': return l.moodAnxious;
+      case '😴': return l.moodTired;
+      case '🤩': return l.moodExcited;
+      case '😌': return l.moodCalm;
+      case '😤': return l.moodFrustrated;
+      case '🥰': return l.moodLoving;
+      case '😐': return l.moodNeutral;
+      default: return emoji;
+    }
+  }
+
   Future<void> _saveEntry() async {
+    final isZh = context.read<LocaleProvider>().locale.languageCode == 'zh';
     if (_textController.text.trim().isEmpty && _mediaItems.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please add some content')),
+        SnackBar(
+            content: Text(
+                isZh ? '请添加一些内容' : 'Please add some content')),
       );
       return;
     }
@@ -257,7 +194,10 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(widget.existingEntry != null ? 'Memory updated!' : 'Memory saved!')),
+        SnackBar(
+            content: Text(widget.existingEntry != null
+                ? (isZh ? '记录已更新！' : 'Memory updated!')
+                : (isZh ? '记录已保存！' : 'Memory saved!'))),
       );
       Navigator.pop(context);
     }
@@ -265,9 +205,12 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isZh = context.watch<LocaleProvider>().locale.languageCode == 'zh';
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.existingEntry != null ? 'Edit Memory' : 'Add Memory'),
+        title: Text(widget.existingEntry != null
+            ? (isZh ? '编辑记录' : 'Edit Memory')
+            : (isZh ? '添加记录' : 'Add Memory')),
         actions: [
           IconButton(
             icon: const Icon(Icons.check, size: 28),
@@ -285,9 +228,28 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
             TextField(
               controller: _textController,
               maxLines: 6,
-              decoration: const InputDecoration(
-                hintText: 'What\'s on your mind?',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                hintText: isZh ? '今天有什么想记录的？' : 'What\'s on your mind?',
+                filled: true,
+                fillColor: Theme.of(context)
+                    .colorScheme
+                    .surfaceContainerHighest
+                    .withValues(alpha: 0.3),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(
+                    color: Theme.of(context).colorScheme.primary,
+                    width: 1.5,
+                  ),
+                ),
               ),
             ),
             const SizedBox(height: 16),
@@ -299,29 +261,13 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
               children: [
                 _MediaButton(
                   icon: Icons.photo_library,
-                  label: 'Photo',
+                  label: isZh ? '相册' : 'Photo',
                   onPressed: _pickImage,
                 ),
                 _MediaButton(
                   icon: Icons.camera_alt,
-                  label: 'Camera',
+                  label: isZh ? '拍照' : 'Camera',
                   onPressed: _takePhoto,
-                ),
-                _MediaButton(
-                  icon: Icons.video_library,
-                  label: 'Video',
-                  onPressed: _pickVideo,
-                ),
-                _MediaButton(
-                  icon: Icons.videocam,
-                  label: 'Record',
-                  onPressed: _recordVideo,
-                ),
-                _MediaButton(
-                  icon: _isRecording ? Icons.stop : Icons.mic,
-                  label: _isRecording ? 'Stop' : 'Audio',
-                  onPressed: _toggleRecording,
-                  color: _isRecording ? Colors.red : null,
                 ),
               ],
             ),
@@ -329,9 +275,9 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
 
             // Media preview
             if (_mediaItems.isNotEmpty) ...[
-              const Text(
-                'Media',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              Text(
+                isZh ? '媒体' : 'Media',
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
               SizedBox(
@@ -352,9 +298,9 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
             ],
 
             // Emotion picker
-            const Text(
-              '心情',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            Text(
+              isZh ? '心情' : 'Mood',
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             SizedBox(
@@ -365,36 +311,55 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
                 itemBuilder: (context, index) {
                   final emoji = kDefaultEmotions[index];
                   final isSelected = _selectedEmotion == emoji;
-                  return GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        _selectedEmotion = isSelected ? null : emoji;
-                      });
-                    },
-                    child: Container(
-                      margin: const EdgeInsets.only(right: 8),
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? Theme.of(context).colorScheme.primaryContainer
-                            : Theme.of(context).colorScheme.surfaceContainerHighest,
-                        borderRadius: BorderRadius.circular(20),
-                        border: isSelected
-                            ? Border.all(color: Theme.of(context).colorScheme.primary, width: 2)
-                            : null,
+                  final label = _moodLabel(context, emoji);
+                  return Semantics(
+                    label: label,
+                    button: true,
+                    selected: isSelected,
+                    child: GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _selectedEmotion = isSelected ? null : emoji;
+                        });
+                      },
+                      child: Container(
+                        margin: const EdgeInsets.only(right: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? Theme.of(context).colorScheme.primaryContainer
+                              : Theme.of(context).colorScheme.surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(20),
+                          border: isSelected
+                              ? Border.all(color: Theme.of(context).colorScheme.primary, width: 2)
+                              : null,
+                        ),
+                        child: Text(emoji, style: const TextStyle(fontSize: 22)),
                       ),
-                      child: Text(emoji, style: const TextStyle(fontSize: 22)),
                     ),
                   );
                 },
               ),
             ),
+            // Show label only when an emotion is selected
+            if (_selectedEmotion != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Text(
+                  '$_selectedEmotion  ${_moodLabel(context, _selectedEmotion!)}',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Theme.of(context).colorScheme.primary,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
             const SizedBox(height: 16),
 
             // Tags
-            const Text(
-              'Tags',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            Text(
+              isZh ? '标签' : 'Tags',
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             Consumer<TagProvider>(
@@ -428,24 +393,19 @@ class _MediaButton extends StatelessWidget {
   final IconData icon;
   final String label;
   final VoidCallback onPressed;
-  final Color? color;
 
   const _MediaButton({
     required this.icon,
     required this.label,
     required this.onPressed,
-    this.color,
   });
 
   @override
   Widget build(BuildContext context) {
     return ElevatedButton.icon(
       onPressed: onPressed,
-      icon: Icon(icon, color: color),
+      icon: Icon(icon),
       label: Text(label),
-      style: ElevatedButton.styleFrom(
-        foregroundColor: color,
-      ),
     );
   }
 }

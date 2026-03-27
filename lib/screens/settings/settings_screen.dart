@@ -4,8 +4,16 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../../providers/ai_persona_provider.dart';
+import '../../providers/llm_config_notifier.dart';
 import '../../providers/tag_provider.dart';
 import '../../providers/locale_provider.dart';
+import '../legal_doc_screen.dart';
+import '../../core/constants/legal_content.dart';
 import '../../providers/entry_provider.dart';
 import '../../providers/routine_provider.dart';
 import '../../models/tag.dart';
@@ -22,7 +30,14 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   // LLM Provider settings (persisted via SharedPreferences)
+  // OpenRouter is first — lowest friction for new users (free trial key)
   final List<Map<String, String>> _llmProviders = [
+    {
+      'name': 'Open Router',
+      'model': 'qwen/qwen3.5-flash-02-23',
+      'apiKey': '',
+      'baseUrl': 'https://openrouter.ai/api/v1',
+    },
     {
       'name': 'OpenAI',
       'model': 'gpt-4o',
@@ -41,20 +56,60 @@ class _SettingsScreenState extends State<SettingsScreen> {
       'apiKey': '',
       'baseUrl': 'https://generativelanguage.googleapis.com/v1',
     },
-    {
-      'name': 'Open Router',
-      'model': 'qwen/qwen3.5-flash-02-23',
-      'apiKey': '',
-      'baseUrl': 'https://openrouter.ai/api/v1',
-    },
   ];
 
   int _selectedLlmIndex = 0;
+
+  String _aiName = 'AI 助手';
+  String _aiPersonality = '';
 
   @override
   void initState() {
     super.initState();
     _loadLlmSettings();
+    _loadAiSettings();
+  }
+
+  Future<void> _loadAiSettings() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (mounted) {
+      setState(() {
+        _aiName = prefs.getString('ai_assistant_name') ?? 'AI 助手';
+        _aiPersonality = prefs.getString('ai_assistant_personality') ?? '';
+      });
+    }
+  }
+
+  Future<void> _saveAiSettings() async {
+    await context
+        .read<AiPersonaProvider>()
+        .saveNameAndPersonality(_aiName, _aiPersonality);
+    if (mounted) {
+      final isZh = context.read<LocaleProvider>().locale.languageCode == 'zh';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(isZh ? 'AI 设置已保存' : 'AI settings saved')),
+      );
+    }
+  }
+
+  Future<void> _pickAiAvatar() async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(source: ImageSource.gallery);
+    if (picked == null) return;
+
+    try {
+      await context.read<AiPersonaProvider>().setAvatarFromPath(picked.path);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('头像保存失败: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _clearAiAvatar() async {
+    await context.read<AiPersonaProvider>().clearAvatar();
   }
 
   Future<void> _loadLlmSettings() async {
@@ -91,6 +146,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('llm_providers', jsonEncode(_llmProviders));
     await prefs.setInt('llm_selected_index', _selectedLlmIndex);
+    if (mounted) {
+      context.read<LlmConfigNotifier>().notify();
+    }
   }
 
   @override
@@ -112,34 +170,205 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ...List.generate(_llmProviders.length, (index) {
             final provider = _llmProviders[index];
             final isSelected = _selectedLlmIndex == index;
-            return ListTile(
-              leading: Radio<int>(
-                value: index,
-                groupValue: _selectedLlmIndex,
-                onChanged: (value) {
-                  setState(() => _selectedLlmIndex = value!);
+            final hasKey = (provider['apiKey'] ?? '').isNotEmpty;
+            return Container(
+              color: (isSelected && hasKey)
+                  ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.08)
+                  : null,
+              child: ListTile(
+                leading: Radio<int>(
+                  value: index,
+                  groupValue: _selectedLlmIndex,
+                  onChanged: (value) {
+                    setState(() => _selectedLlmIndex = value!);
+                    _saveLlmSettings();
+                  },
+                ),
+                title: Row(
+                  children: [
+                    Text(provider['name']!),
+                    if (isSelected && hasKey) ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.primary,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          isZh ? '使用中' : 'Active',
+                          style: const TextStyle(
+                              fontSize: 10,
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                subtitle: Text(
+                  hasKey
+                      ? '${isZh ? "模型" : "Model"}: ${provider['model']}'
+                      : isZh ? '模型: ${provider['model']} · 未配置 Key' : 'Model: ${provider['model']} · No key set',
+                ),
+                trailing: IconButton(
+                  icon: const Icon(Icons.edit, size: 20),
+                  onPressed: () => _showEditLlmDialog(context, index, isZh),
+                ),
+                selected: isSelected,
+                onTap: () {
+                  setState(() => _selectedLlmIndex = index);
                   _saveLlmSettings();
                 },
               ),
-              title: Text(provider['name']!),
-              subtitle: Text(
-                '${isZh ? "模型" : "Model"}: ${provider['model']}',
-              ),
-              trailing: IconButton(
-                icon: const Icon(Icons.edit, size: 20),
-                onPressed: () => _showEditLlmDialog(context, index, isZh),
-              ),
-              selected: isSelected,
-              onTap: () {
-                setState(() => _selectedLlmIndex = index);
-                _saveLlmSettings();
-              },
             );
           }),
           ListTile(
             leading: const Icon(Icons.add, color: Colors.blue),
             title: Text(isZh ? '添加 AI 服务' : 'Add AI Provider'),
             onTap: () => _showAddLlmDialog(context, isZh),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.amber.shade50,
+                border: Border.all(color: Colors.amber.shade300),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              padding: const EdgeInsets.all(12),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.info_outline, size: 18, color: Colors.amber.shade800),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      isZh
+                          ? 'AI 功能需要您自行提供 API Key。您需自行承担：\n'
+                            '• API Key 的安全保管\n'
+                            '• 使用 AI 服务产生的 Token 费用\n'
+                            '• 发送给 AI 提供商的数据隐私（受该提供商条款约束）\n'
+                            'Blinking 不收集任何您的数据，AI 请求由您的设备直接发送至 AI 提供商。'
+                          : 'The AI feature requires your own API key. You are responsible for:\n'
+                            '• Keeping your API key secure\n'
+                            '• Any token costs charged by your AI provider\n'
+                            '• Data privacy with your AI provider (governed by their terms)\n'
+                            'Blinking does not collect your data. AI requests are sent directly from your device to the AI provider.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.amber.shade900,
+                        height: 1.5,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const Divider(),
+
+          // AI Personalization
+          _buildSectionHeader(isZh ? 'AI 个性化' : 'AI Personalization'),
+          Card(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Avatar picker
+                  Consumer<AiPersonaProvider>(
+                    builder: (context, persona, _) {
+                      final avatarPath = persona.avatarPath;
+                      final hasAvatar = avatarPath != null &&
+                          File(avatarPath).existsSync();
+                      return Row(
+                        children: [
+                          GestureDetector(
+                            onTap: _pickAiAvatar,
+                            child: CircleAvatar(
+                              radius: 32,
+                              backgroundImage: hasAvatar
+                                  ? FileImage(File(avatarPath))
+                                  : null,
+                              child: !hasAvatar
+                                  ? const Text('🤖',
+                                      style: TextStyle(fontSize: 28))
+                                  : null,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              TextButton.icon(
+                                icon: const Icon(Icons.image, size: 16),
+                                label: Text(
+                                    isZh ? '更换头像' : 'Change Avatar',
+                                    style: const TextStyle(fontSize: 13)),
+                                onPressed: _pickAiAvatar,
+                                style: TextButton.styleFrom(
+                                  padding: EdgeInsets.zero,
+                                  minimumSize: Size.zero,
+                                  tapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
+                                ),
+                              ),
+                              if (hasAvatar)
+                                TextButton.icon(
+                                  icon: const Icon(Icons.delete_outline,
+                                      size: 16, color: Colors.red),
+                                  label: Text(
+                                      isZh ? '移除头像' : 'Remove',
+                                      style: const TextStyle(
+                                          fontSize: 13, color: Colors.red)),
+                                  onPressed: _clearAiAvatar,
+                                  style: TextButton.styleFrom(
+                                    padding: EdgeInsets.zero,
+                                    minimumSize: Size.zero,
+                                    tapTargetSize:
+                                        MaterialTapTargetSize.shrinkWrap,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    decoration: InputDecoration(
+                      labelText: isZh ? '助手名称' : 'Assistant Name',
+                      hintText: 'AI 助手',
+                    ),
+                    controller: TextEditingController(text: _aiName),
+                    onChanged: (v) => _aiName = v,
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    decoration: InputDecoration(
+                      labelText: isZh ? '性格描述' : 'Personality',
+                      hintText: isZh
+                          ? '例如: 温柔、幽默、鼓励型'
+                          : 'e.g. warm, funny, motivating',
+                    ),
+                    controller: TextEditingController(text: _aiPersonality),
+                    onChanged: (v) => _aiPersonality = v,
+                    maxLines: 2,
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: _saveAiSettings,
+                      child: Text(isZh ? '保存 AI 设置' : 'Save AI Settings'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
           const Divider(),
 
@@ -153,8 +382,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     (tag) => _buildTagTile(context, tag, tagProvider, isZh),
                   ),
                   ListTile(
-                    leading: const Icon(Icons.add, color: Colors.blue),
-                    title: Text(isZh ? '添加标签' : 'Add Tag'),
+                    leading: Icon(Icons.add,
+                        color: Theme.of(context).colorScheme.primary),
+                    title: Text(
+                      isZh ? '添加标签' : 'Add Tag',
+                      style: TextStyle(
+                          color: Theme.of(context).colorScheme.primary),
+                    ),
                     onTap: () => _showAddTagDialog(context, tagProvider, isZh),
                   ),
                 ],
@@ -175,12 +409,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 onTap: () => _showLanguageDialog(context, localeProvider),
               );
             },
-          ),
-          ListTile(
-            leading: const Icon(Icons.notifications),
-            title: Text(isZh ? '通知设置' : 'Notifications'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () {},
           ),
           const Divider(),
 
@@ -210,14 +438,60 @@ class _SettingsScreenState extends State<SettingsScreen> {
             subtitle: Text(isZh ? '从备份文件导入' : 'Import from backup file'),
             onTap: () => _handleRestore(context, isZh),
           ),
+          ListTile(
+            leading: const Icon(Icons.fitness_center_outlined),
+            title: Text(isZh ? '导出习惯数据' : 'Export Habits'),
+            subtitle: Text(isZh ? '导出所有习惯为 JSON 文件' : 'Export all habits as JSON'),
+            onTap: () => _handleExportHabits(context, isZh),
+          ),
+          ListTile(
+            leading: const Icon(Icons.upload_outlined),
+            title: Text(isZh ? '导入习惯数据' : 'Import Habits'),
+            subtitle: Text(isZh ? '从 JSON 文件导入习惯' : 'Import habits from JSON file'),
+            onTap: () => _handleImportHabits(context, isZh),
+          ),
           const Divider(),
 
           // About
           _buildSectionHeader(isZh ? '关于' : 'About'),
           ListTile(
+            leading: const Icon(Icons.feedback_outlined),
+            title: Text(isZh ? '发送反馈' : 'Send Feedback'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => _sendFeedback(context, isZh),
+          ),
+          ListTile(
+            leading: const Icon(Icons.privacy_tip_outlined),
+            title: Text(isZh ? '隐私政策' : 'Privacy Policy'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => LegalDocScreen(
+                  title: isZh ? '隐私政策' : 'Privacy Policy',
+                  content: isZh ? kPrivacyPolicyContentZh : kPrivacyPolicyContent,
+                ),
+              ),
+            ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.gavel_outlined),
+            title: Text(isZh ? '服务条款' : 'Terms of Service'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => LegalDocScreen(
+                  title: isZh ? '服务条款' : 'Terms of Service',
+                  content: isZh ? kTermsOfServiceContentZh : kTermsOfServiceContent,
+                ),
+              ),
+            ),
+          ),
+          ListTile(
             leading: const Icon(Icons.info),
             title: const Text('Blinking (记忆闪烁)'),
-            subtitle: Text(isZh ? '版本 1.0.3' : 'Version 1.0.3'),
+            subtitle: Text(isZh ? '版本 1.1.0-beta.2' : 'Version 1.1.0-beta.2'),
           ),
         ],
       ),
@@ -240,9 +514,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   // ============ TAG MANAGEMENT ============
 
+  static const _systemTagIds = {'tag_reflection', 'tag_secrets'};
+
   Widget _buildTagTile(
     BuildContext context, Tag tag, TagProvider provider, bool isZh,
   ) {
+    final isSystem = _systemTagIds.contains(tag.id);
     return ListTile(
       leading: CircleAvatar(
         backgroundColor: AppTheme.hexColor(tag.color),
@@ -252,14 +529,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          IconButton(
-            icon: const Icon(Icons.edit, size: 20),
-            onPressed: () => _showEditTagDialog(context, tag, provider, isZh),
-          ),
-          IconButton(
-            icon: const Icon(Icons.delete, size: 20, color: Colors.red),
-            onPressed: () => _confirmDeleteTag(context, tag, provider, isZh),
-          ),
+          if (!isSystem)
+            IconButton(
+              icon: const Icon(Icons.edit, size: 20),
+              onPressed: () => _showEditTagDialog(context, tag, provider, isZh),
+            ),
+          if (!isSystem)
+            IconButton(
+              icon: const Icon(Icons.delete, size: 20, color: Colors.red),
+              onPressed: () => _confirmDeleteTag(context, tag, provider, isZh),
+            ),
+          if (isSystem)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: Icon(Icons.lock_outline, size: 16, color: Colors.grey[400]),
+            ),
         ],
       ),
     );
@@ -496,6 +780,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 obscureText: true,
               ),
+              if ((provider['baseUrl'] ?? '').contains('openrouter'))
+                Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: GestureDetector(
+                    onTap: () => launchUrl(
+                      Uri.parse('https://openrouter.ai/keys'),
+                      mode: LaunchMode.externalApplication,
+                    ),
+                    child: Text(
+                      isZh ? '🔑 免费获取 API Key →' : '🔑 Get a free API key →',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Theme.of(context).colorScheme.primary,
+                        decoration: TextDecoration.underline,
+                      ),
+                    ),
+                  ),
+                ),
               const SizedBox(height: 12),
               TextField(
                 controller: baseUrlController,
@@ -690,7 +992,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
         context.read<EntryProvider>().loadEntries();
         context.read<RoutineProvider>().loadRoutines();
         context.read<TagProvider>().loadTags();
+        await context.read<AiPersonaProvider>().reload();
 
+        if (!mounted) return;
         Navigator.pop(context); // Close loading
 
         ScaffoldMessenger.of(context).showSnackBar(
@@ -700,6 +1004,75 @@ class _SettingsScreenState extends State<SettingsScreen> {
     } catch (e) {
       if (mounted) Navigator.pop(context);
       _showError(context, isZh, e.toString());
+    }
+  }
+
+  Future<void> _handleExportHabits(BuildContext context, bool isZh) async {
+    try {
+      final provider = context.read<RoutineProvider>();
+      final json = provider.exportRoutinesJson();
+      final dir = await getTemporaryDirectory();
+      final file = File('${dir.path}/habits_export.json');
+      await file.writeAsString(json);
+      await Share.shareXFiles(
+        [XFile(file.path)],
+        subject: isZh ? '习惯数据导出' : 'Habits Export',
+      );
+    } catch (e) {
+      if (mounted) _showError(context, isZh, e.toString());
+    }
+  }
+
+  Future<void> _handleImportHabits(BuildContext context, bool isZh) async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['json'],
+      );
+      if (result == null || result.files.single.path == null) return;
+
+      final file = File(result.files.single.path!);
+      final json = await file.readAsString();
+
+      if (!mounted) return;
+      final provider = context.read<RoutineProvider>();
+      final counts = await provider.importRoutinesJson(json);
+
+      if (mounted) {
+        final msg = isZh
+            ? '导入完成：${counts.imported} 条已导入，${counts.skipped} 条已跳过'
+            : 'Import complete: ${counts.imported} imported, ${counts.skipped} skipped';
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(msg)));
+      }
+    } catch (e) {
+      if (mounted) _showError(context, isZh, e.toString());
+    }
+  }
+
+  Future<void> _sendFeedback(BuildContext context, bool isZh) async {
+    const email = 'blinkingfeedback@gmail.com';
+    const version = '1.1.0-beta.2'; // TODO: keep in sync with pubspec.yaml
+    final subject = Uri.encodeComponent('Blinking App Feedback - v$version');
+    final body = Uri.encodeComponent(
+      'What happened:\n\n\nSteps to reproduce:\n\n\nExpected behavior:\n\n\nDevice & OS:\n\n',
+    );
+    final uri = Uri.parse('mailto:$email?subject=$subject&body=$body');
+
+    try {
+      await launchUrl(uri);
+    } catch (_) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            isZh
+                ? '无法打开邮件应用，请发送邮件至 $email'
+                : 'No mail app found. Please email $email',
+          ),
+          duration: const Duration(seconds: 5),
+        ),
+      );
     }
   }
 

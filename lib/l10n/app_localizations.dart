@@ -119,7 +119,7 @@ abstract class AppLocalizations {
   /// No description provided for @moment.
   ///
   /// In en, this message translates to:
-  /// **'Moment'**
+  /// **'Moments'**
   String get moment;
 
   /// No description provided for @timeline.
@@ -529,6 +529,138 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Updated'**
   String get updatedAt;
+
+  /// No description provided for @summaryNoteCount.
+  ///
+  /// In en, this message translates to:
+  /// **'📝 Notes'**
+  String get summaryNoteCount;
+
+  /// No description provided for @summaryHabitCompletion.
+  ///
+  /// In en, this message translates to:
+  /// **'✅ Habit Completion'**
+  String get summaryHabitCompletion;
+
+  /// No description provided for @summaryMoodTrend.
+  ///
+  /// In en, this message translates to:
+  /// **'😊 Mood Trend'**
+  String get summaryMoodTrend;
+
+  /// No description provided for @summaryTopTags.
+  ///
+  /// In en, this message translates to:
+  /// **'🏷️ Top Tags'**
+  String get summaryTopTags;
+
+  /// No description provided for @summaryScopeDay.
+  ///
+  /// In en, this message translates to:
+  /// **'Day'**
+  String get summaryScopeDay;
+
+  /// No description provided for @summaryScopeWeek.
+  ///
+  /// In en, this message translates to:
+  /// **'Week'**
+  String get summaryScopeWeek;
+
+  /// No description provided for @summaryScopeMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'Month'**
+  String get summaryScopeMonth;
+
+  /// No description provided for @summaryNoNotes.
+  ///
+  /// In en, this message translates to:
+  /// **'No note data yet'**
+  String get summaryNoNotes;
+
+  /// No description provided for @summaryNoHabits.
+  ///
+  /// In en, this message translates to:
+  /// **'No habit data yet'**
+  String get summaryNoHabits;
+
+  /// No description provided for @summaryNoMood.
+  ///
+  /// In en, this message translates to:
+  /// **'No mood data yet (add emotions to entries)'**
+  String get summaryNoMood;
+
+  /// No description provided for @summaryNoTags.
+  ///
+  /// In en, this message translates to:
+  /// **'No tag data yet'**
+  String get summaryNoTags;
+
+  /// No description provided for @moodHappy.
+  ///
+  /// In en, this message translates to:
+  /// **'Joyful'**
+  String get moodHappy;
+
+  /// No description provided for @moodSad.
+  ///
+  /// In en, this message translates to:
+  /// **'Sad'**
+  String get moodSad;
+
+  /// No description provided for @moodAngry.
+  ///
+  /// In en, this message translates to:
+  /// **'Angry'**
+  String get moodAngry;
+
+  /// No description provided for @moodAnxious.
+  ///
+  /// In en, this message translates to:
+  /// **'Anxious'**
+  String get moodAnxious;
+
+  /// No description provided for @moodTired.
+  ///
+  /// In en, this message translates to:
+  /// **'Tired'**
+  String get moodTired;
+
+  /// No description provided for @moodExcited.
+  ///
+  /// In en, this message translates to:
+  /// **'Excited'**
+  String get moodExcited;
+
+  /// No description provided for @moodCalm.
+  ///
+  /// In en, this message translates to:
+  /// **'Calm'**
+  String get moodCalm;
+
+  /// No description provided for @moodFrustrated.
+  ///
+  /// In en, this message translates to:
+  /// **'Frustrated'**
+  String get moodFrustrated;
+
+  /// No description provided for @moodLoving.
+  ///
+  /// In en, this message translates to:
+  /// **'Loving'**
+  String get moodLoving;
+
+  /// No description provided for @moodNeutral.
+  ///
+  /// In en, this message translates to:
+  /// **'Neutral'**
+  String get moodNeutral;
+
+  /// No description provided for @aiSecretsTagName.
+  ///
+  /// In en, this message translates to:
+  /// **'Secrets'**
+  String get aiSecretsTagName;
 }
 
 class _AppLocalizationsDelegate

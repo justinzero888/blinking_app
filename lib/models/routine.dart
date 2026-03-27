@@ -2,7 +2,8 @@
 enum RoutineFrequency {
   daily,
   weekly,
-  custom,
+  scheduled,  // one-time on scheduledDate
+  adhoc,      // never auto-appears; manual per-day inclusion
 }
 
 /// Routine category enum — drives the default icon shown on the routine tile
@@ -76,6 +77,9 @@ class Routine {
   final DateTime createdAt;
   final DateTime updatedAt;
   final RoutineCategory? category; // null = auto-detect at display time
+  final List<int>? scheduledDaysOfWeek;  // 1=Mon…7=Sun (ISO 8601). Used when frequency==weekly.
+  final DateTime? scheduledDate;          // Used when frequency==scheduled.
+  final String? iconImagePath;
 
   Routine({
     required this.id,
@@ -95,6 +99,9 @@ class Routine {
     required this.createdAt,
     required this.updatedAt,
     this.category,
+    this.scheduledDaysOfWeek,
+    this.scheduledDate,
+    this.iconImagePath,
   });
 
   /// Effective icon: explicit icon > category icon > auto-detect > fallback
@@ -103,6 +110,37 @@ class Routine {
     final cat = category ?? autoDetectCategory(name);
     if (cat != null) return kCategoryIcon[cat]!;
     return '⭐';
+  }
+
+  /// Human-readable frequency label (Chinese) — kept for compatibility.
+  String get frequencyLabel => frequencyLabelFor(true);
+
+  /// Locale-aware frequency label.
+  String frequencyLabelFor(bool isZh) {
+    switch (frequency) {
+      case RoutineFrequency.daily:
+        return isZh ? '每天' : 'Daily';
+      case RoutineFrequency.weekly:
+        if (scheduledDaysOfWeek == null || scheduledDaysOfWeek!.isEmpty) {
+          return isZh ? '每周' : 'Weekly';
+        }
+        if (isZh) {
+          const dayNamesZh = ['', '一', '二', '三', '四', '五', '六', '日'];
+          final days = scheduledDaysOfWeek!.map((d) => dayNamesZh[d]).join('、');
+          return '每周$days';
+        } else {
+          const dayNamesEn = ['', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+          final days = scheduledDaysOfWeek!.map((d) => dayNamesEn[d]).join(', ');
+          return 'Weekly: $days';
+        }
+      case RoutineFrequency.scheduled:
+        if (scheduledDate == null) return isZh ? '指定日期' : 'Scheduled';
+        return isZh
+            ? '${scheduledDate!.month}月${scheduledDate!.day}日'
+            : '${scheduledDate!.year}-${scheduledDate!.month.toString().padLeft(2, '0')}-${scheduledDate!.day.toString().padLeft(2, '0')}';
+      case RoutineFrequency.adhoc:
+        return isZh ? '随时' : 'On demand';
+    }
   }
 
   Routine copyWith({
@@ -124,6 +162,11 @@ class Routine {
     DateTime? updatedAt,
     RoutineCategory? category,
     bool clearCategory = false,
+    List<int>? scheduledDaysOfWeek,
+    DateTime? scheduledDate,
+    bool clearScheduledDate = false,
+    String? iconImagePath,
+    bool clearIconImagePath = false,
   }) {
     return Routine(
       id: id ?? this.id,
@@ -143,6 +186,9 @@ class Routine {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       category: clearCategory ? null : (category ?? this.category),
+      scheduledDaysOfWeek: scheduledDaysOfWeek ?? this.scheduledDaysOfWeek,
+      scheduledDate: clearScheduledDate ? null : (scheduledDate ?? this.scheduledDate),
+      iconImagePath: clearIconImagePath ? null : (iconImagePath ?? this.iconImagePath),
     );
   }
 
@@ -237,6 +283,9 @@ class Routine {
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
       'category': category?.name,
+      'scheduledDaysOfWeek': scheduledDaysOfWeek,
+      'scheduledDate': scheduledDate?.toIso8601String(),
+      'iconImagePath': iconImagePath,
     };
   }
 
@@ -271,6 +320,13 @@ class Routine {
               orElse: () => RoutineCategory.other,
             )
           : null,
+      scheduledDaysOfWeek: (json['scheduledDaysOfWeek'] as List<dynamic>?)
+          ?.map((e) => e as int)
+          .toList(),
+      scheduledDate: json['scheduledDate'] != null
+          ? DateTime.parse(json['scheduledDate'] as String)
+          : null,
+      iconImagePath: json['iconImagePath'] as String?,
     );
   }
 }
