@@ -1,14 +1,17 @@
 # Blinking App — Claude Context
 
-Personal memory/habit-tracking Flutter app (记忆闪烁). Path: `/home/justin/.nanobot/workspace/blinking_app`
+Personal memory/habit-tracking Flutter app (记忆闪烁). Path: `/Users/justinzero/ClaudeDev/blink/blinking_app`
 
 ## Quick Reference
 
 - **Flutter SDK:** `^3.11.0`
-- **Current version:** `1.1.0+8` (pubspec.yaml)
+- **Current version:** `1.1.0-beta.2+11` (pubspec.yaml)
 - **DB version:** 8 (sequential migrations in `DatabaseService.onUpgrade`)
-- **Build:** `flutter build apk --debug` (release: `flutter build apk --release`)
+- **Build AAB:** `flutter build appbundle --release`
+- **Build APK:** `flutter build apk --release`
 - **Lint:** `flutter analyze --no-pub` (target: 0 errors)
+- **Tests:** `flutter test` (44 tests, all passing)
+- **Feedback email:** `blinkingfeedback@gmail.com`
 
 ---
 
@@ -36,7 +39,7 @@ Bottom nav (5 tabs) in `MainScreen` (`lib/app.dart`):
 Calendar | Moment | Routine | 珍藏 | Settings
 ```
 - `FloatingRobotWidget` overlay (bobbing + pulsing 🤖, wave-on-tap) → `AssistantScreen` modal
-- `FloatingActionButton` → `AddEntryScreen`
+- `FloatingActionButton` (heroTag: `'main_add_entry_fab'`) → `AddEntryScreen`
 
 ### Storage Layers
 - **SQLite** via `DatabaseService` singleton (accessed through `StorageService`)
@@ -53,15 +56,16 @@ Calendar | Moment | Routine | 珍藏 | Settings
 |------|---------|
 | `lib/app.dart` | Provider tree + `MainScreen` (nav + `FloatingRobotWidget`); registers `FlutterQuillLocalizations.delegate` |
 | `lib/main.dart` | App entry point, `StorageService` init |
+| `lib/core/config/constants.dart` | `AppConstants.appVersion` — keep in sync with pubspec.yaml |
 | `lib/core/services/storage_service.dart` | All CRUD; seeds default tags, routines, templates, folders |
-| `lib/core/services/database_service.dart` | SQLite schema v7 + migrations |
+| `lib/core/services/database_service.dart` | SQLite schema v8 + migrations |
 | `lib/core/services/llm_service.dart` | OpenAI-compatible chat/complete; reads provider config from SharedPreferences |
 | `lib/core/services/file_service.dart` | Media copy to app documents directory |
 | `lib/core/config/emotions.dart` | `kDefaultEmotions` — 10 emoji strings |
 | `lib/providers/entry_provider.dart` | `addEntry`, `getDayEmotion`, `setSearchQuery`, `setFilterTag` |
 | `lib/providers/routine_provider.dart` | `getRoutinesForDate`, `isMissedOn`, `toggleComplete` |
 | `lib/providers/jar_provider.dart` | `getDayEmotions`, `getMonthEmotionMap`, `getYearEmotions`, `getYearEntryCount` |
-| `lib/providers/card_provider.dart` | Folders + templates + note cards CRUD; `updateCard()`, `copyBuiltInTemplate()` |
+| `lib/providers/card_provider.dart` | Folders + templates + note cards CRUD; `updateCard()`, `copyBuiltInTemplate(isZh)` |
 | `lib/providers/summary_provider.dart` | `noteCounts`, `routineCompletionRates`, `emotionTrend`, `topTags` |
 | `lib/core/constants/legal_content.dart` | `kPrivacyPolicyContent` + `kTermsOfServiceContent` string constants |
 | `lib/screens/legal_doc_screen.dart` | Shared scrollable legal document viewer (Privacy Policy, Terms of Service) |
@@ -71,15 +75,15 @@ Calendar | Moment | Routine | 珍藏 | Settings
 | `lib/screens/routine/routine_screen.dart` | 3-tab: 全部 / 今日 / 记录; add/edit dialog with frequency/day/date pickers |
 | `lib/screens/cherished/cherished_memory_screen.dart` | 3-tab shell: 书架 / 卡片 / 总结 |
 | `lib/screens/cherished/shelf_tab.dart` | Yearly jar cards → `YearJarDetailScreen` |
-| `lib/screens/cherished/cards_tab.dart` | Card grid + folder filter; tap → `CardEditorScreen`; long-press → Edit/Share/Delete |
+| `lib/screens/cherished/cards_tab.dart` | Card grid + folder filter; tap → `CardEditorScreen`; long-press → Edit/Share/Delete; FAB heroTag: `'cards_tab_new_card_fab'` |
 | `lib/screens/cherished/card_builder_dialog.dart` | Create card; AI merge (≤100 words); template editor sheet |
 | `lib/screens/cherished/card_editor_screen.dart` | flutter_quill rich text editor; word counter (X/100); image insert; save navigates to `CardPreviewScreen` |
-| `lib/screens/cherished/card_preview_screen.dart` | PNG preview of rendered card; Share + Save actions |
+| `lib/screens/cherished/card_preview_screen.dart` | PNG preview of rendered card; Share (image-only) + Save actions |
 | `lib/screens/cherished/summary_tab.dart` | fl_chart visualizations (scope: 日/周/月) |
-| `lib/screens/settings/settings_screen.dart` | LLM config, tags, language, export, AI 个性化 |
+| `lib/screens/settings/settings_screen.dart` | LLM config, tags, language, export, AI 个性化, Send Feedback |
 | `lib/widgets/emoji_jar.dart` | `EmojiJarWidget` CustomPainter + AI bottom sheet |
-| `lib/widgets/card_renderer.dart` | Off-screen PNG render; `_extractPlainText()` handles `richContent > aiSummary > entry` |
-| `lib/widgets/floating_robot.dart` | Bobbing + pulse + wave-on-tap robot overlay (3 AnimationControllers) |
+| `lib/widgets/card_renderer.dart` | Off-screen PNG render; `_autoFontSize()` 96px→9px; text area = height×0.8/width×0.88; custom bg image with rounded clip |
+| `lib/widgets/floating_robot.dart` | Bobbing + pulse + wave-on-tap robot overlay (3 AnimationControllers); avatar = 🤖 emoji |
 | `lib/widgets/entry_card.dart` | Entry display card with share button |
 
 ---
@@ -88,6 +92,9 @@ Calendar | Moment | Routine | 珍藏 | Settings
 
 ### Database Migrations
 Always use sequential `if (oldVersion < N)` blocks in `DatabaseService.onUpgrade`. Never nest or use `else if`. `_onCreate` always creates the full v8 schema.
+
+### Version Sync
+When bumping `pubspec.yaml` version, also update `lib/core/config/constants.dart` `AppConstants.appVersion` (semver only, no build number) and the version subtitle in `settings_screen.dart`. A `test/core/version_test.dart` enforces this.
 
 ### LLM Provider Config
 Stored as JSON list in SharedPreferences key `llm_providers`. Use **merge-on-load** strategy in Settings: start from saved list (preserving API keys), then append any defaults not already present by name. Never discard saved providers on load.
@@ -120,12 +127,24 @@ For `SummaryProvider` emotion trend chart: 😊=5, 😌=4, 😐=3, 😢=2, 😡=
 `_extractPlainText()` in `CardRenderer` implements this priority. `note_card_entries` links to original entries and must never be modified by card operations.
 
 ### Card Templates
-Built-in templates must never be mutated. Use `CardProvider.copyBuiltInTemplate()` to create an `isBuiltIn: false` copy before editing.
+Built-in templates must never be mutated. Use `CardProvider.copyBuiltInTemplate({bool isZh})` to create an `isBuiltIn: false` copy before editing. Template display names use `CardTemplate.displayNameFor(bool isZh)` — do not use `.name` directly in UI.
+
+### Card Renderer
+`CardRenderer` uses `_autoFontSize(text, maxWidth, maxHeight)` — iterates 96px→9px via `TextPainter` to find largest font that fits. Text area = `width * 0.88` × `height * 0.8`. Both the widget `build()` and static `renderToImage()` use the same helper for consistent sizing.
+
+### Card Share
+Always call `Share.shareXFiles([XFile(path)])` without `text:` or `subject:` params. The image contains all content; sending text alongside is redundant.
 
 ### flutter_quill Integration
 `FlutterQuillLocalizations.delegate` **must** be present in `MaterialApp.localizationsDelegates` (registered in `app.dart`). Without it, `QuillEditor` throws `UnimplementedError` at runtime. The delegate is appended via spread: `[...AppLocalizations.localizationsDelegates, FlutterQuillLocalizations.delegate]`.
 
 Word counting for the 100-word limit uses mixed CJK+English logic: each CJK character (U+4E00–U+9FFF, U+3400–U+4DBF) = 1 word; English words counted by whitespace tokens.
+
+### FAB Hero Tags
+Main FAB in `app.dart`: `heroTag: 'main_add_entry_fab'`. Cards tab FAB in `cards_tab.dart`: `heroTag: 'cards_tab_new_card_fab'`. Required to prevent Hero tag conflicts during tab navigation.
+
+### url_launcher / mailto
+Use `try { await launchUrl(uri); } catch (_) { ... }` pattern. Do NOT use `canLaunchUrl` for `mailto:` — it is unreliable on iOS 14+ without `LSApplicationQueriesSchemes`.
 
 ---
 
@@ -135,9 +154,9 @@ Word counting for the 100-word limit uses mixed CJK+English logic: each CJK char
 |----------|------|
 | P2 | Dedicated entry detail / read-only view |
 | P3 | Firebase / Cloud Sync (all deps commented out in pubspec) |
-| P3 | Tests (currently a single placeholder) |
 | P3 | Card generation AI multi-design suggestions (deferred from v1.1.0 beta) |
 | P3 | Custom emoji images E-1/E-2 (deferred from v1.1.0 beta) |
+| BLOCKED | iOS Simulator — macOS 26 Tahoe beta + Xcode 16.2 incompatibility; requires Xcode update |
 
 ---
 
@@ -152,4 +171,5 @@ Word counting for the 100-word limit uses mixed CJK+English logic: each CJK char
 | v1.0.4 | 78d2c7b | Phase 1: habit system overhaul (RoutineFrequency, 3-tab screen, calendar badges) |
 | v1.0.5 | 7bb251c | Phases 2–4: card edit/AI merge/template image, social sharing, AI personalization |
 | v1.0.6 | ddf89d5 | Rich card editor (flutter_quill), 100-word limit, card tap → edit, 3 bug fixes |
-| v1.1.0 | beta    | Public beta: remove video/audio, legal docs, full bilingual UI, emoji jar fix, habit import/export, card preview screen |
+| v1.1.0-beta.1+9 | fb79935 | Public beta: bilingual UI, legal docs, emoji jar fix, habit import/export, card preview |
+| v1.1.0-beta.2+11 | 22776c8 | Adaptive icon, card fixes, font fill, feedback button, iOS xcassets fixes |
