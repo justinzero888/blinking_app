@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 import '../models/card_folder.dart';
@@ -67,8 +68,16 @@ class CardProvider extends ChangeNotifier {
   }
 
   Future<void> updateCard(NoteCard card) async {
-    await _storage.updateNoteCard(card);
     final index = _cards.indexWhere((c) => c.id == card.id);
+    if (index != -1) {
+      final oldPath = _cards[index].renderedImagePath;
+      final newPath = card.renderedImagePath;
+      if (oldPath != null && oldPath != newPath) {
+        final file = File(oldPath);
+        if (await file.exists()) await file.delete();
+      }
+    }
+    await _storage.updateNoteCard(card);
     if (index != -1) {
       _cards[index] = card;
       notifyListeners();
@@ -76,8 +85,14 @@ class CardProvider extends ChangeNotifier {
   }
 
   Future<void> deleteCard(String id) async {
+    final card = _cards.where((c) => c.id == id).firstOrNull;
+    final imagePath = card?.renderedImagePath;
     await _storage.deleteNoteCard(id);
     _cards.removeWhere((c) => c.id == id);
+    if (imagePath != null) {
+      final file = File(imagePath);
+      if (await file.exists()) await file.delete();
+    }
     notifyListeners();
   }
 
@@ -162,5 +177,11 @@ class CardProvider extends ChangeNotifier {
     } catch (_) {
       return null;
     }
+  }
+
+  /// Test-only: seeds the internal card list without touching storage.
+  @visibleForTesting
+  void seedForTest(List<NoteCard> cards) {
+    _cards = List.of(cards);
   }
 }
