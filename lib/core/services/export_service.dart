@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
-import 'package:archive/archive.dart';
+import 'package:archive/archive_io.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:path/path.dart' as path_pkg;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -95,14 +95,19 @@ class ExportService {
       routines: routines,
     );
 
-    final archive = Archive();
-    
-    // 1. Add data.json
+    final docDir = await getApplicationDocumentsDirectory();
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    final filePath = path_pkg.join(docDir.path, 'blinking_backup_$timestamp.zip');
+
+    final zipEncoder = ZipFileEncoder();
+    zipEncoder.create(filePath);
+
+    // 1. Add data.json (small — kept in memory)
     final jsonStr = const JsonEncoder.withIndent('  ').convert(exportData.toJson());
     final jsonBytes = utf8.encode(jsonStr);
-    archive.addFile(ArchiveFile('data.json', jsonBytes.length, jsonBytes));
-    
-    // 2. Add manifest.json
+    zipEncoder.addArchiveFile(ArchiveFile('data.json', jsonBytes.length, jsonBytes));
+
+    // 2. Add manifest.json (small — kept in memory)
     final manifest = {
       'exportedAt': exportData.exportedAt.toIso8601String(),
       'version': exportData.version,
@@ -112,7 +117,7 @@ class ExportService {
       'hasMedia': true,
     };
     final manifestBytes = utf8.encode(jsonEncode(manifest));
-    archive.addFile(ArchiveFile('manifest.json', manifestBytes.length, manifestBytes));
+    zipEncoder.addArchiveFile(ArchiveFile('manifest.json', manifestBytes.length, manifestBytes));
 
     // 3. Add AI persona settings
     final prefs = await SharedPreferences.getInstance();
@@ -126,38 +131,28 @@ class ExportService {
       final avatarFile = File(avatarPath);
       if (await avatarFile.exists()) {
         final avatarBasename = path_pkg.basename(avatarPath);
-        final avatarBytes = await avatarFile.readAsBytes();
-        archive.addFile(ArchiveFile('avatar/$avatarBasename', avatarBytes.length, avatarBytes));
         personaMap['ai_avatar_zip_path'] = 'avatar/$avatarBasename';
+        await zipEncoder.addFile(avatarFile, 'avatar/$avatarBasename');
       }
     }
     if (personaMap.isNotEmpty) {
       final personaBytes = utf8.encode(jsonEncode(personaMap));
-      archive.addFile(ArchiveFile('persona.json', personaBytes.length, personaBytes));
+      zipEncoder.addArchiveFile(ArchiveFile('persona.json', personaBytes.length, personaBytes));
     }
 
-    // 4. Add Media Files
-    final docDir = await getApplicationDocumentsDirectory();
+    // 4. Add media files — streamed one at a time, no RAM accumulation
     final mediaDir = Directory(path_pkg.join(docDir.path, 'media'));
-    
     if (await mediaDir.exists()) {
-      final List<FileSystemEntity> entities = await mediaDir.list(recursive: true).toList();
+      final entities = await mediaDir.list(recursive: true).toList();
       for (final entity in entities) {
         if (entity is File) {
           final relativePath = path_pkg.relative(entity.path, from: docDir.path);
-          final bytes = await entity.readAsBytes();
-          archive.addFile(ArchiveFile(relativePath, bytes.length, bytes));
+          await zipEncoder.addFile(entity, relativePath);
         }
       }
     }
 
-    // Save ZIP
-    final zipData = ZipEncoder().encode(archive);
-    final timestamp = DateTime.now().millisecondsSinceEpoch;
-    final filePath = path_pkg.join(docDir.path, 'blinking_backup_$timestamp.zip');
-    final file = File(filePath);
-    await file.writeAsBytes(zipData!);
-
+    await zipEncoder.close();
     return filePath;
   }
 
