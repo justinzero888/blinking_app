@@ -79,6 +79,7 @@ class ExportService {
     DateTime? startDate,
     DateTime? endDate,
     void Function(double progress)? onProgress,
+    /// [docDirOverride] is for testing only — overrides [getApplicationDocumentsDirectory].
     String? docDirOverride,
   }) async {
     final entries = await _storage.getEntries();
@@ -108,74 +109,82 @@ class ExportService {
 
     final zipEncoder = ZipFileEncoder();
     zipEncoder.create(filePath);
+    try {
+      // 1. Add data.json (small — kept in memory)
+      final jsonStr = const JsonEncoder.withIndent('  ').convert(exportData.toJson());
+      final jsonBytes = utf8.encode(jsonStr);
+      zipEncoder.addArchiveFile(ArchiveFile('data.json', jsonBytes.length, jsonBytes));
 
-    // 1. Add data.json (small — kept in memory)
-    final jsonStr = const JsonEncoder.withIndent('  ').convert(exportData.toJson());
-    final jsonBytes = utf8.encode(jsonStr);
-    zipEncoder.addArchiveFile(ArchiveFile('data.json', jsonBytes.length, jsonBytes));
+      // 2. Add manifest.json (small — kept in memory)
+      final manifest = {
+        'exportedAt': exportData.exportedAt.toIso8601String(),
+        'version': exportData.version,
+        'entriesCount': filteredEntries.length,
+        'tagsCount': tags.length,
+        'routinesCount': routines.length,
+        'hasMedia': true,
+      };
+      final manifestBytes = utf8.encode(jsonEncode(manifest));
+      zipEncoder.addArchiveFile(ArchiveFile('manifest.json', manifestBytes.length, manifestBytes));
 
-    // 2. Add manifest.json (small — kept in memory)
-    final manifest = {
-      'exportedAt': exportData.exportedAt.toIso8601String(),
-      'version': exportData.version,
-      'entriesCount': filteredEntries.length,
-      'tagsCount': tags.length,
-      'routinesCount': routines.length,
-      'hasMedia': true,
-    };
-    final manifestBytes = utf8.encode(jsonEncode(manifest));
-    zipEncoder.addArchiveFile(ArchiveFile('manifest.json', manifestBytes.length, manifestBytes));
-
-    // 3. Add AI persona settings
-    final prefs = await SharedPreferences.getInstance();
-    final personaName = prefs.getString('ai_assistant_name');
-    final personaPersonality = prefs.getString('ai_assistant_personality');
-    final avatarPath = prefs.getString('ai_avatar_path');
-    final personaMap = <String, dynamic>{};
-    if (personaName != null) personaMap['ai_assistant_name'] = personaName;
-    if (personaPersonality != null) personaMap['ai_assistant_personality'] = personaPersonality;
-    if (avatarPath != null) {
-      final avatarFile = File(avatarPath);
-      if (await avatarFile.exists()) {
-        final avatarBasename = path_pkg.basename(avatarPath);
-        personaMap['ai_avatar_zip_path'] = 'avatar/$avatarBasename';
-        await zipEncoder.addFile(avatarFile, 'avatar/$avatarBasename');
-      }
-    }
-    if (personaMap.isNotEmpty) {
-      final personaBytes = utf8.encode(jsonEncode(personaMap));
-      zipEncoder.addArchiveFile(ArchiveFile('persona.json', personaBytes.length, personaBytes));
-    }
-
-    // 4. Add media files — pre-scan sizes, stream one at a time, report progress
-    final mediaDir = Directory(path_pkg.join(docDir.path, 'media'));
-    if (await mediaDir.exists()) {
-      final entities = await mediaDir.list(recursive: true).toList();
-      final mediaFiles = entities.whereType<File>().toList();
-
-      // Pre-scan total bytes for progress estimation
-      int totalBytes = 0;
-      for (final f in mediaFiles) {
-        totalBytes += await f.length();
-      }
-
-      int bytesProcessed = 0;
-      for (final file in mediaFiles) {
-        final fileSize = await file.length();
-        final relativePath = path_pkg.relative(file.path, from: docDir.path);
-        await zipEncoder.addFile(file, relativePath);
-        bytesProcessed += fileSize;
-        if (totalBytes > 0) {
-          onProgress?.call(bytesProcessed / totalBytes);
+      // 3. Add AI persona settings
+      final prefs = await SharedPreferences.getInstance();
+      final personaName = prefs.getString('ai_assistant_name');
+      final personaPersonality = prefs.getString('ai_assistant_personality');
+      final avatarPath = prefs.getString('ai_avatar_path');
+      final personaMap = <String, dynamic>{};
+      if (personaName != null) personaMap['ai_assistant_name'] = personaName;
+      if (personaPersonality != null) personaMap['ai_assistant_personality'] = personaPersonality;
+      if (avatarPath != null) {
+        final avatarFile = File(avatarPath);
+        if (await avatarFile.exists()) {
+          final avatarBasename = path_pkg.basename(avatarPath);
+          personaMap['ai_avatar_zip_path'] = 'avatar/$avatarBasename';
+          await zipEncoder.addFile(avatarFile, 'avatar/$avatarBasename');
         }
       }
+      if (personaMap.isNotEmpty) {
+        final personaBytes = utf8.encode(jsonEncode(personaMap));
+        zipEncoder.addArchiveFile(ArchiveFile('persona.json', personaBytes.length, personaBytes));
+      }
+
+      // 4. Add media files — pre-scan sizes, stream one at a time, report progress
+      int totalBytes = 0;
+      final mediaDir = Directory(path_pkg.join(docDir.path, 'media'));
+      if (await mediaDir.exists()) {
+        final entities = await mediaDir.list(recursive: true).toList();
+        final mediaFiles = entities.whereType<File>().toList();
+
+        // Pre-scan: collect files and their sizes
+        final fileSizes = <String, int>{};
+        for (final f in mediaFiles) {
+          fileSizes[f.path] = await f.length();
+          totalBytes += fileSizes[f.path]!;
+        }
+
+        int bytesProcessed = 0;
+        for (final file in mediaFiles) {
+          final fileSize = fileSizes[file.path] ?? 0;
+          final relativePath = path_pkg.relative(file.path, from: docDir.path);
+          await zipEncoder.addFile(file, relativePath);
+          bytesProcessed += fileSize;
+          if (totalBytes > 0) {
+            onProgress?.call(bytesProcessed / totalBytes);
+          }
+        }
+      }
+
+      // Signal 100% only when no media was present (loop already emitted 1.0 otherwise)
+      if (totalBytes == 0) onProgress?.call(1.0);
+
+      await zipEncoder.close();
+      return filePath;
+    } catch (e) {
+      try { await zipEncoder.close(); } catch (_) {}
+      final partial = File(filePath);
+      if (await partial.exists()) await partial.delete();
+      rethrow;
     }
-
-    // Signal 100% (covers no-media case and finalises progress)
-    onProgress?.call(1.0);
-
-    await zipEncoder.close();
-    return filePath;
   }
 
   /// Export data as CSV (returns file path)

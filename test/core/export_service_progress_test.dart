@@ -19,11 +19,8 @@ void main() {
   group('ExportService.exportAll — onProgress', () {
     late Directory tempDir;
 
-    setUpAll(() {
-      SharedPreferences.setMockInitialValues({});
-    });
-
     setUp(() {
+      SharedPreferences.setMockInitialValues({});
       tempDir = Directory.systemTemp.createTempSync('export_progress_test_');
     });
 
@@ -59,10 +56,12 @@ void main() {
         docDirOverride: tempDir.path,
       );
 
-      for (var i = 1; i < progressValues.length; i++) {
-        expect(progressValues[i], greaterThanOrEqualTo(progressValues[i - 1]));
-      }
       expect(progressValues.last, 1.0);
+      // All values except the terminal 1.0 must be strictly increasing
+      for (var i = 1; i < progressValues.length - 1; i++) {
+        expect(progressValues[i], greaterThan(progressValues[i - 1]),
+            reason: 'progress values at index $i should be strictly increasing');
+      }
     });
   });
 }
