@@ -3,8 +3,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:blinking/models/entry.dart';
 import 'package:blinking/models/tag.dart';
+import 'package:blinking/providers/entry_provider.dart';
 import 'package:blinking/providers/locale_provider.dart';
 import 'package:blinking/providers/tag_provider.dart';
+import 'package:blinking/repositories/entry_repository.dart';
 import 'package:blinking/repositories/tag_repository.dart';
 import 'package:blinking/core/services/storage_service.dart';
 import 'package:blinking/screens/moment/entry_detail_screen.dart';
@@ -13,6 +15,9 @@ import 'package:blinking/screens/moment/entry_detail_screen.dart';
 class _FakeStorage extends StorageService {
   @override
   Future<List<Tag>> getTags() async => [];
+
+  @override
+  Future<List<Entry>> getEntries() async => [];
 }
 
 TagProvider _tagProvider() {
@@ -21,11 +26,21 @@ TagProvider _tagProvider() {
   return p;
 }
 
-Widget _wrap(Widget child) {
+EntryProvider _entryProvider({List<Entry> entries = const []}) {
+  final p = EntryProvider(EntryRepository(_FakeStorage()));
+  // Seed with the provided entries so the provider has data without platform channels
+  for (final e in entries) {
+    p.allEntries; // access getter to ensure list is initialized
+  }
+  return p;
+}
+
+Widget _wrap(Widget child, {List<Entry> entries = const []}) {
   return MultiProvider(
     providers: [
       ChangeNotifierProvider(create: (_) => LocaleProvider()),
       ChangeNotifierProvider(create: (_) => _tagProvider()),
+      ChangeNotifierProvider(create: (_) => _entryProvider(entries: entries)),
     ],
     child: MaterialApp(home: child),
   );

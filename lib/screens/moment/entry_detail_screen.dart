@@ -6,20 +6,32 @@ import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../core/services/file_service.dart';
 import '../../models/entry.dart';
+import '../../providers/entry_provider.dart';
 import '../../providers/locale_provider.dart';
 import '../../providers/tag_provider.dart';
 import '../../widgets/tag_chip.dart';
 import '../add_entry_screen.dart';
 
-class EntryDetailScreen extends StatelessWidget {
+class EntryDetailScreen extends StatefulWidget {
   final Entry entry;
 
   const EntryDetailScreen({super.key, required this.entry});
 
   @override
+  State<EntryDetailScreen> createState() => _EntryDetailScreenState();
+}
+
+class _EntryDetailScreenState extends State<EntryDetailScreen> {
+  @override
   Widget build(BuildContext context) {
     final isZh = context.watch<LocaleProvider>().locale.languageCode == 'zh';
     final tagProvider = context.watch<TagProvider>();
+    // Re-read from provider so edits from AddEntryScreen are reflected immediately
+    final entryProvider = context.watch<EntryProvider>();
+    final entry = entryProvider.allEntries.firstWhere(
+      (e) => e.id == widget.entry.id,
+      orElse: () => widget.entry,
+    );
     final tags = tagProvider.tags.where((t) => entry.tagIds.contains(t.id)).toList();
 
     final dateStr = isZh
@@ -83,20 +95,38 @@ class EntryDetailScreen extends StatelessWidget {
   }
 }
 
-class _MediaGrid extends StatelessWidget {
+class _MediaGrid extends StatefulWidget {
   final List<String> mediaUrls;
   const _MediaGrid({required this.mediaUrls});
 
   @override
+  State<_MediaGrid> createState() => _MediaGridState();
+}
+
+class _MediaGridState extends State<_MediaGrid> {
+  late final List<Future<String>> _pathFutures;
+  final _fileService = FileService();
+
+  @override
+  void initState() {
+    super.initState();
+    _pathFutures = widget.mediaUrls.map((url) {
+      return url.startsWith('/') ? Future.value(url) : _fileService.getFullPath(url);
+    }).toList();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final fileService = FileService();
     return Column(
-      children: mediaUrls.map((url) {
+      children: List.generate(widget.mediaUrls.length, (i) {
+        final url = widget.mediaUrls[i];
         final isImage = url.toLowerCase().endsWith('.jpg') ||
             url.toLowerCase().endsWith('.jpeg') ||
-            url.toLowerCase().endsWith('.png');
+            url.toLowerCase().endsWith('.png') ||
+            url.toLowerCase().endsWith('.heic') ||
+            url.toLowerCase().endsWith('.webp');
         return FutureBuilder<String>(
-          future: url.startsWith('/') ? Future.value(url) : fileService.getFullPath(url),
+          future: _pathFutures[i],
           builder: (context, snapshot) {
             final fullPath = snapshot.data;
             return Padding(
@@ -105,8 +135,17 @@ class _MediaGrid extends StatelessWidget {
                 onTap: fullPath != null ? () => OpenFilex.open(fullPath) : null,
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(8),
-                  child: (fullPath != null && isImage && File(fullPath).existsSync())
-                      ? Image.file(File(fullPath), fit: BoxFit.contain, width: double.infinity)
+                  child: (fullPath != null && isImage)
+                      ? Image.file(
+                          File(fullPath),
+                          fit: BoxFit.contain,
+                          width: double.infinity,
+                          errorBuilder: (_, __, ___) => Container(
+                            height: 120,
+                            color: Colors.grey[300],
+                            child: const Icon(Icons.insert_drive_file, size: 48),
+                          ),
+                        )
                       : Container(
                           height: 120,
                           color: Colors.grey[300],
@@ -117,7 +156,7 @@ class _MediaGrid extends StatelessWidget {
             );
           },
         );
-      }).toList(),
+      }),
     );
   }
 }
