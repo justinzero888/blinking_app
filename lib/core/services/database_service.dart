@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../models/models.dart';
 
 class DatabaseService {
+  static const int kSchemaVersion = 9;
   static final DatabaseService _instance = DatabaseService._internal();
   factory DatabaseService() => _instance;
   DatabaseService._internal();
@@ -23,7 +24,7 @@ class DatabaseService {
 
     return await openDatabase(
       path,
-      version: 8,
+      version: DatabaseService.kSchemaVersion,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -92,6 +93,17 @@ class DatabaseService {
     }
     if (oldVersion < 8) {
       await db.execute('ALTER TABLE routines ADD COLUMN icon_image_path TEXT');
+    }
+    if (oldVersion < 9) {
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_entries_created_at ON entries(created_at)',
+      );
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_entry_tags_tag_id ON entry_tags(tag_id)',
+      );
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_completions_routine_id ON completions(routine_id)',
+      );
     }
   }
 
@@ -218,6 +230,16 @@ class DatabaseService {
         PRIMARY KEY (card_id, entry_id)
       )
     ''');
+
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_entries_created_at ON entries(created_at)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_entry_tags_tag_id ON entry_tags(tag_id)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_completions_routine_id ON completions(routine_id)',
+    );
   }
 
   /// Perform data migration from SharedPreferences to SQLite if needed
