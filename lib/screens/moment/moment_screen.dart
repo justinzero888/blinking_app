@@ -7,6 +7,7 @@ import '../../providers/locale_provider.dart';
 import '../../models/models.dart';
 import '../add_entry_screen.dart';
 import '../cherished/card_builder_dialog.dart';
+import 'entry_detail_screen.dart';
 
 class MomentScreen extends StatefulWidget {
   const MomentScreen({super.key});
@@ -308,7 +309,7 @@ class _MomentScreenState extends State<MomentScreen> {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => AddEntryScreen(existingEntry: entry),
+              builder: (_) => EntryDetailScreen(entry: entry),
             ),
           );
         },
