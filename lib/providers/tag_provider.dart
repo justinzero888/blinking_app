@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import '../models/tag.dart';
 import '../repositories/tag_repository.dart';
 
+
 /// Provider for managing tags
 /// Uses TagRepository for data access
 class TagProvider extends ChangeNotifier {
@@ -108,6 +109,12 @@ class TagProvider extends ChangeNotifier {
   /// Search tags
   Future<List<Tag>> search(String query) async {
     return _repository.search(query);
+  }
+
+  /// Test-only: seeds the tag list without touching storage.
+  @visibleForTesting
+  void loadTagsForTest(List<Tag> tags) {
+    _tags = List.of(tags);
   }
 
   /// Reset to default tags
