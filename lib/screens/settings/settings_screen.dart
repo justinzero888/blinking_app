@@ -21,6 +21,8 @@ import '../../core/config/theme.dart';
 import '../../core/services/storage_service.dart';
 import '../../core/services/export_service.dart';
 
+enum _BackupRange { all, lastMonth, last3Months, last6Months, custom }
+
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
 
@@ -928,18 +930,214 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   // ============ DATA PORTABILITY ============
 
-  Future<void> _handleBackup(BuildContext context, bool isZh) async {
-    try {
-      final exportService = context.read<ExportService>();
-      final path = await exportService.exportAll();
-      await exportService.shareFile(
-        path,
-        subject: isZh ? 'Blinking 全量备份' : 'Blinking Full Backup',
-        text: isZh ? '这是我的 Blinking App 备份文件。' : 'This is my Blinking App backup file.',
-      );
-    } catch (e) {
-      _showError(context, isZh, e.toString());
+  String _rangeLabel(_BackupRange r, bool isZh) {
+    switch (r) {
+      case _BackupRange.all:
+        return isZh ? '全部数据' : 'All data';
+      case _BackupRange.lastMonth:
+        return isZh ? '最近1个月' : 'Last month';
+      case _BackupRange.last3Months:
+        return isZh ? '最近3个月' : 'Last 3 months';
+      case _BackupRange.last6Months:
+        return isZh ? '最近6个月' : 'Last 6 months';
+      case _BackupRange.custom:
+        return isZh ? '自定义' : 'Custom';
     }
+  }
+
+  Future<void> _handleBackup(BuildContext context, bool isZh) async {
+    var phase = 0;
+    var range = _BackupRange.all;
+    DateTime? customFrom;
+    DateTime? customTo;
+    var progress = 0.0;
+    var estimateText = '';
+    final estimator = _BackupEstimator();
+
+    (DateTime?, DateTime?) resolveRange() {
+      final now = DateTime.now();
+      switch (range) {
+        case _BackupRange.lastMonth:
+          return (now.subtract(const Duration(days: 30)), null);
+        case _BackupRange.last3Months:
+          return (now.subtract(const Duration(days: 90)), null);
+        case _BackupRange.last6Months:
+          return (now.subtract(const Duration(days: 180)), null);
+        case _BackupRange.custom:
+          return (customFrom, customTo);
+        case _BackupRange.all:
+          return (null, null);
+      }
+    }
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (_, setDialogState) {
+          if (phase == 0) {
+            return AlertDialog(
+              title: Text(isZh ? '选择备份范围' : 'Select Backup Range'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        for (final r in _BackupRange.values)
+                          if (r != _BackupRange.custom)
+                            ChoiceChip(
+                              label: Text(_rangeLabel(r, isZh)),
+                              selected: range == r,
+                              onSelected: (_) =>
+                                  setDialogState(() => range = r),
+                            ),
+                        ChoiceChip(
+                          label: Text(isZh ? '自定义' : 'Custom'),
+                          selected: range == _BackupRange.custom,
+                          onSelected: (_) => setDialogState(
+                              () => range = _BackupRange.custom),
+                        ),
+                      ],
+                    ),
+                    if (range == _BackupRange.custom) ...[
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextButton.icon(
+                              icon: const Icon(Icons.calendar_today, size: 16),
+                              label: Text(customFrom != null
+                                  ? '${customFrom!.year}-${customFrom!.month.toString().padLeft(2, '0')}-${customFrom!.day.toString().padLeft(2, '0')}'
+                                  : (isZh ? '开始日期' : 'From')),
+                              onPressed: () async {
+                                final picked = await showDatePicker(
+                                  context: context,
+                                  initialDate: customFrom ??
+                                      DateTime.now()
+                                          .subtract(const Duration(days: 30)),
+                                  firstDate: DateTime(2020),
+                                  lastDate: DateTime.now(),
+                                );
+                                if (picked != null) {
+                                  setDialogState(() => customFrom = picked);
+                                }
+                              },
+                            ),
+                          ),
+                          const Text('→'),
+                          Expanded(
+                            child: TextButton.icon(
+                              icon: const Icon(Icons.calendar_today, size: 16),
+                              label: Text(customTo != null
+                                  ? '${customTo!.year}-${customTo!.month.toString().padLeft(2, '0')}-${customTo!.day.toString().padLeft(2, '0')}'
+                                  : (isZh ? '结束日期' : 'To')),
+                              onPressed: () async {
+                                final picked = await showDatePicker(
+                                  context: context,
+                                  initialDate: customTo ?? DateTime.now(),
+                                  firstDate: DateTime(2020),
+                                  lastDate: DateTime.now(),
+                                );
+                                if (picked != null) {
+                                  setDialogState(() => customTo = picked);
+                                }
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: Text(isZh ? '取消' : 'Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    setDialogState(() => phase = 1);
+                    final exportService = context.read<ExportService>();
+                    try {
+                      final (startDate, endDate) = resolveRange();
+                      final path = await exportService.exportAll(
+                        startDate: startDate,
+                        endDate: endDate,
+                        onProgress: (p) {
+                          if (dialogContext.mounted) {
+                            setDialogState(() {
+                              progress = p;
+                              estimateText = estimator.estimate(p, isZh);
+                            });
+                          }
+                        },
+                      );
+                      if (dialogContext.mounted) Navigator.pop(dialogContext);
+                      await exportService.shareFile(
+                        path,
+                        subject:
+                            isZh ? 'Blinking 全量备份' : 'Blinking Full Backup',
+                        text: isZh
+                            ? '这是我的 Blinking App 备份文件。'
+                            : 'This is my Blinking App backup file.',
+                      );
+                    } catch (e) {
+                      if (dialogContext.mounted) Navigator.pop(dialogContext);
+                      if (context.mounted) _showError(context, isZh, e.toString());
+                    }
+                  },
+                  child: Text(isZh ? '开始备份' : 'Start Backup'),
+                ),
+              ],
+            );
+          }
+
+          // Phase 2: progress
+          return PopScope(
+            canPop: false,
+            child: AlertDialog(
+              title: Text(isZh ? '正在备份...' : 'Backing up...'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  LinearProgressIndicator(
+                      value: progress > 0 ? progress : null),
+                  const SizedBox(height: 12),
+                  Text(
+                    '${(progress * 100).round()}%',
+                    style: const TextStyle(
+                        fontSize: 24, fontWeight: FontWeight.bold),
+                  ),
+                  if (estimateText.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(estimateText,
+                        style: const TextStyle(color: Colors.grey)),
+                  ],
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.warning_amber_rounded,
+                          size: 16, color: Colors.orange),
+                      const SizedBox(width: 4),
+                      Text(
+                        isZh ? '请勿关闭应用' : 'Do not close the app',
+                        style: const TextStyle(color: Colors.orange),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
   }
 
   Future<void> _handleExportCsv(BuildContext context, bool isZh) async {
@@ -1083,5 +1281,38 @@ class _SettingsScreenState extends State<SettingsScreen> {
         backgroundColor: Colors.red,
       ),
     );
+  }
+}
+
+class _BackupEstimator {
+  final _start = DateTime.now();
+  final _samples = <({double progress, int elapsed})>[];
+
+  String estimate(double progress, bool isZh) {
+    final elapsedMs = DateTime.now().difference(_start).inMilliseconds;
+    _samples.add((progress: progress, elapsed: elapsedMs));
+    if (_samples.length > 5) _samples.removeAt(0);
+
+    if (progress < 0.15 || _samples.length < 2) return '';
+
+    final oldest = _samples.first;
+    final newest = _samples.last;
+    final progressDelta = newest.progress - oldest.progress;
+    final timeDelta = newest.elapsed - oldest.elapsed;
+    if (progressDelta <= 0 || timeDelta <= 0) return '';
+
+    final msPerProgress = timeDelta / progressDelta;
+    final remainingMs = msPerProgress * (1.0 - progress);
+    final remainingSec = (remainingMs / 1000).round();
+
+    if (remainingSec < 10) {
+      return isZh ? '不到10秒' : 'Less than 10 seconds';
+    } else if (remainingSec < 60) {
+      final rounded = ((remainingSec / 10).round() * 10).clamp(10, 50);
+      return isZh ? '约$rounded秒' : 'About $rounded seconds';
+    } else {
+      final mins = (remainingSec / 60).ceil();
+      return isZh ? '约$mins分钟' : 'About $mins minute${mins > 1 ? 's' : ''}';
+    }
   }
 }
