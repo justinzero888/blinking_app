@@ -75,7 +75,12 @@ class ExportService {
   ExportService(this._storage);
 
   /// Export all data (JSON + Media) to a ZIP file
-  Future<String> exportAll({DateTime? startDate, DateTime? endDate}) async {
+  Future<String> exportAll({
+    DateTime? startDate,
+    DateTime? endDate,
+    void Function(double progress)? onProgress,
+    String? docDirOverride,
+  }) async {
     final entries = await _storage.getEntries();
     final tags = await _storage.getTags();
     final routines = await _storage.getRoutines();
@@ -95,7 +100,9 @@ class ExportService {
       routines: routines,
     );
 
-    final docDir = await getApplicationDocumentsDirectory();
+    final docDir = docDirOverride != null
+        ? Directory(docDirOverride)
+        : await getApplicationDocumentsDirectory();
     final timestamp = DateTime.now().millisecondsSinceEpoch;
     final filePath = path_pkg.join(docDir.path, 'blinking_backup_$timestamp.zip');
 
@@ -140,17 +147,32 @@ class ExportService {
       zipEncoder.addArchiveFile(ArchiveFile('persona.json', personaBytes.length, personaBytes));
     }
 
-    // 4. Add media files — streamed one at a time, no RAM accumulation
+    // 4. Add media files — pre-scan sizes, stream one at a time, report progress
     final mediaDir = Directory(path_pkg.join(docDir.path, 'media'));
     if (await mediaDir.exists()) {
       final entities = await mediaDir.list(recursive: true).toList();
-      for (final entity in entities) {
-        if (entity is File) {
-          final relativePath = path_pkg.relative(entity.path, from: docDir.path);
-          await zipEncoder.addFile(entity, relativePath);
+      final mediaFiles = entities.whereType<File>().toList();
+
+      // Pre-scan total bytes for progress estimation
+      int totalBytes = 0;
+      for (final f in mediaFiles) {
+        totalBytes += await f.length();
+      }
+
+      int bytesProcessed = 0;
+      for (final file in mediaFiles) {
+        final fileSize = await file.length();
+        final relativePath = path_pkg.relative(file.path, from: docDir.path);
+        await zipEncoder.addFile(file, relativePath);
+        bytesProcessed += fileSize;
+        if (totalBytes > 0) {
+          onProgress?.call(bytesProcessed / totalBytes);
         }
       }
     }
+
+    // Signal 100% (covers no-media case and finalises progress)
+    onProgress?.call(1.0);
 
     await zipEncoder.close();
     return filePath;
