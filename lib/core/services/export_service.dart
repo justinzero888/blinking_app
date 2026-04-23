@@ -104,6 +104,15 @@ class ExportService {
     final docDir = docDirOverride != null
         ? Directory(docDirOverride)
         : await getApplicationDocumentsDirectory();
+    // Delete any leftover backup ZIPs from previous runs to prevent storage bloat
+    await for (final entity in docDir.list()) {
+      if (entity is File &&
+          path_pkg.basename(entity.path).startsWith('blinking_backup_') &&
+          entity.path.endsWith('.zip')) {
+        try { await entity.delete(); } catch (_) {}
+      }
+    }
+
     final timestamp = DateTime.now().millisecondsSinceEpoch;
     final filePath = path_pkg.join(docDir.path, 'blinking_backup_$timestamp.zip');
 
