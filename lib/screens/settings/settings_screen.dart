@@ -1086,6 +1086,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             ? '这是我的 Blinking App 备份文件。'
                             : 'This is my Blinking App backup file.',
                       );
+                      // Delete the ZIP after sharing — no reason to keep a copy on device
+                      try { await File(path).delete(); } catch (_) {}
                     } catch (e) {
                       if (dialogContext.mounted) Navigator.pop(dialogContext);
                       if (context.mounted) _showError(context, isZh, e.toString());
