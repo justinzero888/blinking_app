@@ -58,7 +58,8 @@ class AppTheme {
     chipTheme: ChipThemeData(
       backgroundColor: const Color(0xFFF4F8F7),
       selectedColor: _primary,
-      labelStyle: const TextStyle(fontSize: 14),
+      labelStyle: const TextStyle(fontSize: 14, color: Colors.black87),
+      secondaryLabelStyle: const TextStyle(fontSize: 14, color: Colors.white),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20),
