@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../models/tag.dart';
+import '../providers/locale_provider.dart';
 
 /// Helper to convert hex string to Color
 Color hexToColor(String hex) {
@@ -60,7 +62,9 @@ class TagChip extends StatelessWidget {
                 ),
               ),
             Text(
-              tag.name,
+              tag.displayName(
+                context.read<LocaleProvider>().locale.languageCode == 'zh',
+              ),
               style: TextStyle(
                 fontSize: small ? 11 : 13,
                 color: color,

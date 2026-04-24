@@ -333,6 +333,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildRoutineChecklistItem(BuildContext context, Routine routine, {bool readOnly = false}) {
     final isCompleted = routine.isCompletedOn(_selectedDate);
     final isMissed = readOnly && !isCompleted;
+    final isZh = context.read<LocaleProvider>().locale.languageCode == 'zh';
 
     return Card(
       child: CheckboxListTile(
@@ -346,7 +347,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 color: isCompleted ? Colors.green : Colors.grey,
               ),
         title: Text(
-          routine.name,
+          routine.displayName(isZh),
           style: TextStyle(
             color: isMissed ? Colors.red[300] : null,
           ),

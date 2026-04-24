@@ -527,7 +527,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         backgroundColor: AppTheme.hexColor(tag.color),
         radius: 12,
       ),
-      title: Text(tag.name),
+      title: Text(tag.displayName(isZh)),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [

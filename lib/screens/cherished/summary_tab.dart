@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../../l10n/app_localizations.dart';
+import '../../providers/locale_provider.dart';
 import '../../providers/summary_provider.dart';
 import '../../providers/tag_provider.dart';
 
@@ -193,7 +194,8 @@ class _RoutineCompletionChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final rates = provider.routineCompletionRates;
+    final isZh = context.read<LocaleProvider>().locale.languageCode == 'zh';
+    final rates = provider.routineCompletionRates(isZh: isZh);
 
     final allZero = rates.values.every((v) => v == 0.0);
     if (rates.isEmpty || allZero) {

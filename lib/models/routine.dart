@@ -264,6 +264,9 @@ class Routine {
   /// Get today's completion if exists
   RoutineCompletion? get todayCompletion => getCompletionOn(DateTime.now());
 
+  /// Returns the display name for the current locale.
+  String displayName(bool isZh) => isZh ? name : nameEn;
+
   Map<String, dynamic> toJson() {
     return {
       'id': id,

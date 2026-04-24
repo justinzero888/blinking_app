@@ -290,7 +290,7 @@ class _TodayRoutineTile extends StatelessWidget {
             ),
           ),
           title: Text(
-            routine.name,
+            routine.displayName(isZh),
             style: TextStyle(
               decoration: isCompleted ? TextDecoration.lineThrough : null,
               color: isCompleted ? Colors.grey : null,
@@ -337,7 +337,7 @@ class _ManualAddButton extends StatelessWidget {
           const SizedBox(height: 12),
           ...adhoc.map((r) => ListTile(
                 leading: _buildRoutineIcon(r, size: 22),
-                title: Text(r.name),
+                title: Text(r.displayName(isZh)),
                 trailing: manuallyAdded.contains(r.id)
                     ? const Icon(Icons.check, color: Colors.green)
                     : null,
@@ -439,7 +439,7 @@ class _DayRecord extends StatelessWidget {
               children: [
                 _buildRoutineIcon(r, size: 18),
                 const SizedBox(width: 12),
-                Expanded(child: Text(r.name)),
+                Expanded(child: Text(r.displayName(isZh))),
                 if (done)
                   const Icon(Icons.check_circle, color: Colors.green, size: 20)
                 else if (missed)
@@ -484,7 +484,7 @@ class _RoutineTile extends StatelessWidget {
           ),
         ),
         title: Text(
-          routine.name,
+          routine.displayName(isZh),
           style: TextStyle(color: routine.isActive ? null : Colors.grey),
         ),
         subtitle: Text(

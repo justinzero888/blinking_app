@@ -94,8 +94,8 @@ class SummaryProvider extends ChangeNotifier {
     }
   }
 
-  /// Routine completion rate per routine (name → % 0.0-1.0)
-  Map<String, double> get routineCompletionRates {
+  /// Routine completion rate per routine (display name → % 0.0-1.0)
+  Map<String, double> routineCompletionRates({bool isZh = true}) {
     final routines = _routineProvider.routines;
     final range = _currentRange;
     final result = <String, double>{};
@@ -108,7 +108,7 @@ class SummaryProvider extends ChangeNotifier {
       final completedDays = routine.completionLog.where((log) =>
           log.completedAt.isAfter(range.start.subtract(const Duration(days: 1))) &&
           log.completedAt.isBefore(range.end.add(const Duration(days: 1)))).length;
-      result[routine.name] = (completedDays / totalDays).clamp(0.0, 1.0);
+      result[routine.displayName(isZh)] = (completedDays / totalDays).clamp(0.0, 1.0);
     }
     return result;
   }

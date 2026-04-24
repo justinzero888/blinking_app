@@ -372,7 +372,7 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
                     final isSelected = _selectedTagIds.contains(tag.id);
                     final colorValue = int.parse(tag.color.substring(1), radix: 16) + 0xFF000000;
                     return FilterChip(
-                      label: Text(tag.name),
+                      label: Text(tag.displayName(isZh)),
                       selected: isSelected,
                       onSelected: (_) => _toggleTag(tag.id),
                       backgroundColor: Color(colorValue).withValues(alpha: 0.2),

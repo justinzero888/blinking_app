@@ -153,7 +153,7 @@ class _MomentScreenState extends State<MomentScreen> {
                   backgroundColor: Color(colorValue),
                   radius: 8,
                 ),
-                title: Text(tag.name),
+                title: Text(tag.displayName(isZh)),
                 onTap: () {
                   setState(() {
                     _filter = 'tag';

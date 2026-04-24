@@ -34,6 +34,9 @@ class Tag {
     );
   }
 
+  /// Returns the display name for the current locale.
+  String displayName(bool isZh) => isZh ? name : nameEn;
+
   Map<String, dynamic> toJson() {
     return {
       'id': id,
