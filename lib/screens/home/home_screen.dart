@@ -398,8 +398,8 @@ class _OnboardingBanner extends StatelessWidget {
           Expanded(
             child: Text(
               isZh
-                  ? '欢迎使用 Blinking ✨\n记录生活片段，追踪习惯，与 AI 一起反思成长。'
-                  : 'Welcome to Blinking ✨\nCapture your moments, track habits, and reflect with AI.',
+                  ? '欢迎使用 Blinking Notes。生命是呼吸、进食与消化、眨眼——睁开又闭上。留意、记录，珍惜身边的小事。'
+                  : 'Welcome to Blinking Notes. Life is breath in and out, eat and digest, blink — eyes open and shut. Notice, note, and cherish the little things around you.',
               style: TextStyle(
                 color: primaryColor,
                 fontSize: 13,
