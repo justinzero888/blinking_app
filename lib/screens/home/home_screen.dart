@@ -398,7 +398,7 @@ class _OnboardingBanner extends StatelessWidget {
           Expanded(
             child: Text(
               isZh
-                  ? '欢迎使用 Blinking Notes。生命是呼吸、进食与消化、眨眼——睁开又闭上。留意、记录，珍惜身边的小事。'
+                  ? '欢迎使用 Blinking Notes。生命是一呼一吸、一食一化、一睁一闭。\n留意、记取，且惜取身边点滴清欢。'
                   : 'Welcome to Blinking Notes. Life is breath in and out, eat and digest, blink — eyes open and shut. Notice, note, and cherish the little things around you.',
               style: TextStyle(
                 color: primaryColor,
