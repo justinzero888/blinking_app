@@ -4,7 +4,7 @@ import '../core/config/constants.dart';
 
 /// Locale provider for managing language
 class LocaleProvider extends ChangeNotifier {
-  Locale _locale = const Locale('zh');  // Default to Chinese
+  Locale _locale = const Locale('en');  // Default to English
   
   Locale get locale => _locale;
   
