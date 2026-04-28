@@ -6,6 +6,11 @@ class CardFolder {
   final bool isDefault;
   final DateTime createdAt;
 
+  String displayNameFor(bool isZh) {
+    if (!isZh && id == 'folder_default') return 'My Cards';
+    return name;
+  }
+
   const CardFolder({
     required this.id,
     required this.name,

@@ -8,6 +8,7 @@ class CardTemplate {
   final String bgColor;    // hex background color
   final bool isBuiltIn;
   final String? customImagePath;
+  final String? sourceTemplateId; // set on copies of built-in templates
   final DateTime createdAt;
 
   const CardTemplate({
@@ -19,11 +20,12 @@ class CardTemplate {
     required this.bgColor,
     this.isBuiltIn = false,
     this.customImagePath,
+    this.sourceTemplateId,
     required this.createdAt,
   });
 
   /// Returns a locale-aware display name. Built-in IDs are mapped to English;
-  /// user-created templates return their stored name unchanged.
+  /// copies of built-in templates use their sourceTemplateId to derive an English name.
   String displayNameFor(bool isZh) {
     if (!isZh) {
       const en = {
@@ -36,6 +38,10 @@ class CardTemplate {
       };
       final mapped = en[id];
       if (mapped != null) return mapped;
+      if (sourceTemplateId != null) {
+        final sourceName = en[sourceTemplateId];
+        if (sourceName != null) return 'Custom — $sourceName';
+      }
     }
     return name;
   }
@@ -50,6 +56,7 @@ class CardTemplate {
     bool? isBuiltIn,
     String? customImagePath,
     bool clearCustomImage = false,
+    String? sourceTemplateId,
     DateTime? createdAt,
   }) {
     return CardTemplate(
@@ -61,6 +68,7 @@ class CardTemplate {
       bgColor: bgColor ?? this.bgColor,
       isBuiltIn: isBuiltIn ?? this.isBuiltIn,
       customImagePath: clearCustomImage ? null : (customImagePath ?? this.customImagePath),
+      sourceTemplateId: sourceTemplateId ?? this.sourceTemplateId,
       createdAt: createdAt ?? this.createdAt,
     );
   }
@@ -74,6 +82,7 @@ class CardTemplate {
         'bg_color': bgColor,
         'is_built_in': isBuiltIn ? 1 : 0,
         'custom_image_path': customImagePath,
+        'source_template_id': sourceTemplateId,
         'created_at': createdAt.toIso8601String(),
       };
 
@@ -86,6 +95,7 @@ class CardTemplate {
         bgColor: json['bg_color'] as String? ?? '#FFFFFF',
         isBuiltIn: (json['is_built_in'] as int? ?? 0) == 1,
         customImagePath: json['custom_image_path'] as String?,
+        sourceTemplateId: json['source_template_id'] as String?,
         createdAt: DateTime.parse(json['created_at'] as String),
       );
 }

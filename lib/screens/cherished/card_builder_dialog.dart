@@ -314,7 +314,7 @@ class _CardBuilderDialogState extends State<CardBuilderDialog> {
                         child: Row(children: [
                           Text(f.icon),
                           const SizedBox(width: 8),
-                          Text(f.name)
+                          Text(f.displayNameFor(isZh))
                         ]),
                       ))
                   .toList(),
@@ -497,6 +497,7 @@ class _CardBuilderDialogState extends State<CardBuilderDialog> {
       isScrollControlled: true,
       builder: (ctx) => _TemplateEditorSheet(
         template: template,
+        isZh: context.read<LocaleProvider>().locale.languageCode == 'zh',
         onSave: (updated) async {
           final cp = context.read<CardProvider>();
           if (updated.isBuiltIn) {
@@ -517,9 +518,10 @@ class _CardBuilderDialogState extends State<CardBuilderDialog> {
 /// Bottom sheet for editing a template's name, colors, and background image.
 class _TemplateEditorSheet extends StatefulWidget {
   final CardTemplate template;
+  final bool isZh;
   final Future<void> Function(CardTemplate updated) onSave;
 
-  const _TemplateEditorSheet({required this.template, required this.onSave});
+  const _TemplateEditorSheet({required this.template, required this.isZh, required this.onSave});
 
   @override
   State<_TemplateEditorSheet> createState() => _TemplateEditorSheetState();
@@ -534,7 +536,7 @@ class _TemplateEditorSheetState extends State<_TemplateEditorSheet> {
   @override
   void initState() {
     super.initState();
-    _nameController = TextEditingController(text: widget.template.name);
+    _nameController = TextEditingController(text: widget.template.displayNameFor(widget.isZh));
     _bgColor = widget.template.bgColor;
     _customImagePath = widget.template.customImagePath;
   }

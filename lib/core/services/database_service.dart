@@ -5,7 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../models/models.dart';
 
 class DatabaseService {
-  static const int kSchemaVersion = 9;
+  static const int kSchemaVersion = 10;
   static final DatabaseService _instance = DatabaseService._internal();
   factory DatabaseService() => _instance;
   DatabaseService._internal();
@@ -104,6 +104,9 @@ class DatabaseService {
       await db.execute(
         'CREATE INDEX IF NOT EXISTS idx_completions_routine_id ON completions(routine_id)',
       );
+    }
+    if (oldVersion < 10) {
+      await db.execute('ALTER TABLE templates ADD COLUMN source_template_id TEXT');
     }
   }
 
@@ -204,6 +207,7 @@ class DatabaseService {
         bg_color TEXT NOT NULL DEFAULT '#FFFFFF',
         is_built_in INTEGER NOT NULL DEFAULT 0,
         custom_image_path TEXT,
+        source_template_id TEXT,
         created_at TEXT NOT NULL
       )
     ''');

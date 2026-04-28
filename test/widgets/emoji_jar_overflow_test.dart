@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:blinking/providers/locale_provider.dart';
 import 'package:blinking/widgets/emoji_jar.dart';
 
 /// EmojiJarWidget._maxVisible (private) — keep in sync if widget changes.
 const int _maxVisible = 30;
 
-/// Wraps [child] with just LocaleProvider.
+/// Wraps [child] with just LocaleProvider (defaults to 'en').
 ///
 /// These tests all pass [emotionsOverride], which causes EmojiJarWidget to
 /// short-circuit via `??` and never call `context.watch<JarProvider>()`,
@@ -15,6 +16,14 @@ const int _maxVisible = 30;
 Widget _wrap(Widget child) {
   return ChangeNotifierProvider<LocaleProvider>(
     create: (_) => LocaleProvider(),
+    child: MaterialApp(home: Scaffold(body: Center(child: child))),
+  );
+}
+
+/// Wraps [child] with a LocaleProvider pre-seeded to Chinese.
+Widget _wrapZh(Widget child, LocaleProvider provider) {
+  return ChangeNotifierProvider<LocaleProvider>.value(
+    value: provider,
     child: MaterialApp(home: Scaffold(body: Center(child: child))),
   );
 }
@@ -72,16 +81,19 @@ void main() {
       expect(badgeFinder, findsNothing);
     });
 
-    testWidgets('empty list shows empty label (zh default locale)', (tester) async {
-      await tester.pumpWidget(_wrap(EmojiJarWidget(
+    testWidgets('empty list shows empty label (zh locale)', (tester) async {
+      SharedPreferences.setMockInitialValues({'language': 'zh'});
+      final provider = LocaleProvider();
+      await provider.loadLocale();
+
+      await tester.pumpWidget(_wrapZh(EmojiJarWidget(
         date: DateTime(2026),
         size: 160,
         emotionsOverride: const [],
         showAskAi: false,
-      )));
+      ), provider));
       await tester.pump();
 
-      // Default LocaleProvider locale is 'zh'
       expect(find.text('空'), findsOneWidget);
     });
   });
@@ -109,8 +121,8 @@ void main() {
       )));
       await tester.pump();
 
-      // Default locale is 'zh'
-      expect(find.text('问问 AI'), findsOneWidget);
+      // Default locale is 'en'
+      expect(find.text('Ask AI'), findsOneWidget);
     });
   });
 }

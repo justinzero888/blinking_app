@@ -102,6 +102,7 @@ class CardProvider extends ChangeNotifier {
       id: _uuid.v4(),
       name: '$prefix — ${source.displayNameFor(isZh)}',
       isBuiltIn: false,
+      sourceTemplateId: source.id,
       createdAt: DateTime.now(),
     );
     await _storage.addTemplate(copy);
