@@ -34,7 +34,7 @@
 | # | Item | Status |
 |---|------|--------|
 | 1 | Firebase / Cloud Sync | Not started — deps commented out |
-| 2 | iOS build | Blocked — macOS 26 Tahoe beta + Xcode 16.2 incompatibility |
+| 2 | iOS build | Blocked — Flutter upgrade required for Xcode 26 deprecated API fix; see infrastructure upgrade plan |
 | 3 | Chorus social feature | In progress — ChorusService + PostToChorusSheet added, wired to EntryDetail |
 | 4 | Custom emoji images E-1/E-2 | Deferred from v1.1.0 beta |
 | 5 | Card generation AI multi-design suggestions | Deferred from v1.1.0 beta |
@@ -136,7 +136,7 @@ flutter build appbundle --release
 
 ### Open
 - Firebase / Cloud Sync — all deps commented out, sync toggle is a no-op
-- iOS build — blocked on Xcode / macOS 26 Tahoe beta incompatibility
+- iOS build — blocked on Flutter upgrade for Xcode 26 deprecated API fix (Xcode 26.4.1 available; Flutter stable fix pending)
 - Chorus feature — service + sheet exist but backend API not confirmed
 
 ### Resolved
@@ -154,10 +154,16 @@ flutter build appbundle --release
 
 ## Next Steps
 
-1. Confirm Chorus backend API and complete PostToChorusSheet integration
-2. Firebase project setup + cloud sync implementation
-3. iOS build — unblock when Xcode update available
+1. Submit Android v1.1.0-beta.3+18 AAB to Google Play (Internal Testing → Production)
+2. Confirm Chorus backend API and complete PostToChorusSheet integration
+3. Firebase project setup + cloud sync implementation
 4. Entry detail read-only view polish
+
+## Active Plans
+
+| Plan | Status | Link |
+|------|--------|------|
+| Infrastructure Upgrade & iOS Release | DRAFT — awaiting Flutter stable + Xcode 26 | [2026-04-28-infrastructure-upgrade-ios-release.md](docs/plans/2026-04-28-infrastructure-upgrade-ios-release.md) |
 
 ## Contact
 - Developer: Justin
