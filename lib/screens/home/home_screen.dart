@@ -336,26 +336,20 @@ class _HomeScreenState extends State<HomeScreen> {
     final isZh = context.read<LocaleProvider>().locale.languageCode == 'zh';
 
     return Card(
-      child: CheckboxListTile(
-        secondary: readOnly
-            ? Icon(
-                isCompleted ? Icons.check_circle : Icons.radio_button_unchecked,
-                color: isCompleted ? Colors.green : Colors.grey,
-              )
-            : Icon(
-                isCompleted ? Icons.check_circle : Icons.radio_button_unchecked,
-                color: isCompleted ? Colors.green : Colors.grey,
-              ),
+      child: ListTile(
+        leading: Icon(
+          isCompleted ? Icons.check_box : Icons.check_box_outline_blank,
+          color: isCompleted ? Colors.green : Colors.grey,
+        ),
         title: Text(
           routine.displayName(isZh),
           style: TextStyle(
             color: isMissed ? Colors.red[300] : null,
           ),
         ),
-        value: isCompleted,
-        onChanged: readOnly
+        onTap: readOnly
             ? null
-            : (value) {
+            : () {
                 context.read<RoutineProvider>().toggleComplete(routine.id, date: _selectedDate);
               },
       ),
