@@ -518,7 +518,10 @@ class StorageService {
   }
 
   /// RESTORE FROM BACKUP (.json or .zip)
-  Future<void> restoreFromBackup(File backupFile) async {
+  Future<void> restoreFromBackup(
+    File backupFile, {
+    void Function(double progress)? onProgress,
+  }) async {
     final String extension = backupFile.path.split('.').last.toLowerCase();
 
     if (extension == 'json') {
@@ -526,44 +529,70 @@ class StorageService {
       final Map<String, dynamic> data = json.decode(content);
       await importData(data);
     } else if (extension == 'zip') {
-      final bytes = await backupFile.readAsBytes();
-      final archive = ZipDecoder().decodeBytes(bytes);
+      final inputStream = InputFileStream(backupFile.path);
+      Archive? archive;
+      try {
+        archive = ZipDecoder().decodeStream(inputStream);
 
-      // Find and process data.json first
-      final dataFile = archive.findFile('data.json');
-      if (dataFile != null) {
-        final dataStr = utf8.decode(dataFile.content as List<int>);
-        final data = json.decode(dataStr) as Map<String, dynamic>;
-        await importData(data);
-      }
+        // Find and process data.json first
+        final dataFile = archive.findFile('data.json');
+        if (dataFile != null) {
+          final dataStr = utf8.decode(dataFile.content as List<int>);
+          final data = json.decode(dataStr) as Map<String, dynamic>;
+          await importData(data);
+        }
 
-      // Process media and avatar files
-      final docDir = await getApplicationDocumentsDirectory();
-      for (final file in archive) {
-        if (file.isFile && (file.name.startsWith('media/') || file.name.startsWith('avatar/'))) {
-          final targetFile = File(path_pkg.join(docDir.path, file.name));
-          if (!await targetFile.parent.exists()) {
-            await targetFile.parent.create(recursive: true);
+        // Process media and avatar files — stream each directly to disk
+        final docDir = await getApplicationDocumentsDirectory();
+
+        // Count total files to extract for progress tracking
+        int totalFiles = 0;
+        for (final file in archive) {
+          if (file.isFile && (file.name.startsWith('media/') || file.name.startsWith('avatar/'))) {
+            totalFiles++;
           }
-          await targetFile.writeAsBytes(file.content as List<int>);
         }
-      }
 
-      // Restore AI persona settings from persona.json
-      final personaFile = archive.findFile('persona.json');
-      if (personaFile != null) {
-        final personaStr = utf8.decode(personaFile.content as List<int>);
-        final personaMap = json.decode(personaStr) as Map<String, dynamic>;
-        if (personaMap.containsKey('ai_assistant_name')) {
-          await _prefs.setString('ai_assistant_name', personaMap['ai_assistant_name'] as String);
+        int processedFiles = 0;
+        for (final file in archive) {
+          if (file.isFile && (file.name.startsWith('media/') || file.name.startsWith('avatar/'))) {
+            final targetPath = path_pkg.join(docDir.path, file.name);
+            final targetDir = Directory(path_pkg.dirname(targetPath));
+            if (!await targetDir.exists()) {
+              await targetDir.create(recursive: true);
+            }
+            final output = OutputFileStream(targetPath);
+            try {
+              file.writeContent(output);
+            } finally {
+              await output.close();
+            }
+            processedFiles++;
+            if (totalFiles > 0) {
+              onProgress?.call(processedFiles / totalFiles);
+            }
+          }
         }
-        if (personaMap.containsKey('ai_assistant_personality')) {
-          await _prefs.setString('ai_assistant_personality', personaMap['ai_assistant_personality'] as String);
+
+        // Restore AI persona settings from persona.json
+        final personaFile = archive.findFile('persona.json');
+        if (personaFile != null) {
+          final personaStr = utf8.decode(personaFile.content as List<int>);
+          final personaMap = json.decode(personaStr) as Map<String, dynamic>;
+          if (personaMap.containsKey('ai_assistant_name')) {
+            await _prefs.setString('ai_assistant_name', personaMap['ai_assistant_name'] as String);
+          }
+          if (personaMap.containsKey('ai_assistant_personality')) {
+            await _prefs.setString('ai_assistant_personality', personaMap['ai_assistant_personality'] as String);
+          }
+          if (personaMap.containsKey('ai_avatar_zip_path')) {
+            final restoredPath = path_pkg.join(docDir.path, personaMap['ai_avatar_zip_path'] as String);
+            await _prefs.setString('ai_avatar_path', restoredPath);
+          }
         }
-        if (personaMap.containsKey('ai_avatar_zip_path')) {
-          final restoredPath = path_pkg.join(docDir.path, personaMap['ai_avatar_zip_path'] as String);
-          await _prefs.setString('ai_avatar_path', restoredPath);
-        }
+      } finally {
+        await archive?.clear();
+        await inputStream.close();
       }
     } else {
       throw Exception('Unsupported backup format: $extension');
