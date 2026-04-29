@@ -1179,31 +1179,126 @@ class _SettingsScreenState extends State<SettingsScreen> {
         final file = File(result.files.single.path!);
 
         if (!mounted) return;
-        showDialog(
+
+        var phase = 0;
+        double progress = 0.0;
+        String estimateText = '';
+        final estimator = _BackupEstimator();
+
+        await showDialog<void>(
           context: context,
           barrierDismissible: false,
-          builder: (context) => const Center(child: CircularProgressIndicator()),
-        );
+          builder: (dialogContext) => StatefulBuilder(
+            builder: (_, setDialogState) {
+              if (phase == 0) {
+                return AlertDialog(
+                  title: Text(isZh ? '恢复数据' : 'Restore Data'),
+                  content: Text(isZh
+                      ? '从此备份恢复数据将替换您当前的所有数据。'
+                      : 'Restore data from this backup? This will replace all your current data.'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(dialogContext),
+                      child: Text(isZh ? '取消' : 'Cancel'),
+                    ),
+                    ElevatedButton(
+                      onPressed: () async {
+                        setDialogState(() => phase = 1);
+                        await _performRestore(
+                          context,
+                          dialogContext,
+                          file,
+                          isZh,
+                          (p) {
+                            if (dialogContext.mounted) {
+                              setDialogState(() {
+                                progress = p;
+                                estimateText = estimator.estimate(p, isZh);
+                              });
+                            }
+                          },
+                        );
+                      },
+                      child: Text(isZh ? '恢复' : 'Restore'),
+                    ),
+                  ],
+                );
+              }
 
-        final storage = context.read<StorageService>();
-        await storage.restoreFromBackup(file);
-
-        if (!mounted) return;
-        context.read<EntryProvider>().loadEntries();
-        context.read<RoutineProvider>().loadRoutines();
-        context.read<TagProvider>().loadTags();
-        await context.read<AiPersonaProvider>().reload();
-
-        if (!mounted) return;
-        Navigator.pop(context); // Close loading
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(isZh ? '数据恢复成功！' : 'Data restored successfully!')),
+              // Phase 1: progress
+              return PopScope(
+                canPop: false,
+                child: AlertDialog(
+                  title: Text(isZh ? '正在恢复...' : 'Restoring...'),
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      LinearProgressIndicator(
+                          value: progress > 0 ? progress : null),
+                      const SizedBox(height: 12),
+                      Text(
+                        '${(progress * 100).round()}%',
+                        style: const TextStyle(
+                            fontSize: 24, fontWeight: FontWeight.bold),
+                      ),
+                      if (estimateText.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text(estimateText,
+                            style: const TextStyle(color: Colors.grey)),
+                      ],
+                      const SizedBox(height: 16),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.warning_amber_rounded,
+                              size: 16, color: Colors.orange),
+                          const SizedBox(width: 4),
+                          Text(
+                            isZh ? '请勿关闭应用' : 'Do not close the app',
+                            style: const TextStyle(color: Colors.orange),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
         );
       }
     } catch (e) {
-      if (mounted) Navigator.pop(context);
-      _showError(context, isZh, e.toString());
+      if (mounted) _showError(context, isZh, e.toString());
+    }
+  }
+
+  Future<void> _performRestore(
+    BuildContext context,
+    BuildContext dialogContext,
+    File file,
+    bool isZh,
+    void Function(double) onProgress,
+  ) async {
+    try {
+      final storage = context.read<StorageService>();
+      await storage.restoreFromBackup(file, onProgress: onProgress);
+
+      if (!dialogContext.mounted) return;
+      Navigator.pop(dialogContext);
+
+      if (!context.mounted) return;
+      context.read<EntryProvider>().loadEntries();
+      context.read<RoutineProvider>().loadRoutines();
+      context.read<TagProvider>().loadTags();
+      await context.read<AiPersonaProvider>().reload();
+
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(isZh ? '数据恢复成功！' : 'Data restored successfully!')),
+      );
+    } catch (e) {
+      if (dialogContext.mounted) Navigator.pop(dialogContext);
+      if (context.mounted) _showError(context, isZh, e.toString());
     }
   }
 
