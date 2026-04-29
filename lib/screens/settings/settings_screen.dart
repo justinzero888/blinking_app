@@ -1277,7 +1277,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     BuildContext dialogContext,
     File file,
     bool isZh,
-    void Function(double) onProgress,
+    void Function(double)? onProgress,
   ) async {
     try {
       final storage = context.read<StorageService>();
