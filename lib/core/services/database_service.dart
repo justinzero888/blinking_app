@@ -1,16 +1,39 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../models/models.dart';
 
 class DatabaseService {
-  static const int kSchemaVersion = 10;
+  static const int kSchemaVersion = 11;
   static final DatabaseService _instance = DatabaseService._internal();
   factory DatabaseService() => _instance;
   DatabaseService._internal();
 
   Database? _database;
+
+  /// Test-only: creates a fresh database at [path] with the full v11 schema.
+  /// Returns the raw Database so tests can inspect indexes.
+  @visibleForTesting
+  static Future<Database> createTestDatabase(String path) async {
+    final db = await openDatabase(
+      path,
+      version: 11,
+      onCreate: (db, version) async {
+        final svc = DatabaseService._internal();
+        await svc._onCreate(db, version);
+      },
+    );
+    return db;
+  }
+
+  /// Test-only: runs the onUpgrade migration on [db] from [oldVersion].
+  @visibleForTesting
+  static Future<void> runMigration(Database db, int oldVersion) async {
+    final svc = DatabaseService._internal();
+    await svc._onUpgrade(db, oldVersion, 11);
+  }
 
   Future<Database> get database async {
     if (_database != null) return _database!;
@@ -107,6 +130,14 @@ class DatabaseService {
     }
     if (oldVersion < 10) {
       await db.execute('ALTER TABLE templates ADD COLUMN source_template_id TEXT');
+    }
+    if (oldVersion < 11) {
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_entry_tags_entry_id ON entry_tags(entry_id)',
+      );
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_note_card_entries_card_id ON note_card_entries(card_id)',
+      );
     }
   }
 
@@ -243,6 +274,12 @@ class DatabaseService {
     );
     await db.execute(
       'CREATE INDEX IF NOT EXISTS idx_completions_routine_id ON completions(routine_id)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_entry_tags_entry_id ON entry_tags(entry_id)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_note_card_entries_card_id ON note_card_entries(card_id)',
     );
   }
 

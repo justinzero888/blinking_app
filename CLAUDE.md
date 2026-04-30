@@ -5,12 +5,12 @@ Personal memory/habit-tracking Flutter app (记忆闪烁). Path: `/Users/justinz
 ## Quick Reference
 
 - **Flutter SDK:** `^3.11.0`
-- **Current version:** `1.1.0-beta.2+11` (pubspec.yaml)
-- **DB version:** 8 (sequential migrations in `DatabaseService.onUpgrade`)
+- **Current version:** `1.1.0-beta.4+19` (pubspec.yaml)
+- **DB version:** 11 (`kSchemaVersion = 11` in `DatabaseService`)
 - **Build AAB:** `flutter build appbundle --release`
 - **Build APK:** `flutter build apk --release`
 - **Lint:** `flutter analyze --no-pub` (target: 0 errors)
-- **Tests:** `flutter test` (44 tests, all passing)
+- **Tests:** `flutter test` (93 tests, all passing)
 - **Feedback email:** `blinkingfeedback@gmail.com`
 
 ---
@@ -43,7 +43,7 @@ Calendar | Moment | Routine | 珍藏 | Settings
 
 ### Storage Layers
 - **SQLite** via `DatabaseService` singleton (accessed through `StorageService`)
-  - DB version 8; migration blocks: `< 2` (entries/routines), `< 3` (emotion/category), `< 4` (card tables), `< 5` (routine scheduling), `< 6` (template image + card AI summary), `< 7` (card rich content), `< 8` (routine `icon_image_path`)
+  - DB version 11; migration blocks: `< 2` (entries/routines), `< 3` (emotion/category), `< 4` (card tables), `< 5` (routine scheduling), `< 6` (template image + card AI summary), `< 7` (card rich content), `< 8` (routine `icon_image_path`), `< 9` (template `custom_image_path`), `< 10` (template `source_template_id`), `< 11` (indexes on `entry_tags(entry_id)` + `note_card_entries(card_id)`)
   - Tables: `entries`, `routines`, `tags`, `templates`, `card_folders`, `note_cards`, `note_card_entries`
 - **SharedPreferences** for: theme, locale, LLM provider config (`llm_providers`, `llm_selected_index`), AI persona (`ai_assistant_name`, `ai_assistant_personality`)
 - **File system** via `FileService` for media attachments, rendered card PNGs, custom template images, and card inline images (`card_images/`)
@@ -58,9 +58,10 @@ Calendar | Moment | Routine | 珍藏 | Settings
 | `lib/main.dart` | App entry point, `StorageService` init |
 | `lib/core/config/constants.dart` | `AppConstants.appVersion` — keep in sync with pubspec.yaml |
 | `lib/core/services/storage_service.dart` | All CRUD; seeds default tags, routines, templates, folders |
-| `lib/core/services/database_service.dart` | SQLite schema v8 + migrations |
+| `lib/core/services/database_service.dart` | SQLite schema v10 + sequential migrations |
 | `lib/core/services/llm_service.dart` | OpenAI-compatible chat/complete; reads provider config from SharedPreferences |
 | `lib/core/services/file_service.dart` | Media copy to app documents directory |
+| `lib/core/services/chorus_service.dart` | Social publishing to Chorus backend |
 | `lib/core/config/emotions.dart` | `kDefaultEmotions` — 10 emoji strings |
 | `lib/providers/entry_provider.dart` | `addEntry`, `getDayEmotion`, `setSearchQuery`, `setFilterTag` |
 | `lib/providers/routine_provider.dart` | `getRoutinesForDate`, `isMissedOn`, `toggleComplete` |
@@ -72,6 +73,7 @@ Calendar | Moment | Routine | 珍藏 | Settings
 | `lib/screens/add_entry_screen.dart` | Add/edit entry (emotion picker, tag picker, image — video/audio removed in v1.1.0) |
 | `lib/screens/assistant/assistant_screen.dart` | Multi-turn LLM chat; dynamic system prompt from AI persona; Save Reflection |
 | `lib/screens/moment/moment_screen.dart` | Entry list with live search + tag/date filter |
+| `lib/screens/moment/entry_detail_screen.dart` | Read-only entry detail view with share + Post to Chorus |
 | `lib/screens/routine/routine_screen.dart` | 3-tab: 全部 / 今日 / 记录; add/edit dialog with frequency/day/date pickers |
 | `lib/screens/cherished/cherished_memory_screen.dart` | 3-tab shell: 书架 / 卡片 / 总结 |
 | `lib/screens/cherished/shelf_tab.dart` | Yearly jar cards → `YearJarDetailScreen` |
@@ -80,6 +82,7 @@ Calendar | Moment | Routine | 珍藏 | Settings
 | `lib/screens/cherished/card_editor_screen.dart` | flutter_quill rich text editor; word counter (X/100); image insert; save navigates to `CardPreviewScreen` |
 | `lib/screens/cherished/card_preview_screen.dart` | PNG preview of rendered card; Share (image-only) + Save actions |
 | `lib/screens/cherished/summary_tab.dart` | fl_chart visualizations (scope: 日/周/月) |
+| `lib/screens/chorus/post_to_chorus_sheet.dart` | Bottom sheet for posting entries to Chorus social platform |
 | `lib/screens/settings/settings_screen.dart` | LLM config, tags, language, export, AI 个性化, Send Feedback |
 | `lib/widgets/emoji_jar.dart` | `EmojiJarWidget` CustomPainter + AI bottom sheet |
 | `lib/widgets/card_renderer.dart` | Off-screen PNG render; `_autoFontSize()` 96px→9px; text area = height×0.8/width×0.88; custom bg image with rounded clip |
@@ -91,7 +94,7 @@ Calendar | Moment | Routine | 珍藏 | Settings
 ## Important Conventions
 
 ### Database Migrations
-Always use sequential `if (oldVersion < N)` blocks in `DatabaseService.onUpgrade`. Never nest or use `else if`. `_onCreate` always creates the full v8 schema.
+Always use sequential `if (oldVersion < N)` blocks in `DatabaseService.onUpgrade`. Never nest or use `else if`. `_onCreate` always creates the full v10 schema. `kSchemaVersion` at top of class defines the current target.
 
 ### Version Sync
 When bumping `pubspec.yaml` version, also update `lib/core/config/constants.dart` `AppConstants.appVersion` (semver only, no build number) and the version subtitle in `settings_screen.dart`. A `test/core/version_test.dart` enforces this.
@@ -127,7 +130,7 @@ For `SummaryProvider` emotion trend chart: 😊=5, 😌=4, 😐=3, 😢=2, 😡=
 `_extractPlainText()` in `CardRenderer` implements this priority. `note_card_entries` links to original entries and must never be modified by card operations.
 
 ### Card Templates
-Built-in templates must never be mutated. Use `CardProvider.copyBuiltInTemplate({bool isZh})` to create an `isBuiltIn: false` copy before editing. Template display names use `CardTemplate.displayNameFor(bool isZh)` — do not use `.name` directly in UI.
+Built-in templates must never be mutated. Use `CardProvider.copyBuiltInTemplate({bool isZh})` to create an `isBuiltIn: false` copy before editing. Template display names use `CardTemplate.displayNameFor(bool isZh)` — do not use `.name` directly in UI. Copies of built-in templates store `sourceTemplateId` so they can resolve English display names (e.g. "Custom — Spring Day").
 
 ### Card Renderer
 `CardRenderer` uses `_autoFontSize(text, maxWidth, maxHeight)` — iterates 96px→9px via `TextPainter` to find largest font that fits. Text area = `width * 0.88` × `height * 0.8`. Both the widget `build()` and static `renderToImage()` use the same helper for consistent sizing.
@@ -152,7 +155,7 @@ Use `try { await launchUrl(uri); } catch (_) { ... }` pattern. Do NOT use `canLa
 
 | Priority | Item |
 |----------|------|
-| P2 | Dedicated entry detail / read-only view |
+| P2 | Chorus social feature — backend API not yet confirmed |
 | P3 | Firebase / Cloud Sync (all deps commented out in pubspec) |
 | P3 | Card generation AI multi-design suggestions (deferred from v1.1.0 beta) |
 | P3 | Custom emoji images E-1/E-2 (deferred from v1.1.0 beta) |
@@ -173,3 +176,5 @@ Use `try { await launchUrl(uri); } catch (_) { ... }` pattern. Do NOT use `canLa
 | v1.0.6 | ddf89d5 | Rich card editor (flutter_quill), 100-word limit, card tap → edit, 3 bug fixes |
 | v1.1.0-beta.1+9 | fb79935 | Public beta: bilingual UI, legal docs, emoji jar fix, habit import/export, card preview |
 | v1.1.0-beta.2+11 | 22776c8 | Adaptive icon, card fixes, font fill, feedback button, iOS xcassets fixes |
+| v1.1.0-beta.3+18 | 7edfcef | DB v10 (source_template_id), template locale fix, EntryDetailScreen, ChorusService, 56 tests |
+| v1.1.0-beta.4+19 | 4d4b51f | Calendar routine checklist simplified, restore progress dialog, 79 tests |

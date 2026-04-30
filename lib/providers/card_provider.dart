@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
 import '../models/card_folder.dart';
 import '../models/card_template.dart';
@@ -92,6 +93,11 @@ class CardProvider extends ChangeNotifier {
     if (imagePath != null) {
       final file = File(imagePath);
       if (await file.exists()) await file.delete();
+    } else {
+      final docDir = await getApplicationDocumentsDirectory();
+      final deterministicPath = '${docDir.path}/cards/$id.png';
+      final determFile = File(deterministicPath);
+      if (await determFile.exists()) await determFile.delete();
     }
     notifyListeners();
   }
@@ -139,8 +145,23 @@ class CardProvider extends ChangeNotifier {
   }
 
   Future<void> deleteFolder(String id) async {
+    final cardsInFolder = _cards.where((c) => c.folderId == id).toList();
+    final docDir = await getApplicationDocumentsDirectory();
+    for (final card in cardsInFolder) {
+      final imagePath = card.renderedImagePath;
+      if (imagePath != null) {
+        final file = File(imagePath);
+        if (await file.exists()) await file.delete();
+      }
+      final deterministicPath = '${docDir.path}/cards/${card.id}.png';
+      if (deterministicPath != imagePath) {
+        final determFile = File(deterministicPath);
+        if (await determFile.exists()) await determFile.delete();
+      }
+    }
     await _storage.deleteCardFolder(id);
     _folders.removeWhere((f) => f.id == id);
+    _cards.removeWhere((c) => c.folderId == id);
     notifyListeners();
   }
 
@@ -153,7 +174,14 @@ class CardProvider extends ChangeNotifier {
   }
 
   Future<void> updateTemplate(CardTemplate template) async {
-    if (template.isBuiltIn) return; // Cannot modify built-in templates
+    if (template.isBuiltIn) return;
+    final oldTemplate = _templates.where((t) => t.id == template.id).firstOrNull;
+    final oldPath = oldTemplate?.customImagePath;
+    final newPath = template.customImagePath;
+    if (oldPath != null && oldPath != newPath) {
+      final file = File(oldPath);
+      if (await file.exists()) await file.delete();
+    }
     await _storage.updateTemplate(template);
     final index = _templates.indexWhere((t) => t.id == template.id);
     if (index != -1) {
@@ -165,9 +193,14 @@ class CardProvider extends ChangeNotifier {
   Future<void> deleteTemplate(String id) async {
     final template = _templates.firstWhere((t) => t.id == id,
         orElse: () => throw Exception('Template not found'));
-    if (template.isBuiltIn) return; // Cannot delete built-in templates
+    if (template.isBuiltIn) return;
+    final customPath = template.customImagePath;
     await _storage.deleteTemplate(id);
     _templates.removeWhere((t) => t.id == id);
+    if (customPath != null) {
+      final file = File(customPath);
+      if (await file.exists()) await file.delete();
+    }
     notifyListeners();
   }
 
@@ -184,5 +217,11 @@ class CardProvider extends ChangeNotifier {
   @visibleForTesting
   void seedForTest(List<NoteCard> cards) {
     _cards = List.of(cards);
+  }
+
+  /// Test-only: seeds the internal template list without touching storage.
+  @visibleForTesting
+  void seedTemplatesForTest(List<CardTemplate> templates) {
+    _templates = List.of(templates);
   }
 }
