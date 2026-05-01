@@ -348,4 +348,40 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get trialInfoCannotEdit => '试用服务商不可编辑。';
+
+  @override
+  String get noteFormat => '笔记';
+
+  @override
+  String get listFormat => '清单';
+
+  @override
+  String get listTitleHint => '清单标题';
+
+  @override
+  String get listItemHint => '添加事项';
+
+  @override
+  String itemsDone(Object done, Object total) {
+    return '$done / $total 已完成';
+  }
+
+  @override
+  String carriedOverBanner(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count 个事项从昨天转入',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get listsSectionHeader => '今日清单';
+
+  @override
+  String get notesSectionHeader => '笔记';
+
+  @override
+  String get listSaveDisabledHint => '请至少添加一个事项';
 }

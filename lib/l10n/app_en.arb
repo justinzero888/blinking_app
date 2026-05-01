@@ -111,5 +111,14 @@
   "trialInfoDialogTitle": "Trial Details",
   "trialInfoModel": "Model: qwen/qwen3.5-flash",
   "trialInfoUrl": "Proxied by Blinking trial backend",
-  "trialInfoCannotEdit": "Trial provider cannot be edited."
+  "trialInfoCannotEdit": "Trial provider cannot be edited.",
+  "noteFormat": "Note",
+  "listFormat": "List",
+  "listTitleHint": "List title",
+  "listItemHint": "Add item",
+  "itemsDone": "{done} / {total} done",
+  "carriedOverBanner": "{count, plural, =1{{count} item carried over from yesterday} other{{count} items carried over from yesterday}}",
+  "listsSectionHeader": "Lists",
+  "notesSectionHeader": "Notes",
+  "listSaveDisabledHint": "Add at least one item"
 }

@@ -111,5 +111,14 @@
   "trialInfoDialogTitle": "试用详情",
   "trialInfoModel": "模型：qwen/qwen3.5-flash",
   "trialInfoUrl": "由 Blinking 试用后端代理",
-  "trialInfoCannotEdit": "试用服务商不可编辑。"
+  "trialInfoCannotEdit": "试用服务商不可编辑。",
+  "noteFormat": "笔记",
+  "listFormat": "清单",
+  "listTitleHint": "清单标题",
+  "listItemHint": "添加事项",
+  "itemsDone": "{done} / {total} 已完成",
+  "carriedOverBanner": "{count, plural, other{{count} 个事项从昨天转入}}",
+  "listsSectionHeader": "今日清单",
+  "notesSectionHeader": "笔记",
+  "listSaveDisabledHint": "请至少添加一个事项"
 }

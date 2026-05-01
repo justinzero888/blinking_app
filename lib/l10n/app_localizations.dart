@@ -775,6 +775,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Trial provider cannot be edited.'**
   String get trialInfoCannotEdit;
+
+  /// No description provided for @noteFormat.
+  ///
+  /// In en, this message translates to:
+  /// **'Note'**
+  String get noteFormat;
+
+  /// No description provided for @listFormat.
+  ///
+  /// In en, this message translates to:
+  /// **'List'**
+  String get listFormat;
+
+  /// No description provided for @listTitleHint.
+  ///
+  /// In en, this message translates to:
+  /// **'List title'**
+  String get listTitleHint;
+
+  /// No description provided for @listItemHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Add item'**
+  String get listItemHint;
+
+  /// No description provided for @itemsDone.
+  ///
+  /// In en, this message translates to:
+  /// **'{done} / {total} done'**
+  String itemsDone(Object done, Object total);
+
+  /// No description provided for @carriedOverBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{{count} item carried over from yesterday} other{{count} items carried over from yesterday}}'**
+  String carriedOverBanner(num count);
+
+  /// No description provided for @listsSectionHeader.
+  ///
+  /// In en, this message translates to:
+  /// **'Lists'**
+  String get listsSectionHeader;
+
+  /// No description provided for @notesSectionHeader.
+  ///
+  /// In en, this message translates to:
+  /// **'Notes'**
+  String get notesSectionHeader;
+
+  /// No description provided for @listSaveDisabledHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Add at least one item'**
+  String get listSaveDisabledHint;
 }
 
 class _AppLocalizationsDelegate

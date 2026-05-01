@@ -351,4 +351,41 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get trialInfoCannotEdit => 'Trial provider cannot be edited.';
+
+  @override
+  String get noteFormat => 'Note';
+
+  @override
+  String get listFormat => 'List';
+
+  @override
+  String get listTitleHint => 'List title';
+
+  @override
+  String get listItemHint => 'Add item';
+
+  @override
+  String itemsDone(Object done, Object total) {
+    return '$done / $total done';
+  }
+
+  @override
+  String carriedOverBanner(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count items carried over from yesterday',
+      one: '$count item carried over from yesterday',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get listsSectionHeader => 'Lists';
+
+  @override
+  String get notesSectionHeader => 'Notes';
+
+  @override
+  String get listSaveDisabledHint => 'Add at least one item';
 }
