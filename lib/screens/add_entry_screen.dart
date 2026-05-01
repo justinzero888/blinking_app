@@ -146,13 +146,10 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
           .where((e) => e.format == EntryFormat.list)
           .toList();
       if (todayLists.isNotEmpty) {
-        final isZh = context.read<LocaleProvider>().locale.languageCode == 'zh';
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(isZh
-                ? '今天已有清单，请编辑现有清单'
-                : 'A list already exists for today. Edit the existing list instead.'),
-            duration: const Duration(seconds: 3),
+        final existingList = todayLists.first;
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (_) => AddEntryScreen(existingEntry: existingList),
           ),
         );
         return;
