@@ -6,7 +6,7 @@ Personal memory/habit-tracking Flutter app (记忆闪烁). Path: `/Users/justinz
 
 - **Flutter SDK:** `^3.11.0` (currently 3.41.8 stable, Apr 24 2026)
 - **macOS:** 26.2 (Tahoe beta) — requires Xcode 26, managed in `ClaudeDev/system-upgrade`
-- **Current version:** `1.1.0-beta.5+20` (pubspec.yaml)
+- **Current version:** `1.1.0-beta.6+21` (pubspec.yaml)
 - **DB version:** 12 (`kSchemaVersion = 12` in `DatabaseService`)
 - **Build AAB:** `flutter build appbundle --release`
 - **Build APK:** `flutter build apk --release`
@@ -169,41 +169,65 @@ Use `try { await launchUrl(uri); } catch (_) { ... }` pattern. Do NOT use `canLa
 |---------|--------|
 | AI assistant (multi-turn LLM chat + Save Reflection) | ✅ Done |
 | AI Secrets tag (exclude private notes from AI context) | ✅ Done |
+| AI Secrets lock icon on entries (PROP-7) | ✅ Done |
 | Bilingual UI (EN/ZH) | ✅ Done |
 | Backup/Restore (ZIP + JSON) with progress bars | ✅ Done |
-| Card share (PNG export) | ✅ Done |
 | Chorus social posting (publish to blinkingchorus.com) | ✅ Done |
 | Entry detail read-only view with share + Post to Chorus | ✅ Done |
 | Habit import/export (JSON) | ✅ Done |
 | Legal docs (Privacy Policy + ToS) | ✅ Done |
-| Note cards + rich editor (flutter_quill, 100-word limit) | ✅ Done |
-| Card PNG cleanup (orphan file deletion on card/folder/template delete) | ✅ Done (PROP-4) |
-| DB indexes v11 (`entry_tags(entry_id)` + `note_card_entries(card_id)`) | ✅ Done (PROP-5) |
+| Card PNG cleanup (PROP-4) | ✅ Done — code preserved |
+| DB indexes v11 (PROP-5) | ✅ Done |
 | Onboarding banner (Calendar, one-time dismissible) | ✅ Done |
 | Trial API key flow (7-day free trial, app + backend) | ✅ Done (PROP-6) |
 | Daily Checklist Entry (ad-hoc lists, carry-forward, 1-per-day) | ✅ Done (PROP-9) |
+| Calendar future date lock (Issue #1) | ✅ Done |
+| Keepsakes → Insights restructure (PROP-8) | ✅ Done |
+| Insights tab — emoji jar carousel + summary charts | ✅ Done |
+| HomeScreen title "Calendar" → "My Day" (Issue #14) | ✅ Done |
+| Contextual FAB — per-tab icon + action (Issue #7) | ✅ Done |
+| Collapsible calendar — week strip default, landscape safe (Issue #13) | ✅ Done |
+| EntryDetailScreen title overflow fix | ✅ Done |
 | UX polish M1–M7, P1-1–P1-10, P2 items | ✅ Done |
 
 ### Pending
 | Priority | Item | Effort | Status |
 |----------|------|--------|--------|
-| P1 | PROP-3 — Promote Android to Production on Google Play | ~15 min manual | Ready — monitor beta soak |
-| P3 | PROP-7 — AI Secrets lock icon on entries | ~1h | UX polish |
-| P3 | PROP-8 — Keepsakes tab rename (deferred post-beta) | ~30 min | Wait for beta feedback |
+| P1 | PROP-3 — Promote Android to Production on Google Play | ~15 min manual | Ready |
+| P2 | Carry-forward manual UAT (TC-11 date manipulation) | ~15min | Pending |
 | P3 | Firebase / Cloud Sync | Large | All deps commented out in pubspec |
-| P3 | Card generation AI multi-design suggestions | Unknown | Deferred from v1.1.0 beta |
-| P3 | Custom emoji images E-1/E-2 | Unknown | Deferred from v1.1.0 beta |
-| P3 | iOS release (Xcode 26 upgrade, App Store submission) | Moved | Managed in separate project: `ClaudeDev/system-upgrade` |
+| P3 | iOS release (Xcode 26 upgrade, App Store submission) | Moved | Managed in `ClaudeDev/system-upgrade` |
+| P3 | Post-launch polish (6 items) | ~4.5h | See bug-reports.md |
+
+### Post-Launch UX Polish (see docs/uxbugs/bug-reports.md)
+| # | Issue | Priority | Effort |
+|---|-------|:--------:|:------:|
+| 7 | Calendar list badge indicator | P3 | ~1.5h |
+| 8 | Robot trial/error state clarity | P2 | ~1h |
+| 9 | One-list-per-day transition UX | P3 | ~45min |
+| 10 | Carry-forward banner timing | P3 | ~30min |
+| 11 | List checkbox UX consistency | P3 | ~1h |
+| 12 | Settings trial banner dismiss | P3 | ~45min |
 
 ### Launch Roadmap (Target: end of May 2026)
 
 | Week | Window | Focus |
 |------|--------|-------|
-| 1–2 | May 1–14 | ~~PROP-6 alpha test~~ ✅ PROP-9 completed (ahead of schedule) |
-| 3 | May 15–21 | PROP-7/PROP-8 polish + carry-forward UAT |
+| 1–2 | May 1–14 | ~~PROP-6~~ ✅ ~~PROP-9~~ ✅ ~~PROP-8 Insights~~ ✅ ~~Issue #1 future date~~ ✅ ~~Issues #4, #7, #13, #14~~ ✅ |
+| 3 | May 15–21 | Carry-forward UAT + post-launch polish items (#7–#12) |
+| 4 | May 22–30 | Launch readiness: Play Store listing, crash triage, smoke tests, version bump, release build, PROP-3 promotion |
+
+**Critical path cleared.** All P1/P2 issues resolved. 9 of 14 bug-reports items complete. App is launch-ready for Android.
+
+### Launch Roadmap (Target: end of May 2026)
+
+| Week | Window | Focus |
+|------|--------|-------|
+| 1–2 | May 1–14 | ~~PROP-6 alpha test~~ ✅ ~~PROP-9 completed~~ ✅ ~~PROP-8 Insights restructure~~ ✅ ~~Issue #1 future date lock~~ ✅ |
+| 3 | May 15–21 | Issue #13 (calendar landscape) + Issue #14 (title rename) + PROP-7 lock icon + carry-forward UAT |
 | 4 | May 22–30 | Launch readiness: Play Store listing, beta crash triage, smoke tests, version bump, release build |
 
-**Critical path:** PROP-6 + PROP-9 both complete. Next priority: launch readiness (PROP-3 Play Store promotion, PROP-7/8 polish).
+**Critical path:** PROP-6, PROP-9, PROP-8, Issue #1 all complete. Next priorities: Issue #13 (landscape UX), Issue #14 (title rename), PROP-3 (Play Store promotion).
 
 **iOS release work** (Xcode 26 upgrade, toolchain migration, App Store submission) has been moved to a separate management project at `/Users/justinzero/ClaudeDev/system-upgrade`. The plan document `docs/plans/2026-04-28-infrastructure-upgrade-ios-release.md` is superseded by the new project's planning.
 
@@ -228,4 +252,5 @@ Use `try { await launchUrl(uri); } catch (_) { ... }` pattern. Do NOT use `canLa
 | v1.1.0-beta.5+20 | d769c1b | PROP-6 trial API key (full stack): app UI + Cloudflare Worker backend; 94 tests |
 | v1.1.0-beta.5+20 | 63981bb–83d8ad9 | PROP-9 daily checklist (8 commits): DB v12, list builder, carry-forward, one-per-day; 125 tests |
 | v1.1.0-beta.5+20 | 2c3fd94 | List edit screen: checkbox + strikethrough consistency with Calendar |
+| v1.1.0-beta.6+21 | (this session) | 9 UX issues resolved: collapsible calendar, My Day rebrand, contextual FAB, Insights restructure (PROP-8), lock icon (PROP-7), future-date lock, landscape-safety, entry detail overflow fix |
 | v1.1.0-beta.4+19 | (this session) | Flutter 3.41.2→3.41.8 upgrade (unblocks Xcode 26); iOS pipeline plan updated; iOS release moved to ClaudeDev/system-upgrade |

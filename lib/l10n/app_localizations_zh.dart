@@ -15,7 +15,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get home => '首页';
 
   @override
-  String get calendar => '日历';
+  String get calendar => '我的一天';
+
+  @override
+  String get myDay => '我的一天';
 
   @override
   String get moment => '瞬间';
@@ -28,6 +31,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get routine => '日常';
+
+  @override
+  String get insights => '洞察';
 
   @override
   String get settings => '设置';

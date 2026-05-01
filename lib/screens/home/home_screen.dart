@@ -10,10 +10,10 @@ import '../../models/entry.dart';
 import '../../widgets/calendar_widget.dart';
 import '../../widgets/entry_card.dart';
 import '../../widgets/emoji_jar.dart';
+import '../../l10n/app_localizations.dart';
 import '../add_entry_screen.dart';
 
-/// Home Screen - Calendar View
-/// Shows monthly calendar + today's overview
+/// My Day — daily dashboard with calendar navigation + today's overview
 class HomeScreen extends StatefulWidget {
   final Function(int)? onNavigate;
 
@@ -27,11 +27,30 @@ class _HomeScreenState extends State<HomeScreen> {
   DateTime _selectedDate = DateTime.now();
   DateTime _focusedMonth = DateTime.now();
   bool _showOnboarding = false;
+  bool _isCalendarExpanded = false;
 
   @override
   void initState() {
     super.initState();
     _checkOnboarding();
+    _loadCalendarPrefs();
+  }
+
+  Future<void> _loadCalendarPrefs() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (mounted) {
+      setState(() => _isCalendarExpanded = prefs.getBool('calendar_expanded') ?? false);
+    }
+  }
+
+  Future<void> _toggleCalendar() async {
+    final prefs = await SharedPreferences.getInstance();
+    final expanded = !_isCalendarExpanded;
+    await prefs.setBool('calendar_expanded', expanded);
+    setState(() => _isCalendarExpanded = expanded);
+    if (expanded) {
+      _focusedMonth = _selectedDate;
+    }
   }
 
   Future<void> _checkOnboarding() async {
@@ -55,7 +74,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(isZh ? '日历' : 'Calendar'),
+        title: Text(_buildTitle(context)),
         centerTitle: true,
         actions: [
           IconButton(
@@ -78,6 +97,8 @@ class _HomeScreenState extends State<HomeScreen> {
             dayHabitStatus: _getDayHabitStatus(),
             onDateSelected: _onDateSelected,
             onMonthChanged: _onMonthChanged,
+            isExpanded: _isCalendarExpanded,
+            onToggleExpand: _toggleCalendar,
           ),
           const Divider(height: 1),
           // Today's Overview
@@ -122,10 +143,12 @@ class _HomeScreenState extends State<HomeScreen> {
   Map<DateTime, ({int completed, int total})> _getDayHabitStatus() {
     final routineProvider = context.read<RoutineProvider>();
     final result = <DateTime, ({int completed, int total})>{};
+    final today = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
     final firstDay = DateTime(_focusedMonth.year, _focusedMonth.month, 1);
     final lastDay = DateTime(_focusedMonth.year, _focusedMonth.month + 1, 0);
     for (int i = 0; i < lastDay.day; i++) {
       final day = firstDay.add(Duration(days: i));
+      if (day.isAfter(today)) break;
       final dayKey = DateTime(day.year, day.month, day.day);
       final scheduled = routineProvider.getRoutinesForDate(day);
       if (scheduled.isEmpty) continue;
@@ -135,16 +158,33 @@ class _HomeScreenState extends State<HomeScreen> {
     return result;
   }
 
+  String _buildTitle(BuildContext context) {
+    final l = AppLocalizations.of(context);
+    final isZh = context.read<LocaleProvider>().locale.languageCode == 'zh';
+    final isToday = _isSameDay(_selectedDate, DateTime.now());
+    final prefix = l?.myDay ?? (isZh ? '我的一天' : 'My Day');
+    if (isToday) return prefix;
+    if (isZh) {
+      return '$prefix - ${_selectedDate.month}月${_selectedDate.day}日';
+    }
+    final df = DateFormat('MMM d');
+    return '$prefix - ${df.format(_selectedDate)}';
+  }
+
   void _goToToday() {
     setState(() {
       _selectedDate = DateTime.now();
       _focusedMonth = DateTime.now();
+      _isCalendarExpanded = false;
     });
   }
 
   void _onDateSelected(DateTime date) {
+    final today = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
+    if (date.isAfter(today) && !_isSameDay(date, today)) return;
     setState(() {
       _selectedDate = date;
+      _focusedMonth = DateTime(date.year, date.month);
     });
   }
 

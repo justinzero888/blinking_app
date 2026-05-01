@@ -6,7 +6,6 @@ import '../../providers/tag_provider.dart';
 import '../../providers/locale_provider.dart';
 import '../../models/models.dart';
 import '../add_entry_screen.dart';
-import '../cherished/card_builder_dialog.dart';
 import 'entry_detail_screen.dart';
 
 class MomentScreen extends StatefulWidget {
@@ -288,21 +287,6 @@ class _MomentScreenState extends State<MomentScreen> {
                   style: const TextStyle(fontSize: 12)),
               const SizedBox(width: 4),
             ],
-            IconButton(
-              icon: const Icon(Icons.style_outlined, size: 18, color: Colors.grey),
-              tooltip: isZh ? '制作卡片' : 'Make card',
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => CardBuilderDialog(initialEntry: entry),
-                    fullscreenDialog: true,
-                  ),
-                );
-              },
-            ),
           ],
         ),
         onTap: () {

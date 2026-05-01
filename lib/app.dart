@@ -9,7 +9,6 @@ import 'providers/tag_provider.dart';
 import 'providers/theme_provider.dart';
 import 'providers/locale_provider.dart';
 import 'providers/jar_provider.dart';
-import 'providers/card_provider.dart';
 import 'providers/summary_provider.dart';
 import 'providers/ai_persona_provider.dart';
 import 'providers/llm_config_notifier.dart';
@@ -20,7 +19,6 @@ import 'screens/cherished/cherished_memory_screen.dart';
 import 'screens/settings/settings_screen.dart';
 import 'screens/add_entry_screen.dart';
 import 'widgets/floating_robot.dart';
-import 'package:flutter_quill/flutter_quill.dart' show FlutterQuillLocalizations;
 import 'l10n/app_localizations.dart';
 
 import 'core/services/export_service.dart';
@@ -79,12 +77,6 @@ class BlinkingApp extends StatelessWidget {
               jar!..update(entryProvider),
         ),
 
-        // CardProvider — standalone, loads from storage
-        ChangeNotifierProvider(
-          create: (context) =>
-              CardProvider(context.read<StorageService>())..load(),
-        ),
-
         // AiPersonaProvider — avatar, name, personality
         ChangeNotifierProvider(create: (_) => AiPersonaProvider()),
 
@@ -111,10 +103,7 @@ class BlinkingApp extends StatelessWidget {
             themeMode: ThemeMode.light,
             locale: localeProvider.locale,
             supportedLocales: AppLocalizations.supportedLocales,
-            localizationsDelegates: [
-              ...AppLocalizations.localizationsDelegates,
-              FlutterQuillLocalizations.delegate,
-            ],
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
             home: const MainScreen(),
           );
         },
@@ -132,14 +121,21 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
+  final _routineKey = GlobalKey<RoutineScreenState>();
 
-  final List<Widget> _screens = [
-    const HomeScreen(),
-    const MomentScreen(),
-    const RoutineScreen(),
-    const CherishedMemoryScreen(),
-    const SettingsScreen(),
-  ];
+  late final List<Widget> _screens;
+
+  @override
+  void initState() {
+    super.initState();
+    _screens = [
+      const HomeScreen(),
+      const MomentScreen(),
+      RoutineScreen(key: _routineKey),
+      const InsightsScreen(),
+      const SettingsScreen(),
+    ];
+  }
 
   void _onTabTapped(int index) {
     setState(() {
@@ -150,7 +146,6 @@ class _MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final isZh = context.watch<LocaleProvider>().locale.languageCode == 'zh';
     return Scaffold(
       body: Stack(
         children: [
@@ -158,7 +153,6 @@ class _MainScreenState extends State<MainScreen> {
             index: _currentIndex,
             children: _screens,
           ),
-          // Floating AI robot — visible on Calendar/Moments/Routine only
           FloatingRobotWidget(currentTabIndex: _currentIndex),
         ],
       ),
@@ -180,8 +174,8 @@ class _MainScreenState extends State<MainScreen> {
             label: l10n.routine,
           ),
           BottomNavigationBarItem(
-            icon: const Icon(Icons.auto_awesome),
-            label: isZh ? '珍藏' : 'Keepsakes',
+            icon: const Icon(Icons.insights),
+            label: l10n.insights,
           ),
           BottomNavigationBarItem(
             icon: const Icon(Icons.settings),
@@ -189,16 +183,30 @@ class _MainScreenState extends State<MainScreen> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        heroTag: 'main_add_entry_fab',
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const AddEntryScreen()),
-          );
-        },
-        child: const Icon(Icons.add),
-      ),
+      floatingActionButton: _buildFab(),
+    );
+  }
+
+  Widget? _buildFab() {
+    if (_currentIndex >= 3) return null;
+
+    if (_currentIndex == 2) {
+      return FloatingActionButton(
+        heroTag: 'main_add_routine_fab',
+        onPressed: () => _routineKey.currentState?.showAddRoutineDialog(context),
+        child: const Icon(Icons.playlist_add),
+      );
+    }
+
+    return FloatingActionButton(
+      heroTag: 'main_add_entry_fab',
+      onPressed: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const AddEntryScreen()),
+        );
+      },
+      child: const Icon(Icons.add),
     );
   }
 }

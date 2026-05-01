@@ -9,7 +9,7 @@ import '../core/services/trial_service.dart';
 import '../screens/assistant/assistant_screen.dart';
 
 /// Floating animated robot widget overlaid on the main screen.
-/// - Visible only on tabs 0 (Calendar), 1 (Moments), 2 (Routine).
+/// - Visible on tabs 0 (Calendar), 1 (Moments), 2 (Routine), 3 (Insights).
 /// - Full opacity + bobbing when API key is configured.
 /// - 50% opacity + no animation + ! badge when no API key.
 class FloatingRobotWidget extends StatefulWidget {
@@ -141,7 +141,7 @@ class _FloatingRobotWidgetState extends State<FloatingRobotWidget>
   @override
   Widget build(BuildContext context) {
     // Hide on Keepsakes (3) and Settings (4)
-    if (widget.currentTabIndex >= 3) return const SizedBox.shrink();
+    if (widget.currentTabIndex >= 4) return const SizedBox.shrink();
 
     final avatarPath = context.watch<AiPersonaProvider>().avatarPath;
     final avatarFile = avatarPath != null ? File(avatarPath) : null;

@@ -15,7 +15,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get home => 'Home';
 
   @override
-  String get calendar => 'Calendar';
+  String get calendar => 'My Day';
+
+  @override
+  String get myDay => 'My Day';
 
   @override
   String get moment => 'Moments';
@@ -28,6 +31,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get routine => 'Routine';
+
+  @override
+  String get insights => 'Insights';
 
   @override
   String get settings => 'Settings';

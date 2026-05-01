@@ -3,16 +3,16 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../providers/locale_provider.dart';
 
-/// Calendar widget for home screen
-/// Displays month view with indicators for days with entries
 class CalendarWidget extends StatelessWidget {
   final DateTime selectedDate;
   final DateTime focusedMonth;
-  final Map<DateTime, int> entryCounts; // date -> count of entries
-  final Map<DateTime, String?> dayEmotions; // date -> dominant emotion emoji
+  final Map<DateTime, int> entryCounts;
+  final Map<DateTime, String?> dayEmotions;
   final Map<DateTime, ({int completed, int total})> dayHabitStatus;
   final Function(DateTime) onDateSelected;
   final Function(DateTime) onMonthChanged;
+  final bool isExpanded;
+  final VoidCallback? onToggleExpand;
 
   const CalendarWidget({
     super.key,
@@ -23,15 +23,35 @@ class CalendarWidget extends StatelessWidget {
     this.dayHabitStatus = const {},
     required this.onDateSelected,
     required this.onMonthChanged,
+    this.isExpanded = false,
+    this.onToggleExpand,
   });
+
+  static DateTime _todayStart() {
+    final now = DateTime.now();
+    return DateTime(now.year, now.month, now.day);
+  }
+
+  static DateTime _maxNavigableMonth(DateTime today) {
+    final year = today.month + 2 > 12 ? today.year + 1 : today.year;
+    final month = today.month + 2 > 12 ? today.month + 2 - 12 : today.month + 2;
+    return DateTime(year, month, 1);
+  }
 
   @override
   Widget build(BuildContext context) {
+    final today = _todayStart();
+    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+    final effectiveExpanded = isLandscape ? false : isExpanded;
+
     return Column(
       children: [
-        _buildHeader(context),
+        _buildHeader(context, today, isLandscape),
         _buildWeekdayLabels(context),
-        _buildCalendarGrid(context),
+        if (effectiveExpanded)
+          _buildCalendarGrid(context, today)
+        else
+          _buildWeekStrip(context, today),
       ],
     );
   }
@@ -39,7 +59,10 @@ class CalendarWidget extends StatelessWidget {
   bool _isZh(BuildContext context) =>
       context.watch<LocaleProvider>().locale.languageCode == 'zh';
 
-  Widget _buildHeader(BuildContext context) {
+  Widget _buildHeader(BuildContext context, DateTime today, bool isLandscape) {
+    final maxMonth = _maxNavigableMonth(today);
+    final atMaxMonth = focusedMonth.year == maxMonth.year &&
+        focusedMonth.month >= maxMonth.month;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
@@ -63,15 +86,28 @@ class CalendarWidget extends StatelessWidget {
                   fontWeight: FontWeight.bold,
                 ),
           ),
-          IconButton(
-            icon: const Icon(Icons.chevron_right),
-            onPressed: () {
-              final nextMonth = DateTime(
-                focusedMonth.year,
-                focusedMonth.month + 1,
-              );
-              onMonthChanged(nextMonth);
-            },
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (!isLandscape && onToggleExpand != null)
+                IconButton(
+                  icon: Icon(isExpanded ? Icons.expand_less : Icons.expand_more),
+                  tooltip: isExpanded ? 'Collapse' : 'Expand',
+                  onPressed: onToggleExpand,
+                ),
+              IconButton(
+                icon: const Icon(Icons.chevron_right),
+                onPressed: atMaxMonth
+                    ? null
+                    : () {
+                        final nextMonth = DateTime(
+                          focusedMonth.year,
+                          focusedMonth.month + 1,
+                        );
+                        onMonthChanged(nextMonth);
+                      },
+              ),
+            ],
           ),
         ],
       ),
@@ -92,6 +128,7 @@ class CalendarWidget extends StatelessWidget {
                       day,
                       style: const TextStyle(
                         fontWeight: FontWeight.w500,
+                        fontSize: 11,
                         color: Colors.grey,
                       ),
                     ),
@@ -102,7 +139,102 @@ class CalendarWidget extends StatelessWidget {
     );
   }
 
-  Widget _buildCalendarGrid(BuildContext context) {
+  // ── Week Strip (collapsed state) ────────────────────────────
+
+  Widget _buildWeekStrip(BuildContext context, DateTime today) {
+    final weekStart = _weekStartFor(selectedDate);
+    final days = List.generate(7, (i) => weekStart.add(Duration(days: i)));
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        children: days.map((day) {
+          final isFuture = day.isAfter(today) && !_isSameDay(day, today);
+          final isSelected = _isSameDay(day, selectedDate);
+          final isToday = _isSameDay(day, today);
+          final dayKey = DateTime(day.year, day.month, day.day);
+          final emotion = dayEmotions[dayKey];
+          final habitStatus = dayHabitStatus[dayKey];
+
+          return Expanded(
+            child: GestureDetector(
+              onTap: isFuture ? null : () => onDateSelected(day),
+              child: Opacity(
+                opacity: isFuture ? 0.35 : 1.0,
+                child: Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 1),
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? Theme.of(context).colorScheme.primary
+                        : null,
+                    border: isToday
+                        ? Border.all(color: const Color(0xFF2A9D8F), width: 2)
+                        : null,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        '${day.day}',
+                        style: TextStyle(
+                          color: isSelected ? Colors.white : Colors.black87,
+                          fontWeight: isToday ? FontWeight.bold : null,
+                          fontSize: 12,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      if (emotion != null)
+                        Text(emotion, style: const TextStyle(fontSize: 12))
+                      else if (_hasEntries(day))
+                        Container(
+                          width: 4,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: isSelected ? Colors.white : Theme.of(context).colorScheme.primary,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      if (habitStatus != null && habitStatus.total > 0)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2),
+                          child: SizedBox(
+                            width: double.infinity,
+                            height: 3,
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(2),
+                              child: LinearProgressIndicator(
+                                value: habitStatus.completed / habitStatus.total,
+                                backgroundColor: isSelected ? Colors.white38 : Colors.grey[300],
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  habitStatus.completed == habitStatus.total
+                                      ? (isSelected ? Colors.white : Colors.green)
+                                      : (isSelected ? Colors.white70 : Colors.orange),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  DateTime _weekStartFor(DateTime date) {
+    final weekday = date.weekday % 7; // Sunday = 0, Monday = 1, ...
+    return date.subtract(Duration(days: weekday));
+  }
+
+  // ── Full Calendar Grid (expanded state) ─────────────────────
+
+  Widget _buildCalendarGrid(BuildContext context, DateTime today) {
     final days = _generateDaysInMonth();
     return GridView.builder(
       shrinkWrap: true,
@@ -117,44 +249,46 @@ class CalendarWidget extends StatelessWidget {
         if (day == null) {
           return const SizedBox.shrink();
         }
-        return _buildDayCell(context, day);
+        return _buildDayCell(context, day, today);
       },
     );
   }
 
-  Widget _buildDayCell(BuildContext context, DateTime day) {
-    final isToday = _isSameDay(day, DateTime.now());
+  Widget _buildDayCell(BuildContext context, DateTime day, DateTime today) {
+    final isToday = _isSameDay(day, today);
+    final isFuture = day.isAfter(today) && !isToday;
     final isSelected = _isSameDay(day, selectedDate);
-    final hasEntries = _hasEntries(day);
     final isCurrentMonth = day.month == focusedMonth.month;
     final dayKey = DateTime(day.year, day.month, day.day);
     final emotion = dayEmotions[dayKey];
     final habitStatus = dayHabitStatus[dayKey];
+    final hasEntries = _hasEntries(day);
 
-    return GestureDetector(
-      onTap: () => onDateSelected(day),
-      child: Container(
-        margin: const EdgeInsets.all(2),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? Theme.of(context).colorScheme.primary
-              : isToday
-                  ? Theme.of(context).colorScheme.primaryContainer
-                  : null,
-          borderRadius: BorderRadius.circular(8),
-        ),
+    final cell = Container(
+      margin: const EdgeInsets.all(2),
+      decoration: BoxDecoration(
+        color: isSelected && !isFuture
+            ? Theme.of(context).colorScheme.primary
+            : null,
+        border: isToday
+            ? Border.all(color: const Color(0xFF2A9D8F), width: 2)
+            : null,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Opacity(
+        opacity: isFuture ? 0.35 : 1.0,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
               '${day.day}',
               style: TextStyle(
-                color: isSelected
+                color: isSelected && !isFuture
                     ? Colors.white
                     : isCurrentMonth
                         ? Colors.black87
                         : Colors.grey,
-                fontWeight: isToday || isSelected ? FontWeight.bold : null,
+                fontWeight: isToday ? FontWeight.bold : null,
                 fontSize: 12,
               ),
             ),
@@ -166,7 +300,9 @@ class CalendarWidget extends StatelessWidget {
                 width: 4,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: isSelected ? Colors.white : Theme.of(context).colorScheme.primary,
+                  color: isSelected && !isFuture
+                      ? Colors.white
+                      : Theme.of(context).colorScheme.primary,
                   shape: BoxShape.circle,
                 ),
               ),
@@ -194,28 +330,28 @@ class CalendarWidget extends StatelessWidget {
         ),
       ),
     );
+
+    if (isFuture) return cell;
+
+    return GestureDetector(
+      onTap: () => onDateSelected(day),
+      child: cell,
+    );
   }
+
+  // ── Helpers ────────────────────────────────────────────────
 
   List<DateTime?> _generateDaysInMonth() {
     final firstDayOfMonth = DateTime(focusedMonth.year, focusedMonth.month, 1);
     final lastDayOfMonth = DateTime(focusedMonth.year, focusedMonth.month + 1, 0);
-    
-    // Get the weekday of the first day (1 = Monday, 7 = Sunday)
-    // Convert to Sunday-first: Sunday(7)->0, Monday(1)->1, ..., Saturday(6)->6
     final firstWeekday = firstDayOfMonth.weekday % 7;
-    
     final List<DateTime?> days = [];
-    
-    // Add empty cells for days before the first day of month
     for (int i = 0; i < firstWeekday; i++) {
       days.add(null);
     }
-    
-    // Add all days of the month
     for (int i = 1; i <= lastDayOfMonth.day; i++) {
       days.add(DateTime(focusedMonth.year, focusedMonth.month, i));
     }
-    
     return days;
   }
 

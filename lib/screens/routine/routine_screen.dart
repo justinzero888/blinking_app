@@ -27,10 +27,10 @@ class RoutineScreen extends StatefulWidget {
   const RoutineScreen({super.key});
 
   @override
-  State<RoutineScreen> createState() => _RoutineScreenState();
+  State<RoutineScreen> createState() => RoutineScreenState();
 }
 
-class _RoutineScreenState extends State<RoutineScreen>
+class RoutineScreenState extends State<RoutineScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   // Adhoc routines manually added to today's list (in-memory, not persisted)
@@ -54,12 +54,6 @@ class _RoutineScreenState extends State<RoutineScreen>
     return Scaffold(
       appBar: AppBar(
         title: Text(isZh ? '日常' : 'Routines'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.add),
-            onPressed: () => _showAddRoutineDialog(context),
-          ),
-        ],
         bottom: TabBar(
           controller: _tabController,
           tabs: [
@@ -83,7 +77,7 @@ class _RoutineScreenState extends State<RoutineScreen>
     );
   }
 
-  void _showAddRoutineDialog(BuildContext context) {
+  void showAddRoutineDialog(BuildContext context) {
     _RoutineDialog.show(context, existing: null);
   }
 

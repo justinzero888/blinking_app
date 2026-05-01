@@ -5,7 +5,7 @@
 - **Type**: Personal memory capture app
 - **Framework**: Flutter
 - **Platforms**: Android (iOS future)
-- **Current Version**: 1.1.0-beta.5+20
+- **Current Version**: 1.1.0-beta.6+21
 
 ## Goals
 - Capture memories: text, audio, video, image
@@ -37,26 +37,28 @@
 | 2 | AI Secrets tag (exclude private notes from AI context) | Done |
 | 3 | Bilingual UI (EN/ZH) | Done |
 | 4 | Backup/Restore (ZIP + JSON) with progress bars | Done |
-| 5 | Card share (PNG export) | Done |
-| 6 | Chorus social posting (publish to blinkingchorus.com) | Done |
-| 7 | Habit import/export (JSON) | Done |
-| 8 | Legal docs (Privacy Policy + ToS) | Done |
-| 9 | Note cards + rich editor (flutter_quill, 100-word limit) | Done |
-| 10 | Card PNG cleanup (PROP-4) | Done |
-| 11 | DB indexes v11 (PROP-5) | Done |
-| 12 | Onboarding banner | Done |
-| 13 | 7-Day Trial API key flow — full stack (PROP-6) | Done |
-| 14 | Daily Checklist Entry — ad-hoc list with carry-forward (PROP-9) | Done |
+| 5 | Chorus social posting (publish to blinkingchorus.com) | Done |
+| 6 | Habit import/export (JSON) | Done |
+| 7 | Legal docs (Privacy Policy + ToS) | Done |
+| 8 | Card PNG cleanup (PROP-4) | Done |
+| 9 | DB indexes v11 (PROP-5) | Done |
+| 10 | Onboarding banner | Done |
+| 11 | 7-Day Trial API key flow — full stack (PROP-6) | Done |
+| 12 | Daily Checklist Entry — ad-hoc list with carry-forward (PROP-9) | Done |
+| 13 | Calendar future date lock (Issue #1) | Done |
+| 14 | Keepsakes → Insights restructure (PROP-8) | Done |
+| 15 | AI Secrets lock icon on entries (PROP-7 / Issue #4) | Done |
+| 16 | Contextual FAB — per-tab icon + action (Issue #7) | Done |
+| 17 | HomeScreen "Calendar" → "My Day" (Issue #14) | Done |
+| 18 | Collapsible calendar — week strip, landscape-safe (Issue #13) | Done |
 
 ### Remaining / Blocked
 | # | Item | Status |
 |---|------|--------|
 | 1 | Firebase / Cloud Sync | Not started — deps commented out |
 | 2 | iOS release | Moved to separate project `ClaudeDev/system-upgrade` |
-| 3 | AI Secrets lock icon on entries (PROP-7) | UX polish ~1h |
-| 4 | Keepsakes tab rename (PROP-8) | Wait for beta feedback |
-| 5 | Custom emoji images E-1/E-2 | Deferred |
-| 6 | Card generation AI multi-design suggestions | Deferred |
+| 3 | Post-launch polish (6 items, ~4.5h) | Deferred — see bug-reports.md |
+| 4 | Custom emoji images E-1/E-2 | Deferred |
 
 ## Technical Architecture
 
@@ -100,11 +102,26 @@ lib/
 
 | Week | Window | Focus |
 |------|--------|-------|
-| 1–2 | May 1–14 | ~~PROP-6 alpha test~~ ✅ PROP-9 completed (ahead of schedule) |
-| 3 | May 15–21 | PROP-7/PROP-8 polish + carry-forward UAT |
+| 1–2 | May 1–14 | ~~PROP-6 alpha test~~ ✅ ~~PROP-9 completed~~ ✅ ~~PROP-8 Insights restructure~~ ✅ ~~Issue #1 future date lock~~ ✅ |
+| 3 | May 15–21 | Issue #13 (calendar landscape) + Issue #14 (title rename) + PROP-7 lock icon + carry-forward UAT |
 | 4 | May 22–30 | Launch readiness: Play Store listing, beta crash triage, smoke tests, version bump, release build |
 
 ## Development History
+
+### v1.1.0-beta.6+21 — 2026-05-01 (UX Batch Resolution)
+- **9 UX issues resolved in one session:**
+  - Issue #1: Calendar future dates locked (35% opacity, non-tappable, today+2 nav limit)
+  - Issue #2/#7: Contextual FAB (per-tab icon + action: My Day/Moments = "+", Routine = playlist_add)
+  - Issue #3: FAB overlap auto-resolved (card system removed)
+  - Issue #4: AI Secrets lock icon on entry cards + detail screen
+  - Issue #5: Keepsakes → Insights restructure (removed shelf/cards, kept charts + emoji jar carousel)
+  - Issue #13: Collapsible calendar with week strip default, landscape auto-collapse
+  - Issue #14: HomeScreen "Calendar" → "My Day" + bottom nav label sync
+  - Bug fix: EntryDetailScreen title overflow (4px)
+  - Bug fix: HomeScreen test compatibility with AppLocalizations
+- **Files:** 14 modified, 11 deleted, 6 created. -2,421 net lines.
+- **Dependencies:** flutter_quill removed (22 transitive deps cleaned)
+- **Tests:** 96/96 passing, 0 analyze errors
 
 ### v1.1.0-beta.5+20 — 2026-05-01 (PROP-9)
 - **PROP-9: Daily Checklist Entry (full implementation)**
@@ -196,6 +213,16 @@ flutter build appbundle --release
 - Firebase / Cloud Sync — all deps commented out, sync toggle is a no-op
 - iOS release — moved to separate project `ClaudeDev/system-upgrade` (requires Xcode 26)
 - Carry-forward — implemented but pending manual UAT with date manipulation
+- 6 post-launch polish items in `docs/uxbugs/bug-reports.md` (none blocking)
+
+### Resolved (this session)
+- Calendar landscape overflow — collapsible calendar with week strip ✅
+- HomeScreen title "Calendar" → "My Day" ✅
+- FAB on Routine tab — contextual FAB with routine dialog ✅
+- AI Secrets lock icon on entries ✅
+- EntryDetailScreen title overflow (4px) ✅
+- Keepsakes → Insights tab restructure ✅
+- Calendar future date interaction ✅
 
 ### Resolved
 - Template name field shows Chinese under English locale (fixed v1.1.0-beta.3)
@@ -217,19 +244,21 @@ flutter build appbundle --release
 
 ## Next Steps
 
-1. Manual UAT for carry-forward function (date manipulation test)
-2. PROP-7 — AI Secrets lock icon on entries (UX polish ~1h)
-3. PROP-8 — Keepsakes tab rename (if beta feedback warrants)
-4. Promote to Google Play Production (PROP-3)
-5. Week 4 launch readiness: Play Store listing, crash triage, smoke tests, version bump, release build
+1. Carry-forward manual UAT (date manipulation test, TC-11)
+2. PROP-3 — Promote to Google Play Production (~15min)
+3. Post-launch polish: 6 items from bug-reports.md (~4.5h, not blocking)
+4. Week 4 launch readiness: Play Store listing, crash triage, smoke tests, version bump, release build
 
 ## Active Plans
 
 | Plan | Status | Link |
 |------|--------|------|
-| 7-Day Trial API Key Flow (PROP-6) | ✅ Complete — deployed | [2026-04-30-prop-6-trial-api-key-plan.md](docs/plans/2026-04-30-prop-6-trial-api-key-plan.md) |
+| 7-Day Trial API Key Flow (PROP-6) | ✅ Complete | [2026-04-30-prop-6-trial-api-key-plan.md](docs/plans/2026-04-30-prop-6-trial-api-key-plan.md) |
 | Daily Checklist Entry (PROP-9) | ✅ Complete | [2026-04-30-prop-9-daily-checklist-plan.md](docs/plans/2026-04-30-prop-9-daily-checklist-plan.md) |
-| UAT Test Cases | ✅ Written | [2026-05-01-prop-9-uat-test-cases.md](docs/plans/2026-05-01-prop-9-uat-test-cases.md) |
+| UAT — PROP-9 | ✅ Passed (14/15) | [2026-05-01-prop-9-uat-test-cases.md](docs/plans/2026-05-01-prop-9-uat-test-cases.md) |
+| UAT — Calendar future date | ✅ Passed | [2026-05-01-calendar-future-date-uat.md](docs/plans/2026-05-01-calendar-future-date-uat.md) |
+| UAT — Insights restructure | ✅ Passed | [2026-05-01-insights-restructure-uat.md](docs/plans/2026-05-01-insights-restructure-uat.md) |
+| UAT — Issues #4, #7, #14 | ✅ Passed | [2026-05-01-issues-4-7-14-uat.md](docs/plans/2026-05-01-issues-4-7-14-uat.md) |
 | iOS Release | Moved to ClaudeDev/system-upgrade | — |
 
 ## Contact

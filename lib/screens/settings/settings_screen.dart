@@ -773,7 +773,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ListTile(
             leading: const Icon(Icons.info),
             title: const Text('Blinking (记忆闪烁)'),
-            subtitle: Text(isZh ? '版本 1.1.0-beta.5' : 'Version 1.1.0-beta.5'),
+            subtitle: Text(isZh ? '版本 1.1.0-beta.6' : 'Version 1.1.0-beta.6'),
           ),
         ],
       ),
@@ -1661,7 +1661,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _sendFeedback(BuildContext context, bool isZh) async {
     const email = 'blinkingfeedback@gmail.com';
-    const version = '1.1.0-beta.5'; // TODO: keep in sync with pubspec.yaml
+    const version = '1.1.0-beta.6'; // TODO: keep in sync with pubspec.yaml
     final subject = Uri.encodeComponent('Blinking App Feedback - v$version');
     final body = Uri.encodeComponent(
       'What happened:\n\n\nSteps to reproduce:\n\n\nExpected behavior:\n\n\nDevice & OS:\n\n',

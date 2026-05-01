@@ -132,6 +132,10 @@ class EntryCard extends StatelessWidget {
         if (entry.emotion != null)
           Text(entry.emotion!, style: const TextStyle(fontSize: 18)),
         const SizedBox(width: 4),
+        if (entry.tagIds.contains('tag_secrets'))
+          const Icon(Icons.lock_outline, size: 14, color: Colors.grey),
+        if (entry.tagIds.contains('tag_secrets'))
+          const SizedBox(width: 4),
         GestureDetector(
           onTap: () {
             final isZh = context.read<LocaleProvider>().locale.languageCode == 'zh';
@@ -190,6 +194,10 @@ class EntryCard extends StatelessWidget {
         if (entry.emotion != null)
           Text(entry.emotion!, style: const TextStyle(fontSize: 18)),
         const SizedBox(width: 4),
+        if (entry.tagIds.contains('tag_secrets'))
+          const Icon(Icons.lock_outline, size: 14, color: Colors.grey),
+        if (entry.tagIds.contains('tag_secrets'))
+          const SizedBox(width: 4),
         GestureDetector(
           onTap: () {
             final isZh = context.read<LocaleProvider>().locale.languageCode == 'zh';

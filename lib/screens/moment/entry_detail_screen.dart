@@ -40,9 +40,26 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
         ? DateFormat('yyyy年M月d日 HH:mm').format(entry.createdAt)
         : DateFormat('MMM d, y  HH:mm').format(entry.createdAt);
 
+    final isPrivate = entry.tagIds.contains('tag_secrets');
+
     return Scaffold(
       appBar: AppBar(
-        title: Text(dateStr),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (isPrivate)
+              const Padding(
+                padding: EdgeInsets.only(right: 6),
+                child: Icon(Icons.lock_outline, size: 16, color: Colors.grey),
+              ),
+            Flexible(
+              child: Text(
+                dateStr,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.edit_outlined),

@@ -113,8 +113,14 @@ abstract class AppLocalizations {
   /// No description provided for @calendar.
   ///
   /// In en, this message translates to:
-  /// **'Calendar'**
+  /// **'My Day'**
   String get calendar;
+
+  /// No description provided for @myDay.
+  ///
+  /// In en, this message translates to:
+  /// **'My Day'**
+  String get myDay;
 
   /// No description provided for @moment.
   ///
@@ -139,6 +145,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Routine'**
   String get routine;
+
+  /// No description provided for @insights.
+  ///
+  /// In en, this message translates to:
+  /// **'Insights'**
+  String get insights;
 
   /// No description provided for @settings.
   ///
