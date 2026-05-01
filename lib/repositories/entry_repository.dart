@@ -72,6 +72,9 @@ class EntryRepository {
     List<String> mediaUrls = const [],
     Map<String, dynamic>? metadata,
     String? emotion,
+    EntryFormat format = EntryFormat.note,
+    List<ListItem>? listItems,
+    bool listCarriedForward = false,
   }) async {
     final now = DateTime.now();
     final entry = Entry(
@@ -84,6 +87,9 @@ class EntryRepository {
       updatedAt: now,
       metadata: metadata,
       emotion: emotion,
+      format: format,
+      listItems: listItems,
+      listCarriedForward: listCarriedForward,
     );
     await _storage.addEntry(entry);
     return entry;
@@ -118,5 +124,40 @@ class EntryRepository {
     final now = DateTime.now();
     final startOfMonth = DateTime(now.year, now.month, 1);
     return getByDateRange(startOfMonth, now);
+  }
+
+  Future<void> toggleListItem(String entryId, String itemId) async {
+    await _storage.toggleListItem(entryId, itemId);
+  }
+
+  Future<int> checkAndCarryForward() async {
+    final allEntries = await getAll();
+    final today = DateTime.now();
+    final todayDate = DateTime(today.year, today.month, today.day);
+    int totalCarried = 0;
+
+    for (final entry in allEntries) {
+      if (entry.format != EntryFormat.list) continue;
+      if (entry.listCarriedForward) continue;
+      final entryDate = DateTime(entry.createdAt.year, entry.createdAt.month, entry.createdAt.day);
+      if (!entryDate.isBefore(todayDate)) continue;
+      final unchecked = (entry.listItems ?? []).where((item) => !item.isDone).toList();
+      if (unchecked.isEmpty) continue;
+
+      final carriedItems = unchecked.asMap().entries.map((e) =>
+        e.value.copyWith(isDone: false, sortOrder: e.key)
+      ).toList();
+
+      await create(
+        type: EntryType.freeform,
+        content: entry.content,
+        format: EntryFormat.list,
+        listItems: carriedItems,
+        listCarriedForward: false,
+      );
+      await _storage.markListCarriedForward(entry.id);
+      totalCarried += carriedItems.length;
+    }
+    return totalCarried;
   }
 }

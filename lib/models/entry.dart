@@ -1,5 +1,7 @@
 import 'list_item.dart';
 
+export 'list_item.dart';
+
 /// Entry type enum
 enum EntryType {
   routine,

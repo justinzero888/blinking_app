@@ -404,4 +404,19 @@ class DatabaseService {
     await db.close();
     _database = null;
   }
+
+  @visibleForTesting
+  static Future<void> resetForTesting() async {
+    if (_instance._database != null) {
+      try {
+        await _instance._database!.close();
+      } catch (_) {}
+      _instance._database = null;
+    }
+  }
+
+  @visibleForTesting
+  static void setTestDatabase(Database db) {
+    _instance._database = db;
+  }
 }

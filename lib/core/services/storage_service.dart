@@ -184,6 +184,9 @@ class StorageService {
       entryMap['createdAt'] = map['created_at'];
       entryMap['updatedAt'] = map['updated_at'];
       entryMap['emotion'] = map['emotion'];
+      entryMap['format'] = map['entry_format'];
+      entryMap['listItems'] = map['list_items'];
+      entryMap['listCarriedForward'] = map['list_carried_forward'] == 1;
       
       entries.add(Entry.fromJson(entryMap));
     }
@@ -210,6 +213,9 @@ class StorageService {
         'created_at': entry.createdAt.toIso8601String(),
         'updated_at': entry.updatedAt.toIso8601String(),
         'emotion': entry.emotion,
+        'entry_format': entry.format.name,
+        'list_items': ListItem.listToJson(entry.listItems),
+        'list_carried_forward': entry.listCarriedForward ? 1 : 0,
       }, conflictAlgorithm: ConflictAlgorithm.replace);
 
       // Save tags
@@ -232,6 +238,9 @@ class StorageService {
         'metadata_json': entry.metadata != null ? json.encode(entry.metadata) : null,
         'updated_at': entry.updatedAt.toIso8601String(),
         'emotion': entry.emotion,
+        'entry_format': entry.format.name,
+        'list_items': ListItem.listToJson(entry.listItems),
+        'list_carried_forward': entry.listCarriedForward ? 1 : 0,
       }, where: 'id = ?', whereArgs: [entry.id]);
 
       // Refresh tags
@@ -248,6 +257,36 @@ class StorageService {
   Future<void> deleteEntry(String id) async {
     final db = await _dbService.database;
     await db.delete('entries', where: 'id = ?', whereArgs: [id]);
+  }
+
+  Future<void> toggleListItem(String entryId, String itemId) async {
+    final db = await _dbService.database;
+    final rows = await db.query('entries', where: 'id = ?', whereArgs: [entryId]);
+    if (rows.isEmpty) return;
+    final items = ListItem.listFromJson(rows.first['list_items'] as String?);
+    final updatedItems = items.map((item) {
+      if (item.id == itemId) return item.copyWith(isDone: !item.isDone);
+      return item;
+    }).toList();
+    await db.update(
+      'entries',
+      {
+        'list_items': ListItem.listToJson(updatedItems),
+        'updated_at': DateTime.now().toIso8601String(),
+      },
+      where: 'id = ?',
+      whereArgs: [entryId],
+    );
+  }
+
+  Future<void> markListCarriedForward(String entryId) async {
+    final db = await _dbService.database;
+    await db.update(
+      'entries',
+      {'list_carried_forward': 1},
+      where: 'id = ?',
+      whereArgs: [entryId],
+    );
   }
 
   // ============ TAGS ============
