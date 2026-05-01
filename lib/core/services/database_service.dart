@@ -6,23 +6,25 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../models/models.dart';
 
 class DatabaseService {
-  static const int kSchemaVersion = 11;
+  static const int kSchemaVersion = 12;
   static final DatabaseService _instance = DatabaseService._internal();
   factory DatabaseService() => _instance;
   DatabaseService._internal();
 
   Database? _database;
 
-  /// Test-only: creates a fresh database at [path] with the full v11 schema.
+  /// Test-only: creates a fresh database at [path] with the full v12 schema.
+  /// If [version] is provided, creates the DB at that version instead.
   /// Returns the raw Database so tests can inspect indexes.
   @visibleForTesting
-  static Future<Database> createTestDatabase(String path) async {
+  static Future<Database> createTestDatabase(String path, {int? version}) async {
+    final targetVersion = version ?? 12;
     final db = await openDatabase(
       path,
-      version: 11,
-      onCreate: (db, version) async {
+      version: targetVersion,
+      onCreate: (db, _) async {
         final svc = DatabaseService._internal();
-        await svc._onCreate(db, version);
+        await svc._onCreate(db, targetVersion);
       },
     );
     return db;
@@ -32,7 +34,7 @@ class DatabaseService {
   @visibleForTesting
   static Future<void> runMigration(Database db, int oldVersion) async {
     final svc = DatabaseService._internal();
-    await svc._onUpgrade(db, oldVersion, 11);
+    await svc._onUpgrade(db, oldVersion, 12);
   }
 
   Future<Database> get database async {
@@ -139,6 +141,25 @@ class DatabaseService {
         'CREATE INDEX IF NOT EXISTS idx_note_card_entries_card_id ON note_card_entries(card_id)',
       );
     }
+    if (oldVersion < 12) {
+      final columns = await db.rawQuery("PRAGMA table_info('entries')");
+      final colNames = columns.map((c) => c['name'] as String).toList();
+      if (!colNames.contains('entry_format')) {
+        await db.execute(
+          "ALTER TABLE entries ADD COLUMN entry_format TEXT NOT NULL DEFAULT 'note'",
+        );
+      }
+      if (!colNames.contains('list_items')) {
+        await db.execute(
+          'ALTER TABLE entries ADD COLUMN list_items TEXT',
+        );
+      }
+      if (!colNames.contains('list_carried_forward')) {
+        await db.execute(
+          'ALTER TABLE entries ADD COLUMN list_carried_forward INTEGER NOT NULL DEFAULT 0',
+        );
+      }
+    }
   }
 
   Future<void> _onCreate(Database db, int version) async {
@@ -152,7 +173,10 @@ class DatabaseService {
         metadata_json TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
-        emotion TEXT
+        emotion TEXT,
+        entry_format TEXT NOT NULL DEFAULT 'note',
+        list_items TEXT,
+        list_carried_forward INTEGER NOT NULL DEFAULT 0
       )
     ''');
 

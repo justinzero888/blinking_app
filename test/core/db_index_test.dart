@@ -86,8 +86,8 @@ void main() {
       await db.close();
     });
 
-    test('migration from v10 to v11 adds the two new indexes', () async {
-      final db = await DatabaseService.createTestDatabase(dbPath);
+    test('migration from v10 to v12 adds the two new indexes + v12 columns', () async {
+      final db = await DatabaseService.createTestDatabase(dbPath, version: 10);
 
       await DatabaseService.runMigration(db, 10);
 
@@ -97,11 +97,17 @@ void main() {
       final noteCardEntriesIndexes = await _getIndexes(db, 'note_card_entries');
       expect(noteCardEntriesIndexes, contains('idx_note_card_entries_card_id'));
 
+      final columns = await db.rawQuery('PRAGMA table_info("entries")');
+      final colNames = columns.map((c) => c['name'] as String).toList();
+      expect(colNames, contains('entry_format'));
+      expect(colNames, contains('list_items'));
+      expect(colNames, contains('list_carried_forward'));
+
       await db.close();
     });
 
     test('migration is idempotent — running twice does not fail', () async {
-      final db = await DatabaseService.createTestDatabase(dbPath);
+      final db = await DatabaseService.createTestDatabase(dbPath, version: 10);
 
       await DatabaseService.runMigration(db, 10);
       await DatabaseService.runMigration(db, 10);

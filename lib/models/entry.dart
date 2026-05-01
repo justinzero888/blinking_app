@@ -1,7 +1,15 @@
+import 'list_item.dart';
+
 /// Entry type enum
 enum EntryType {
   routine,
   freeform,
+}
+
+/// Format of the entry content (note or checklist)
+enum EntryFormat {
+  note,
+  list,
 }
 
 /// Entry model - represents a memory entry (freeform or routine)
@@ -13,8 +21,11 @@ class Entry {
   final List<String> mediaUrls;
   final DateTime createdAt;
   final DateTime updatedAt;
-  final Map<String, dynamic>? metadata; // For routine-specific data
-  final String? emotion; // Emoji string, e.g. '😊', null = not set
+  final Map<String, dynamic>? metadata;
+  final String? emotion;
+  final EntryFormat format;
+  final List<ListItem>? listItems;
+  final bool listCarriedForward;
 
   Entry({
     required this.id,
@@ -26,6 +37,9 @@ class Entry {
     required this.updatedAt,
     this.metadata,
     this.emotion,
+    this.format = EntryFormat.note,
+    this.listItems,
+    this.listCarriedForward = false,
   });
 
   Entry copyWith({
@@ -39,6 +53,10 @@ class Entry {
     Map<String, dynamic>? metadata,
     String? emotion,
     bool clearEmotion = false,
+    EntryFormat? format,
+    List<ListItem>? listItems,
+    bool clearListItems = false,
+    bool? listCarriedForward,
   }) {
     return Entry(
       id: id ?? this.id,
@@ -50,6 +68,9 @@ class Entry {
       updatedAt: updatedAt ?? this.updatedAt,
       metadata: metadata ?? this.metadata,
       emotion: clearEmotion ? null : (emotion ?? this.emotion),
+      format: format ?? this.format,
+      listItems: clearListItems ? null : (listItems ?? this.listItems),
+      listCarriedForward: listCarriedForward ?? this.listCarriedForward,
     );
   }
 
@@ -64,6 +85,9 @@ class Entry {
       'updatedAt': updatedAt.toIso8601String(),
       'metadata': metadata,
       'emotion': emotion,
+      'format': format.name,
+      'listItems': ListItem.listToJson(listItems),
+      'listCarriedForward': listCarriedForward,
     };
   }
 
@@ -81,6 +105,22 @@ class Entry {
       updatedAt: DateTime.parse(json['updatedAt'] as String),
       metadata: json['metadata'] as Map<String, dynamic>?,
       emotion: json['emotion'] as String?,
+      format: _parseFormat(json['format']),
+      listItems: json['listItems'] != null
+          ? ListItem.listFromJson(json['listItems'] as String?)
+          : null,
+      listCarriedForward: json['listCarriedForward'] as bool? ?? false,
     );
+  }
+
+  static EntryFormat _parseFormat(dynamic value) {
+    if (value == null) return EntryFormat.note;
+    if (value is String) {
+      return EntryFormat.values.firstWhere(
+        (e) => e.name == value,
+        orElse: () => EntryFormat.note,
+      );
+    }
+    return EntryFormat.note;
   }
 }
