@@ -46,17 +46,17 @@
 | 11 | DB indexes v11 (PROP-5) | Done |
 | 12 | Onboarding banner | Done |
 | 13 | 7-Day Trial API key flow — full stack (PROP-6) | Done |
+| 14 | Daily Checklist Entry — ad-hoc list with carry-forward (PROP-9) | Done |
 
 ### Remaining / Blocked
 | # | Item | Status |
 |---|------|--------|
 | 1 | Firebase / Cloud Sync | Not started — deps commented out |
 | 2 | iOS release | Moved to separate project `ClaudeDev/system-upgrade` |
-| 3 | Daily checklist entries (PROP-9) | Designed, planned — stretch goal for v1.1.1 |
-| 4 | AI Secrets lock icon on entries (PROP-7) | UX polish ~1h |
-| 5 | Keepsakes tab rename (PROP-8) | Wait for beta feedback |
-| 6 | Custom emoji images E-1/E-2 | Deferred |
-| 7 | Card generation AI multi-design suggestions | Deferred |
+| 3 | AI Secrets lock icon on entries (PROP-7) | UX polish ~1h |
+| 4 | Keepsakes tab rename (PROP-8) | Wait for beta feedback |
+| 5 | Custom emoji images E-1/E-2 | Deferred |
+| 6 | Card generation AI multi-design suggestions | Deferred |
 
 ## Technical Architecture
 
@@ -100,11 +100,26 @@ lib/
 
 | Week | Window | Focus |
 |------|--------|-------|
-| 1–2 | May 1–14 | PROP-6 alpha test, Play Store upload, monitor trial usage |
-| 3 | May 15–21 | PROP-9 (stretch goal) + PROP-7/PROP-8 polish |
+| 1–2 | May 1–14 | ~~PROP-6 alpha test~~ ✅ PROP-9 completed (ahead of schedule) |
+| 3 | May 15–21 | PROP-7/PROP-8 polish + carry-forward UAT |
 | 4 | May 22–30 | Launch readiness: Play Store listing, beta crash triage, smoke tests, version bump, release build |
 
 ## Development History
+
+### v1.1.0-beta.5+20 — 2026-05-01 (PROP-9)
+- **PROP-9: Daily Checklist Entry (full implementation)**
+  - DB migration v12: `entry_format`, `list_items`, `list_carried_forward` columns
+  - `ListItem` model with JSON serialization, `EntryFormat` enum (note/list)
+  - AddEntryScreen: Note/List toggle with `SegmentedButton`, reorderable list builder
+  - EntryCard: checkbox rendering, strikethrough on done, "X/Y done" counter, carried-over banner
+  - EntryDetailScreen: interactive list view with tappable checkboxes
+  - HomeScreen: lists pinned above habits, separate Lists/Notes sections
+  - Carry-forward: unchecked items auto-carry to next day on app open
+  - One list per day constraint: auto-navigates to existing list on toggle
+  - List edit screen: checkboxes with strikethrough consistent with Calendar display
+  - 10 new i18n strings (EN/ZH)
+  - **Test results:** 125/125 passing (31 new tests)
+  - **UAT:** 14/15 cases passed (carry-forward pending manual date test)
 
 ### v1.1.0-beta.5+20 — 2026-04-30
 - **PROP-6: 7-Day Trial API Key Flow (full stack)**
@@ -168,7 +183,7 @@ lib/
 
 ## Build Commands
 ```bash
-flutter test                          # 94 tests
+flutter test                          # 125 tests
 flutter analyze --no-pub              # 0 errors
 flutter build apk --debug
 flutter build apk --release
@@ -180,7 +195,7 @@ flutter build appbundle --release
 ### Open
 - Firebase / Cloud Sync — all deps commented out, sync toggle is a no-op
 - iOS release — moved to separate project `ClaudeDev/system-upgrade` (requires Xcode 26)
-- Daily checklist entries (PROP-9) — designed and planned, stretch goal for v1.1.1
+- Carry-forward — implemented but pending manual UAT with date manipulation
 
 ### Resolved
 - Template name field shows Chinese under English locale (fixed v1.1.0-beta.3)
@@ -198,21 +213,23 @@ flutter build appbundle --release
 - DB performance on queries (PROP-5 indexes)
 - 7-day trial API key flow (PROP-6 — full stack deployed)
 - Flutter 3.41.2→3.41.8 upgrade (unblocks Xcode 26)
+- Daily checklist entries (PROP-9 — 8 commits, 31 new tests)
 
 ## Next Steps
 
-1. Commit & push PROP-6 code to GitHub
-2. Upload v1.1.0-beta.5+20 AAB to Google Play Console (Internal Testing → Production)
-3. Monitor trial usage and OpenRouter costs during alpha soak
-4. Week 3 gate: if PROP-6 stable, begin PROP-9 daily checklist (v1.1.1 stretch)
-5. Week 4: launch readiness — Play Store listing, crash triage, smoke tests
+1. Manual UAT for carry-forward function (date manipulation test)
+2. PROP-7 — AI Secrets lock icon on entries (UX polish ~1h)
+3. PROP-8 — Keepsakes tab rename (if beta feedback warrants)
+4. Promote to Google Play Production (PROP-3)
+5. Week 4 launch readiness: Play Store listing, crash triage, smoke tests, version bump, release build
 
 ## Active Plans
 
 | Plan | Status | Link |
 |------|--------|------|
 | 7-Day Trial API Key Flow (PROP-6) | ✅ Complete — deployed | [2026-04-30-prop-6-trial-api-key-plan.md](docs/plans/2026-04-30-prop-6-trial-api-key-plan.md) |
-| Daily Checklist Entry (PROP-9) | Design complete — stretch goal | [2026-04-30-prop-9-daily-checklist-plan.md](docs/plans/2026-04-30-prop-9-daily-checklist-plan.md) |
+| Daily Checklist Entry (PROP-9) | ✅ Complete | [2026-04-30-prop-9-daily-checklist-plan.md](docs/plans/2026-04-30-prop-9-daily-checklist-plan.md) |
+| UAT Test Cases | ✅ Written | [2026-05-01-prop-9-uat-test-cases.md](docs/plans/2026-05-01-prop-9-uat-test-cases.md) |
 | iOS Release | Moved to ClaudeDev/system-upgrade | — |
 
 ## Contact

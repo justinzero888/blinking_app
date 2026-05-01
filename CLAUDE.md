@@ -7,11 +7,11 @@ Personal memory/habit-tracking Flutter app (记忆闪烁). Path: `/Users/justinz
 - **Flutter SDK:** `^3.11.0` (currently 3.41.8 stable, Apr 24 2026)
 - **macOS:** 26.2 (Tahoe beta) — requires Xcode 26, managed in `ClaudeDev/system-upgrade`
 - **Current version:** `1.1.0-beta.5+20` (pubspec.yaml)
-- **DB version:** 11 (`kSchemaVersion = 11` in `DatabaseService`)
+- **DB version:** 12 (`kSchemaVersion = 12` in `DatabaseService`)
 - **Build AAB:** `flutter build appbundle --release`
 - **Build APK:** `flutter build apk --release`
 - **Lint:** `flutter analyze --no-pub` (target: 0 errors)
-- **Tests:** `flutter test` (94 tests, all passing)
+- **Tests:** `flutter test` (125 tests, all passing)
 - **Feedback email:** `blinkingfeedback@gmail.com`
 
 ---
@@ -152,6 +152,14 @@ Main FAB in `app.dart`: `heroTag: 'main_add_entry_fab'`. Cards tab FAB in `cards
 ### url_launcher / mailto
 Use `try { await launchUrl(uri); } catch (_) { ... }` pattern. Do NOT use `canLaunchUrl` for `mailto:` — it is unreliable on iOS 14+ without `LSApplicationQueriesSchemes`.
 
+### Daily Checklist (PROP-9)
+- **One list per day:** `AddEntryScreen._switchFormat()` checks `EntryProvider.getEntriesForDate(today)` for existing `EntryFormat.list` entries. If found, navigates directly to edit the existing list via `pushReplacement`.
+- **Toggle data preservation:** Note→List extracts first 200 chars / first line break as title. List→Note concatenates items as `"- item\n"` lines into body text.
+- **Carry-forward:** `EntryRepository.checkAndCarryForward()` runs once per session (guard flag `_carryForwardChecked`). Uses Dart local date comparison (not SQLite UTC). Creates new `EntryType.freeform` entry with `EntryFormat.list`. Original entry marked `list_carried_forward = 1`.
+- **Carry-forward banner:** `EntryProvider._lastCarriedCount` set during carry-forward. `EntryCard` accepts optional `carriedOverCount` parameter. Banner auto-clears via `WidgetsBinding.instance.addPostFrameCallback` in HomeScreen.
+- **Checkbox consistency:** List edit screen uses same checkbox + strikethrough pattern as EntryCard and EntryDetailScreen. All three screens use `EntryProvider.toggleListItem()` for reactivity.
+- **EntryFormat enum:** Coexists with `EntryType`. Values: `note`, `list`. New DB column `entry_format` (not `entry_type` — avoids collision with existing `type` column).
+
 ---
 
 ## Feature Status & Pending Work
@@ -173,14 +181,13 @@ Use `try { await launchUrl(uri); } catch (_) { ... }` pattern. Do NOT use `canLa
 | DB indexes v11 (`entry_tags(entry_id)` + `note_card_entries(card_id)`) | ✅ Done (PROP-5) |
 | Onboarding banner (Calendar, one-time dismissible) | ✅ Done |
 | Trial API key flow (7-day free trial, app + backend) | ✅ Done (PROP-6) |
+| Daily Checklist Entry (ad-hoc lists, carry-forward, 1-per-day) | ✅ Done (PROP-9) |
 | UX polish M1–M7, P1-1–P1-10, P2 items | ✅ Done |
 
 ### Pending
 | Priority | Item | Effort | Status |
 |----------|------|--------|--------|
 | P1 | PROP-3 — Promote Android to Production on Google Play | ~15 min manual | Ready — monitor beta soak |
-| P2 | PROP-6 — Trial API key flow (7-day free trial) | ✅ Done | App + backend deployed 2026-04-30; plans in `docs/plans/2026-04-30-prop-6-trial-api-key-plan.md`
-| P2 | PROP-9 — Daily Checklist Entry (ad-hoc daily lists) | ~18h | Revised design + plan in `docs/plans/2026-04-30-prop-9-daily-checklist-plan.md`; ship in v1.1.1 if v1.1.0 is tight |
 | P3 | PROP-7 — AI Secrets lock icon on entries | ~1h | UX polish |
 | P3 | PROP-8 — Keepsakes tab rename (deferred post-beta) | ~30 min | Wait for beta feedback |
 | P3 | Firebase / Cloud Sync | Large | All deps commented out in pubspec |
@@ -192,11 +199,11 @@ Use `try { await launchUrl(uri); } catch (_) { ... }` pattern. Do NOT use `canLa
 
 | Week | Window | Focus |
 |------|--------|-------|
-| 1–2 | May 1–14 | PROP-6 backend + app-side build, alpha test |
-| 3 | May 15–21 | PROP-9 (stretch goal) + PROP-7/PROP-8 polish |
+| 1–2 | May 1–14 | ~~PROP-6 alpha test~~ ✅ PROP-9 completed (ahead of schedule) |
+| 3 | May 15–21 | PROP-7/PROP-8 polish + carry-forward UAT |
 | 4 | May 22–30 | Launch readiness: Play Store listing, beta crash triage, smoke tests, version bump, release build |
 
-**Critical path:** PROP-6 must ship with production launch (removes #1 onboarding barrier). PROP-9 is a stretch goal — ship in v1.1.1 if Week 3 runs over. Backend for PROP-6 is the only external dependency; start immediately.
+**Critical path:** PROP-6 + PROP-9 both complete. Next priority: launch readiness (PROP-3 Play Store promotion, PROP-7/8 polish).
 
 **iOS release work** (Xcode 26 upgrade, toolchain migration, App Store submission) has been moved to a separate management project at `/Users/justinzero/ClaudeDev/system-upgrade`. The plan document `docs/plans/2026-04-28-infrastructure-upgrade-ios-release.md` is superseded by the new project's planning.
 
@@ -219,4 +226,6 @@ Use `try { await launchUrl(uri); } catch (_) { ... }` pattern. Do NOT use `canLa
 | v1.1.0-beta.4+19 | 4d4b51f | Calendar routine checklist simplified, restore progress dialog, 79 tests |
 | v1.1.0-beta.4+19 | e1fbbd6 | PROP-4 card PNG cleanup, PROP-5 DB indexes v11, 93 tests, release notes |
 | v1.1.0-beta.5+20 | d769c1b | PROP-6 trial API key (full stack): app UI + Cloudflare Worker backend; 94 tests |
+| v1.1.0-beta.5+20 | 63981bb–83d8ad9 | PROP-9 daily checklist (8 commits): DB v12, list builder, carry-forward, one-per-day; 125 tests |
+| v1.1.0-beta.5+20 | 2c3fd94 | List edit screen: checkbox + strikethrough consistency with Calendar |
 | v1.1.0-beta.4+19 | (this session) | Flutter 3.41.2→3.41.8 upgrade (unblocks Xcode 26); iOS pipeline plan updated; iOS release moved to ClaudeDev/system-upgrade |
