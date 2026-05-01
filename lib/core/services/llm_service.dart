@@ -76,7 +76,10 @@ class LlmService {
     required String model,
     required List<Map<String, String>> messages,
   }) async {
-    final url = Uri.parse('$baseUrl/chat/completions');
+    final isTrialEndpoint = baseUrl.endsWith('/chat');
+    final url = isTrialEndpoint
+        ? Uri.parse(baseUrl)
+        : Uri.parse('$baseUrl/chat/completions');
 
     final headers = {
       'Content-Type': 'application/json',
@@ -112,6 +115,12 @@ class LlmService {
 
         final status = response.statusCode;
         if (status == 401 || status == 403) {
+          try {
+            final err = jsonDecode(response.body);
+            if (err['error'] == 'trial_expired') {
+              throw LlmException('HTTP $status: $detail', LlmErrorType.trialExpired);
+            }
+          } catch (_) {}
           throw LlmException('HTTP $status: $detail', LlmErrorType.invalidApiKey);
         } else if (status == 429) {
           throw LlmException('HTTP $status: $detail', LlmErrorType.rateLimited);
@@ -130,22 +139,34 @@ class LlmService {
     }
   }
 
-  /// Returns true if the currently selected provider has a non-empty API key.
+  /// Returns true if the currently selected provider has a non-empty API key,
+  /// or if a trial is active.
   static Future<bool> hasApiKey() async {
     final prefs = await SharedPreferences.getInstance();
     final jsonStr = prefs.getString('llm_providers');
-    if (jsonStr == null) return false;
-    try {
-      final providers = jsonDecode(jsonStr) as List<dynamic>;
-      if (providers.isEmpty) return false;
-      final selectedIdx = prefs.getInt('llm_selected_index') ?? 0;
-      final idx = selectedIdx.clamp(0, providers.length - 1);
-      final provider = providers[idx] as Map<String, dynamic>;
-      final apiKey = provider['apiKey'] as String? ?? '';
-      return apiKey.isNotEmpty;
-    } catch (_) {
-      return false;
+    if (jsonStr != null) {
+      try {
+        final providers = jsonDecode(jsonStr) as List<dynamic>;
+        if (providers.isNotEmpty) {
+          final selectedIdx = prefs.getInt('llm_selected_index') ?? 0;
+          final idx = selectedIdx.clamp(0, providers.length - 1);
+          final provider = providers[idx] as Map<String, dynamic>;
+          final apiKey = provider['apiKey'] as String? ?? '';
+          if (apiKey.isNotEmpty) return true;
+        }
+      } catch (_) {}
     }
+    return _isTrialActive(prefs);
+  }
+
+  static bool _isTrialActive(SharedPreferences prefs) {
+    final token = prefs.getString('trial_token');
+    if (token == null || token.isEmpty) return false;
+    final startedAtStr = prefs.getString('trial_started_at');
+    if (startedAtStr == null) return false;
+    final startedAt = DateTime.parse(startedAtStr);
+    final expiryDate = startedAt.add(const Duration(days: 7));
+    return !DateTime.now().isAfter(expiryDate);
   }
 
   Future<Map<String, dynamic>> _loadConfig() async {
@@ -153,16 +174,29 @@ class LlmService {
     final jsonStr = prefs.getString('llm_providers');
     final selectedIdx = prefs.getInt('llm_selected_index') ?? 0;
 
-    if (jsonStr == null) return {};
-
-    try {
-      final providers = jsonDecode(jsonStr) as List<dynamic>;
-      if (providers.isEmpty) return {};
-      final idx = selectedIdx.clamp(0, providers.length - 1);
-      return providers[idx] as Map<String, dynamic>;
-    } catch (_) {
-      return {};
+    if (jsonStr != null) {
+      try {
+        final providers = jsonDecode(jsonStr) as List<dynamic>;
+        if (providers.isNotEmpty) {
+          final idx = selectedIdx.clamp(0, providers.length - 1);
+          final provider = providers[idx] as Map<String, dynamic>;
+          final apiKey = provider['apiKey'] as String? ?? '';
+          if (apiKey.isNotEmpty) return provider;
+        }
+      } catch (_) {}
     }
+
+    if (_isTrialActive(prefs)) {
+      final token = prefs.getString('trial_token')!;
+      return {
+        'name': 'Trial',
+        'model': 'qwen/qwen3.5-flash-02-23',
+        'apiKey': token,
+        'baseUrl': 'https://blinkingchorus.com/api/trial/chat',
+      };
+    }
+
+    return {};
   }
 }
 
@@ -174,6 +208,7 @@ enum LlmErrorType {
   networkError,   // socket / DNS failure
   timeout,        // request timed out
   emptyResponse,  // 200 but no content
+  trialExpired,   // trial token expired (7-day limit)
   unknown,
 }
 
@@ -214,6 +249,10 @@ class LlmException implements Exception {
         return isZh
             ? 'AI 返回了空响应，请重试。'
             : 'The AI returned an empty response. Please try again.';
+      case LlmErrorType.trialExpired:
+        return isZh
+            ? '试用已过期。请在设置中添加您自己的 API Key 以继续使用 AI 助手。'
+            : 'Your trial has expired. Add your own API key in Settings to continue.';
       case LlmErrorType.unknown:
         return isZh ? '发生未知错误，请重试。' : 'An unexpected error occurred. Please try again.';
     }

@@ -289,4 +289,66 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aiSecretsTagName => 'Secrets';
+
+  @override
+  String get trialBannerStartTitle => 'Try AI for Free — 7 Days';
+
+  @override
+  String get trialBannerStartSubtitle => 'No setup needed. Start chatting now.';
+
+  @override
+  String get trialBannerStartButton => 'Start Free Trial →';
+
+  @override
+  String get trialBannerActiveTitle => 'Trial Active';
+
+  @override
+  String get trialBannerActiveSubtitle =>
+      'You can add your own key anytime in the provider list.';
+
+  @override
+  String get trialBannerExpiredTitle => 'Trial Expired';
+
+  @override
+  String get trialBannerExpiredSubtitle =>
+      'Add your own API key below to continue using the AI assistant.';
+
+  @override
+  String get trialBannerExpiredButton => 'Get a free key →';
+
+  @override
+  String get trialProviderName => '7-Day Trial';
+
+  @override
+  String trialProviderSubtitleDays(Object daysLeft) {
+    return '$daysLeft days remaining · 20 requests/day';
+  }
+
+  @override
+  String get trialProviderSubtitleDay => '1 day remaining · 20 requests/day';
+
+  @override
+  String get trialProviderChip => 'Trial';
+
+  @override
+  String get trialProviderExpiredChip => 'Expired';
+
+  @override
+  String get trialStartError => 'Failed to start trial. Please try again.';
+
+  @override
+  String get trialAlreadyUsed =>
+      'You have already used your free trial on this device.';
+
+  @override
+  String get trialInfoDialogTitle => 'Trial Details';
+
+  @override
+  String get trialInfoModel => 'Model: qwen/qwen3.5-flash';
+
+  @override
+  String get trialInfoUrl => 'Proxied by Blinking trial backend';
+
+  @override
+  String get trialInfoCannotEdit => 'Trial provider cannot be edited.';
 }

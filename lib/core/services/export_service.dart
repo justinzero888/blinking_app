@@ -161,20 +161,37 @@ class ExportService {
       int totalBytes = 0;
       final mediaDir = Directory(path_pkg.join(docDir.path, 'media'));
       if (await mediaDir.exists()) {
+        // Collect media URLs from filtered entries when date range is active
+        final referencedMediaUrls = <String>{};
+        if (startDate != null || endDate != null) {
+          for (final entry in filteredEntries) {
+            referencedMediaUrls.addAll(entry.mediaUrls);
+          }
+        }
+
         final entities = await mediaDir.list(recursive: true).toList();
         final mediaFiles = entities.whereType<File>().toList();
 
         // Pre-scan: collect files and their sizes
         final fileSizes = <String, int>{};
         for (final f in mediaFiles) {
+          final relativePath = path_pkg.relative(f.path, from: docDir.path);
+          // Skip files not referenced by filtered entries when date range is active
+          if (startDate != null || endDate != null) {
+            if (!referencedMediaUrls.contains(relativePath)) continue;
+          }
           fileSizes[f.path] = await f.length();
           totalBytes += fileSizes[f.path]!;
         }
 
         int bytesProcessed = 0;
         for (final file in mediaFiles) {
-          final fileSize = fileSizes[file.path] ?? 0;
           final relativePath = path_pkg.relative(file.path, from: docDir.path);
+          // Skip files not referenced by filtered entries when date range is active
+          if (startDate != null || endDate != null) {
+            if (!referencedMediaUrls.contains(relativePath)) continue;
+          }
+          final fileSize = fileSizes[file.path] ?? 0;
           await zipEncoder.addFile(file, relativePath);
           bytesProcessed += fileSize;
           if (totalBytes > 0) {

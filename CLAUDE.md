@@ -4,13 +4,14 @@ Personal memory/habit-tracking Flutter app (记忆闪烁). Path: `/Users/justinz
 
 ## Quick Reference
 
-- **Flutter SDK:** `^3.11.0`
-- **Current version:** `1.1.0-beta.4+19` (pubspec.yaml)
+- **Flutter SDK:** `^3.11.0` (currently 3.41.8 stable, Apr 24 2026)
+- **macOS:** 26.2 (Tahoe beta) — requires Xcode 26, managed in `ClaudeDev/system-upgrade`
+- **Current version:** `1.1.0-beta.5+20` (pubspec.yaml)
 - **DB version:** 11 (`kSchemaVersion = 11` in `DatabaseService`)
 - **Build AAB:** `flutter build appbundle --release`
 - **Build APK:** `flutter build apk --release`
 - **Lint:** `flutter analyze --no-pub` (target: 0 errors)
-- **Tests:** `flutter test` (93 tests, all passing)
+- **Tests:** `flutter test` (94 tests, all passing)
 - **Feedback email:** `blinkingfeedback@gmail.com`
 
 ---
@@ -58,10 +59,12 @@ Calendar | Moment | Routine | 珍藏 | Settings
 | `lib/main.dart` | App entry point, `StorageService` init |
 | `lib/core/config/constants.dart` | `AppConstants.appVersion` — keep in sync with pubspec.yaml |
 | `lib/core/services/storage_service.dart` | All CRUD; seeds default tags, routines, templates, folders |
-| `lib/core/services/database_service.dart` | SQLite schema v10 + sequential migrations |
+| `lib/core/services/database_service.dart` | SQLite schema v11 + sequential migrations |
 | `lib/core/services/llm_service.dart` | OpenAI-compatible chat/complete; reads provider config from SharedPreferences |
 | `lib/core/services/file_service.dart` | Media copy to app documents directory |
 | `lib/core/services/chorus_service.dart` | Social publishing to Chorus backend |
+| `lib/core/services/trial_service.dart` | 7-day trial token lifecycle (start, status, expiry) |
+| `lib/core/services/device_service.dart` | Anonymous device UUID for trial identification |
 | `lib/core/config/emotions.dart` | `kDefaultEmotions` — 10 emoji strings |
 | `lib/providers/entry_provider.dart` | `addEntry`, `getDayEmotion`, `setSearchQuery`, `setFilterTag` |
 | `lib/providers/routine_provider.dart` | `getRoutinesForDate`, `isMissedOn`, `toggleComplete` |
@@ -94,7 +97,7 @@ Calendar | Moment | Routine | 珍藏 | Settings
 ## Important Conventions
 
 ### Database Migrations
-Always use sequential `if (oldVersion < N)` blocks in `DatabaseService.onUpgrade`. Never nest or use `else if`. `_onCreate` always creates the full v10 schema. `kSchemaVersion` at top of class defines the current target.
+Always use sequential `if (oldVersion < N)` blocks in `DatabaseService.onUpgrade`. Never nest or use `else if`. `_onCreate` always creates the full v11 schema. `kSchemaVersion` at top of class defines the current target.
 
 ### Version Sync
 When bumping `pubspec.yaml` version, also update `lib/core/config/constants.dart` `AppConstants.appVersion` (semver only, no build number) and the version subtitle in `settings_screen.dart`. A `test/core/version_test.dart` enforces this.
@@ -151,15 +154,51 @@ Use `try { await launchUrl(uri); } catch (_) { ... }` pattern. Do NOT use `canLa
 
 ---
 
-## Pending Work
+## Feature Status & Pending Work
 
-| Priority | Item |
-|----------|------|
-| P2 | Chorus social feature — backend API not yet confirmed |
-| P3 | Firebase / Cloud Sync (all deps commented out in pubspec) |
-| P3 | Card generation AI multi-design suggestions (deferred from v1.1.0 beta) |
-| P3 | Custom emoji images E-1/E-2 (deferred from v1.1.0 beta) |
-| BLOCKED | iOS Simulator — macOS 26 Tahoe beta + Xcode 16.2 incompatibility; requires Xcode update |
+### Completed
+| Feature | Status |
+|---------|--------|
+| AI assistant (multi-turn LLM chat + Save Reflection) | ✅ Done |
+| AI Secrets tag (exclude private notes from AI context) | ✅ Done |
+| Bilingual UI (EN/ZH) | ✅ Done |
+| Backup/Restore (ZIP + JSON) with progress bars | ✅ Done |
+| Card share (PNG export) | ✅ Done |
+| Chorus social posting (publish to blinkingchorus.com) | ✅ Done |
+| Entry detail read-only view with share + Post to Chorus | ✅ Done |
+| Habit import/export (JSON) | ✅ Done |
+| Legal docs (Privacy Policy + ToS) | ✅ Done |
+| Note cards + rich editor (flutter_quill, 100-word limit) | ✅ Done |
+| Card PNG cleanup (orphan file deletion on card/folder/template delete) | ✅ Done (PROP-4) |
+| DB indexes v11 (`entry_tags(entry_id)` + `note_card_entries(card_id)`) | ✅ Done (PROP-5) |
+| Onboarding banner (Calendar, one-time dismissible) | ✅ Done |
+| Trial API key flow (7-day free trial, app + backend) | ✅ Done (PROP-6) |
+| UX polish M1–M7, P1-1–P1-10, P2 items | ✅ Done |
+
+### Pending
+| Priority | Item | Effort | Status |
+|----------|------|--------|--------|
+| P1 | PROP-3 — Promote Android to Production on Google Play | ~15 min manual | Ready — monitor beta soak |
+| P2 | PROP-6 — Trial API key flow (7-day free trial) | ✅ Done | App + backend deployed 2026-04-30; plans in `docs/plans/2026-04-30-prop-6-trial-api-key-plan.md`
+| P2 | PROP-9 — Daily Checklist Entry (ad-hoc daily lists) | ~18h | Revised design + plan in `docs/plans/2026-04-30-prop-9-daily-checklist-plan.md`; ship in v1.1.1 if v1.1.0 is tight |
+| P3 | PROP-7 — AI Secrets lock icon on entries | ~1h | UX polish |
+| P3 | PROP-8 — Keepsakes tab rename (deferred post-beta) | ~30 min | Wait for beta feedback |
+| P3 | Firebase / Cloud Sync | Large | All deps commented out in pubspec |
+| P3 | Card generation AI multi-design suggestions | Unknown | Deferred from v1.1.0 beta |
+| P3 | Custom emoji images E-1/E-2 | Unknown | Deferred from v1.1.0 beta |
+| P3 | iOS release (Xcode 26 upgrade, App Store submission) | Moved | Managed in separate project: `ClaudeDev/system-upgrade` |
+
+### Launch Roadmap (Target: end of May 2026)
+
+| Week | Window | Focus |
+|------|--------|-------|
+| 1–2 | May 1–14 | PROP-6 backend + app-side build, alpha test |
+| 3 | May 15–21 | PROP-9 (stretch goal) + PROP-7/PROP-8 polish |
+| 4 | May 22–30 | Launch readiness: Play Store listing, beta crash triage, smoke tests, version bump, release build |
+
+**Critical path:** PROP-6 must ship with production launch (removes #1 onboarding barrier). PROP-9 is a stretch goal — ship in v1.1.1 if Week 3 runs over. Backend for PROP-6 is the only external dependency; start immediately.
+
+**iOS release work** (Xcode 26 upgrade, toolchain migration, App Store submission) has been moved to a separate management project at `/Users/justinzero/ClaudeDev/system-upgrade`. The plan document `docs/plans/2026-04-28-infrastructure-upgrade-ios-release.md` is superseded by the new project's planning.
 
 ---
 
@@ -178,3 +217,6 @@ Use `try { await launchUrl(uri); } catch (_) { ... }` pattern. Do NOT use `canLa
 | v1.1.0-beta.2+11 | 22776c8 | Adaptive icon, card fixes, font fill, feedback button, iOS xcassets fixes |
 | v1.1.0-beta.3+18 | 7edfcef | DB v10 (source_template_id), template locale fix, EntryDetailScreen, ChorusService, 56 tests |
 | v1.1.0-beta.4+19 | 4d4b51f | Calendar routine checklist simplified, restore progress dialog, 79 tests |
+| v1.1.0-beta.4+19 | e1fbbd6 | PROP-4 card PNG cleanup, PROP-5 DB indexes v11, 93 tests, release notes |
+| v1.1.0-beta.5+20 | (pending) | PROP-6 trial API key (full stack): app UI + Cloudflare Worker backend; 94 tests |
+| v1.1.0-beta.4+19 | (this session) | Flutter 3.41.2→3.41.8 upgrade (unblocks Xcode 26); iOS pipeline plan updated; iOS release moved to ClaudeDev/system-upgrade |

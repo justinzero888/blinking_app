@@ -1,14 +1,19 @@
 import 'dart:io';
+import 'package:archive/archive_io.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:blinking/core/services/export_service.dart';
 import 'package:blinking/core/services/storage_service.dart';
-import 'package:blinking/models/entry.dart';
+import 'package:blinking/models/entry.dart' show Entry, EntryType;
 import 'package:blinking/models/tag.dart';
 import 'package:blinking/models/routine.dart';
 
 class _FakeStorage extends StorageService {
-  @override Future<List<Entry>> getEntries() async => [];
+  final List<Entry> _entries;
+
+  _FakeStorage([this._entries = const []]);
+
+  @override Future<List<Entry>> getEntries() async => _entries;
   @override Future<List<Tag>> getTags() async => [];
   @override Future<List<Routine>> getRoutines() async => [];
 }
@@ -62,6 +67,62 @@ void main() {
         expect(progressValues[i], greaterThan(progressValues[i - 1]),
             reason: 'progress values at index $i should be strictly increasing');
       }
+    });
+
+    test('exports only media files referenced by entries within date range', () async {
+      // Create media directory and files
+      final mediaDir = Directory('${tempDir.path}/media')..createSync();
+      final oldPhotoPath = '${mediaDir.path}/old_photo.jpg';
+      final recentPhotoPath = '${mediaDir.path}/recent_photo.jpg';
+      File(oldPhotoPath).writeAsBytesSync(List.filled(1024, 1));
+      File(recentPhotoPath).writeAsBytesSync(List.filled(1024, 2));
+
+      // Create entries with different dates
+      final now = DateTime.now();
+      final oneMonthAgo = now.subtract(const Duration(days: 30));
+      final oldEntry = Entry(
+        id: '1',
+        type: EntryType.freeform,
+        content: 'old entry',
+        emotion: '😊',
+        createdAt: oneMonthAgo,
+        updatedAt: oneMonthAgo,
+        tagIds: [],
+        mediaUrls: ['media/old_photo.jpg'],
+      );
+      final recentEntry = Entry(
+        id: '2',
+        type: EntryType.freeform,
+        content: 'recent entry',
+        emotion: '😊',
+        createdAt: now,
+        updatedAt: now,
+        tagIds: [],
+        mediaUrls: ['media/recent_photo.jpg'],
+      );
+
+      // Export with date range that only includes recent entry
+      final service = ExportService(_FakeStorage([oldEntry, recentEntry]));
+      final zipPath = await service.exportAll(
+        startDate: oneMonthAgo.add(const Duration(days: 1)),
+        endDate: now,
+        docDirOverride: tempDir.path,
+      );
+
+      // Read ZIP and verify contents
+      final bytes = File(zipPath).readAsBytesSync();
+      final archive = ZipDecoder().decodeBytes(bytes);
+      final filesInZip = archive.map((f) => f.name).toList();
+
+      // Should have data.json and manifest.json
+      expect(filesInZip, contains('data.json'));
+      expect(filesInZip, contains('manifest.json'));
+
+      // Should have recent_photo.jpg but NOT old_photo.jpg
+      expect(filesInZip, contains('media/recent_photo.jpg'),
+          reason: 'recent entry media should be included');
+      expect(filesInZip, isNot(contains('media/old_photo.jpg')),
+          reason: 'old entry media should be excluded when outside date range');
     });
   });
 }

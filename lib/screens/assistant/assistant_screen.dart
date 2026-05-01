@@ -20,6 +20,7 @@ class _AssistantScreenState extends State<AssistantScreen> {
   final _llmService = LlmService();
   final List<ChatMessage> _messages = [];
   bool _isSending = false;
+  bool _showTrialExpiredBanner = false;
 
   // Notes context — always on; custom range overrides the 30-day default
   bool _customRangeActive = false;
@@ -196,6 +197,9 @@ class _AssistantScreenState extends State<AssistantScreen> {
     } on LlmException catch (e) {
       if (mounted) {
         final isZh = context.read<LocaleProvider>().locale.languageCode == 'zh';
+        if (e.type == LlmErrorType.trialExpired) {
+          setState(() => _showTrialExpiredBanner = true);
+        }
         setState(() {
           _messages.add(ChatMessage(
               text: '⚠️ ${e.friendlyMessage(isZh)}',
@@ -508,6 +512,7 @@ class _AssistantScreenState extends State<AssistantScreen> {
         children: [
           _buildQuickActions(isZh),
           if (_customRangeActive) _buildCustomRangeBar(isZh),
+          if (_showTrialExpiredBanner) _buildTrialExpiredBanner(isZh),
           const Divider(height: 1),
           Expanded(
             child: _messages.isEmpty
@@ -609,6 +614,45 @@ class _AssistantScreenState extends State<AssistantScreen> {
             ),
             child: Text(isZh ? '生成总结' : 'Summarize',
                 style: const TextStyle(fontSize: 12)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTrialExpiredBanner(bool isZh) {
+    return Container(
+      color: Colors.orange.shade50,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      child: Row(
+        children: [
+          const Text('\u23F0', style: TextStyle(fontSize: 18)),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              isZh
+                  ? '7 天试用已过期。请前往设置添加 API Key 以继续聊天。'
+                  : 'Your 7-day trial has ended. Add your own API key in Settings to continue chatting.',
+              style: TextStyle(fontSize: 12, color: Colors.orange.shade800),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            child: Text(
+              isZh ? '设置 \u2192' : 'Settings \u2192',
+              style: TextStyle(fontSize: 12, color: Colors.orange.shade800, fontWeight: FontWeight.bold),
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.close, size: 16),
+            onPressed: () => setState(() => _showTrialExpiredBanner = false),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
           ),
         ],
       ),

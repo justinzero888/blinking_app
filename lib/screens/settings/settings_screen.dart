@@ -20,6 +20,7 @@ import '../../models/tag.dart';
 import '../../core/config/theme.dart';
 import '../../core/services/storage_service.dart';
 import '../../core/services/export_service.dart';
+import '../../core/services/trial_service.dart';
 
 enum _BackupRange { all, lastMonth, last3Months, last6Months, custom }
 
@@ -65,9 +66,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String _aiName = 'AI 助手';
   String _aiPersonality = '';
 
+  TrialService? _trialService;
+  bool _isStartingTrial = false;
+
   @override
   void initState() {
     super.initState();
+    SharedPreferences.getInstance().then((prefs) {
+      _trialService = TrialService(prefs);
+      if (mounted) setState(() {});
+    });
     _loadLlmSettings();
     _loadAiSettings();
   }
@@ -153,6 +161,239 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  List<Map<String, String>> get _displayProviders {
+    final ts = _trialService;
+    if (ts != null && ts.getStatus() == TrialStatus.active) {
+      return [ts.buildTrialProvider(), ..._llmProviders];
+    }
+    return _llmProviders;
+  }
+
+  Future<void> _startTrial() async {
+    final isZh = context.read<LocaleProvider>().locale.languageCode == 'zh';
+    if (_trialService == null) return;
+    setState(() => _isStartingTrial = true);
+    try {
+      await _trialService!.startTrial();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(isZh
+                ? '试用已开始！享受 7 天免费 AI 助手。'
+                : 'Trial started! Enjoy 7 days of free AI.'),
+          ),
+        );
+        context.read<LlmConfigNotifier>().notify();
+        setState(() {});
+      }
+    } on TrialException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.code == 'trial_already_used'
+                ? (isZh ? '此设备已使用过免费试用。' : 'This device has already used its free trial.')
+                : (isZh ? '启动试用失败，请重试。' : 'Failed to start trial. Please try again.')),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(isZh ? '启动失败，请检查网络连接。' : 'Failed to start trial. Check your network.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isStartingTrial = false);
+    }
+  }
+
+  Widget _buildTrialBanner(bool isZh) {
+    final ts = _trialService;
+    final trialStatus = ts != null ? ts.getStatus() : TrialStatus.none;
+
+    switch (trialStatus) {
+      case TrialStatus.none:
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Colors.blue.shade400, Colors.purple.shade400],
+              ),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text('🎉', style: TextStyle(fontSize: 24)),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            isZh ? '免费试用 AI \u2014 7 天' : 'Try AI for Free \u2014 7 Days',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                          Text(
+                            isZh ? '无需设置，立即开始聊天。' : 'No setup needed. Start chatting now.',
+                            style: TextStyle(color: Colors.white70, fontSize: 13),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: _isStartingTrial ? null : _startTrial,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: Colors.blue.shade700,
+                    ),
+                    child: _isStartingTrial
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : Text(
+                            isZh ? '开始免费试用 \u2192' : 'Start Free Trial \u2192',
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+
+      case TrialStatus.active:
+        final daysLeft = ts?.trialDaysLeft ?? 0;
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.green.shade50,
+              border: Border.all(color: Colors.green.shade300),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Text('\u2705', style: TextStyle(fontSize: 24)),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              isZh
+                                  ? '试用中 \u2014 剩余 $daysLeft 天'
+                                  : 'Trial Active \u2014 $daysLeft ${daysLeft == 1 ? 'day' : 'days'} remaining',
+                              style: TextStyle(
+                                color: Colors.green.shade800,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      Text(
+                        isZh
+                            ? '每天 20 次请求 · 您可以随时添加自己的 Key'
+                            : '20 requests/day \u00b7 You can add your own key anytime',
+                        style: TextStyle(color: Colors.green.shade700, fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+
+      case TrialStatus.expired:
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.orange.shade50,
+              border: Border.all(color: Colors.orange.shade300),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Text('\u23F0', style: TextStyle(fontSize: 24)),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            isZh ? '试用已过期' : 'Trial Expired',
+                            style: TextStyle(
+                              color: Colors.orange.shade800,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                          Text(
+                            isZh
+                                ? '在下方添加您自己的 API Key 以继续使用 AI 助手。'
+                                : 'Add your own API key below to continue using the AI assistant.',
+                            style: TextStyle(color: Colors.orange.shade700, fontSize: 12),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton(
+                    onPressed: () => launchUrl(
+                      Uri.parse('https://openrouter.ai/keys'),
+                      mode: LaunchMode.externalApplication,
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.orange.shade800,
+                    ),
+                    child: Text(
+                      isZh ? '免费获取 Key \u2192' : 'Get a free key \u2192',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final locale = context.watch<LocaleProvider>().locale;
@@ -169,27 +410,49 @@ class _SettingsScreenState extends State<SettingsScreen> {
         children: [
           // AI / LLM Provider Settings
           _buildSectionHeader(isZh ? 'AI 服务配置' : 'AI Provider'),
-          ...List.generate(_llmProviders.length, (index) {
-            final provider = _llmProviders[index];
-            final isSelected = _selectedLlmIndex == index;
+          _buildTrialBanner(isZh),
+          ...List.generate(_displayProviders.length, (index) {
+            final trialActive = _trialService?.getStatus() == TrialStatus.active;
+            final isTrial = trialActive && index == 0;
+            final provider = _displayProviders[index];
+            final userIndex = trialActive ? index - 1 : index;
+            final isSelected = !isTrial && _selectedLlmIndex == userIndex;
             final hasKey = (provider['apiKey'] ?? '').isNotEmpty;
             return Container(
               color: (isSelected && hasKey)
                   ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.08)
                   : null,
               child: ListTile(
-                leading: Radio<int>(
-                  value: index,
-                  groupValue: _selectedLlmIndex,
-                  onChanged: (value) {
-                    setState(() => _selectedLlmIndex = value!);
-                    _saveLlmSettings();
-                  },
-                ),
+                leading: isTrial
+                    ? const Icon(Icons.card_giftcard, color: Colors.green)
+                    : Radio<int>(
+                        value: userIndex,
+                        groupValue: _selectedLlmIndex,
+                        onChanged: (value) {
+                          setState(() => _selectedLlmIndex = value!);
+                          _saveLlmSettings();
+                        },
+                      ),
                 title: Row(
                   children: [
                     Text(provider['name']!),
-                    if (isSelected && hasKey) ...[
+                    if (isTrial) ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.green,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          isZh ? '试用' : 'Trial',
+                          style: const TextStyle(
+                              fontSize: 10,
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ] else if (isSelected && hasKey) ...[
                       const SizedBox(width: 8),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -209,19 +472,36 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ],
                 ),
                 subtitle: Text(
-                  hasKey
-                      ? '${isZh ? "模型" : "Model"}: ${provider['model']}'
-                      : isZh ? '模型: ${provider['model']} · 未配置 Key' : 'Model: ${provider['model']} · No key set',
+                  isTrial
+                      ? (() {
+                          final days = _trialService?.trialDaysLeft ?? 0;
+                          if (isZh) {
+                            return '剩余 $days 天 \u00b7 每天 20 次请求';
+                          }
+                          return '$days ${days == 1 ? 'day' : 'days'} remaining \u00b7 20 requests/day';
+                        })()
+                      : (hasKey
+                          ? '${isZh ? "模型" : "Model"}: ${provider['model']}'
+                          : isZh
+                              ? '模型: ${provider['model']} \u00b7 未配置 Key'
+                              : 'Model: ${provider['model']} \u00b7 No key set'),
                 ),
-                trailing: IconButton(
-                  icon: const Icon(Icons.edit, size: 20),
-                  onPressed: () => _showEditLlmDialog(context, index, isZh),
-                ),
+                trailing: isTrial
+                    ? IconButton(
+                        icon: const Icon(Icons.info_outline, size: 20),
+                        onPressed: () => _showTrialInfoDialog(context, isZh),
+                      )
+                    : IconButton(
+                        icon: const Icon(Icons.edit, size: 20),
+                        onPressed: () => _showEditLlmDialog(context, userIndex, isZh),
+                      ),
                 selected: isSelected,
-                onTap: () {
-                  setState(() => _selectedLlmIndex = index);
-                  _saveLlmSettings();
-                },
+                onTap: isTrial
+                    ? null
+                    : () {
+                        setState(() => _selectedLlmIndex = userIndex);
+                        _saveLlmSettings();
+                      },
               ),
             );
           }),
@@ -493,7 +773,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ListTile(
             leading: const Icon(Icons.info),
             title: const Text('Blinking (记忆闪烁)'),
-            subtitle: Text(isZh ? '版本 1.1.0-beta.4' : 'Version 1.1.0-beta.4'),
+            subtitle: Text(isZh ? '版本 1.1.0-beta.5' : 'Version 1.1.0-beta.5'),
           ),
         ],
       ),
@@ -928,6 +1208,40 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  void _showTrialInfoDialog(BuildContext context, bool isZh) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(isZh ? '试用详情' : 'Trial Details'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(isZh ? '模型：qwen/qwen3.5-flash' : 'Model: qwen/qwen3.5-flash'),
+            const SizedBox(height: 8),
+            Text(isZh ? '由 Blinking 试用后端代理' : 'Proxied by Blinking trial backend'),
+            const SizedBox(height: 8),
+            Text(
+              isZh ? '每天最多 20 次请求，共 7 天试用期。' : 'Up to 20 requests/day for 7 days.',
+              style: const TextStyle(color: Colors.grey),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              isZh ? '试用服务商不可编辑。' : 'Trial provider cannot be edited.',
+              style: TextStyle(color: Colors.red[400], fontSize: 12),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(isZh ? '关闭' : 'Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
   // ============ DATA PORTABILITY ============
 
   String _rangeLabel(_BackupRange r, bool isZh) {
@@ -1347,7 +1661,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _sendFeedback(BuildContext context, bool isZh) async {
     const email = 'blinkingfeedback@gmail.com';
-    const version = '1.1.0-beta.4'; // TODO: keep in sync with pubspec.yaml
+    const version = '1.1.0-beta.5'; // TODO: keep in sync with pubspec.yaml
     final subject = Uri.encodeComponent('Blinking App Feedback - v$version');
     final body = Uri.encodeComponent(
       'What happened:\n\n\nSteps to reproduce:\n\n\nExpected behavior:\n\n\nDevice & OS:\n\n',

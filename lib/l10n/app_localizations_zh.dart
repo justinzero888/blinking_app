@@ -289,4 +289,63 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get aiSecretsTagName => '私密';
+
+  @override
+  String get trialBannerStartTitle => '免费试用 AI — 7 天';
+
+  @override
+  String get trialBannerStartSubtitle => '无需设置，立即开始聊天。';
+
+  @override
+  String get trialBannerStartButton => '开始免费试用 →';
+
+  @override
+  String get trialBannerActiveTitle => '试用中';
+
+  @override
+  String get trialBannerActiveSubtitle => '您可以随时在服务商列表中添加自己的 Key。';
+
+  @override
+  String get trialBannerExpiredTitle => '试用已过期';
+
+  @override
+  String get trialBannerExpiredSubtitle => '在下方添加您自己的 API Key 以继续使用 AI 助手。';
+
+  @override
+  String get trialBannerExpiredButton => '免费获取 Key →';
+
+  @override
+  String get trialProviderName => '7 天试用';
+
+  @override
+  String trialProviderSubtitleDays(Object daysLeft) {
+    return '剩余 $daysLeft 天 · 每天 20 次请求';
+  }
+
+  @override
+  String get trialProviderSubtitleDay => '剩余 1 天 · 每天 20 次请求';
+
+  @override
+  String get trialProviderChip => '试用';
+
+  @override
+  String get trialProviderExpiredChip => '已过期';
+
+  @override
+  String get trialStartError => '启动试用失败，请重试。';
+
+  @override
+  String get trialAlreadyUsed => '此设备已使用过免费试用。';
+
+  @override
+  String get trialInfoDialogTitle => '试用详情';
+
+  @override
+  String get trialInfoModel => '模型：qwen/qwen3.5-flash';
+
+  @override
+  String get trialInfoUrl => '由 Blinking 试用后端代理';
+
+  @override
+  String get trialInfoCannotEdit => '试用服务商不可编辑。';
 }

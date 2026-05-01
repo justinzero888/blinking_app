@@ -205,10 +205,17 @@ No database changes required. This is purely cleaning up files that should have 
 
 ---
 
-### PROP-6 — Trial API key flow (7-day free trial)
+### PROP-6 — Trial API key flow (7-day free trial) ✅ COMPLETE
 **Priority:** P2  
-**Effort:** ~3–4 hours app-side; backend scope TBD  
-**Type:** Growth / onboarding
+**Effort:** App-side ~12h | Backend ~5h | Total ~17h  
+**Type:** Growth / onboarding  
+**Status:** ✅ Complete (app + backend, 2026-04-30)
+
+**Implementation:**
+- **Backend:** Cloudflare Worker endpoints `POST /api/trial/start` and `POST /api/trial/chat` at `blinkingchorus.com`, using KV for trial state storage, OpenRouter (qwen3.5-flash) proxy with rate limiting (20/day, 7-day expiry), kill switch via `TRIAL_ENABLED` secret
+- **App:** `DeviceService` (anonymous install ID), `TrialService` (trial lifecycle), modified `LlmService` (trial config fallback + error types), `SettingsScreen` (trial banner + provider entry), `FloatingRobotWidget` (trial states), `AssistantScreen` (expiry banner), 13 i18n strings
+- **Tests:** 14 backend tests (Vitest) + existing 94 Flutter tests passing
+- **Docs:** `docs/plans/2026-04-30-prop-6-trial-api-key-plan.md`, `docs/plans/2026-04-30-prop-6-backend-plan.md`, `docs/plans/2026-04-30-trial-api-key-uat.md`
 
 **Background:** The AI assistant (the 🤖 robot button) is one of the app's most distinctive features — it reads your entries and habits, and you can have a real conversation with it about your life. However, using it requires the user to set up their own API key from a third-party AI provider like OpenRouter. This is a technical step that many non-technical users will not complete. As a result, a large portion of new users may never experience the AI feature at all.
 
@@ -367,20 +374,18 @@ Set to `1` after the app has created a carry-forward entry for this list, so re-
 **Completed:**
 - ✅ PROP-1 (backup media filter bug) — Merged to master, 4 commits
 - ✅ PROP-2 (restore progress bar) — Merged to master, 6 commits + 16 tests
+- ✅ PROP-4 (card PNG cleanup) — Merged (orphan file deletion on card/folder/template delete)
+- ✅ PROP-5 (DB indexes v11) — Merged (indexes on entry_tags + note_card_entries)
+- ✅ PROP-6 (trial API key — full stack) — Completed 2026-04-30, app + backend deployed
 
 **Next in Pipeline:**
 ```
-PROP-3 (Play Store → Production)    ← monitor beta soak; promote when stable
+PROP-3 (Play Store → Production)    ← promote to production when beta is stable
   ↓
-PROP-4 (card PNG cleanup)           ← invisible storage hygiene, low risk
-PROP-5 (DB indexes v9)              ← silent perf win, safe migration
-  ↓
-Monitor Flutter stable for Xcode 26 support
-  → Execute iOS plan phases 2–5 when unblocked (parallel track)
-  ↓
-PROP-6 (trial API key)              ← needs backend scoping first
-  ↓
-PROP-9 (daily checklist entries)    ← design finalized; ready to implement after PROP-6
+PROP-9 (daily checklist entries)    ← design finalized; ready to implement
   ↓
 PROP-7, PROP-8                      ← polish; schedule around beta feedback
+  ↓
+Monitor Flutter stable for Xcode 26 support
+  → Execute iOS plan when unblocked (parallel track)
 ```

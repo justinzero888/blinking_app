@@ -661,6 +661,120 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Secrets'**
   String get aiSecretsTagName;
+
+  /// No description provided for @trialBannerStartTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Try AI for Free — 7 Days'**
+  String get trialBannerStartTitle;
+
+  /// No description provided for @trialBannerStartSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No setup needed. Start chatting now.'**
+  String get trialBannerStartSubtitle;
+
+  /// No description provided for @trialBannerStartButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Start Free Trial →'**
+  String get trialBannerStartButton;
+
+  /// No description provided for @trialBannerActiveTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Trial Active'**
+  String get trialBannerActiveTitle;
+
+  /// No description provided for @trialBannerActiveSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'You can add your own key anytime in the provider list.'**
+  String get trialBannerActiveSubtitle;
+
+  /// No description provided for @trialBannerExpiredTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Trial Expired'**
+  String get trialBannerExpiredTitle;
+
+  /// No description provided for @trialBannerExpiredSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add your own API key below to continue using the AI assistant.'**
+  String get trialBannerExpiredSubtitle;
+
+  /// No description provided for @trialBannerExpiredButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Get a free key →'**
+  String get trialBannerExpiredButton;
+
+  /// No description provided for @trialProviderName.
+  ///
+  /// In en, this message translates to:
+  /// **'7-Day Trial'**
+  String get trialProviderName;
+
+  /// No description provided for @trialProviderSubtitleDays.
+  ///
+  /// In en, this message translates to:
+  /// **'{daysLeft} days remaining · 20 requests/day'**
+  String trialProviderSubtitleDays(Object daysLeft);
+
+  /// No description provided for @trialProviderSubtitleDay.
+  ///
+  /// In en, this message translates to:
+  /// **'1 day remaining · 20 requests/day'**
+  String get trialProviderSubtitleDay;
+
+  /// No description provided for @trialProviderChip.
+  ///
+  /// In en, this message translates to:
+  /// **'Trial'**
+  String get trialProviderChip;
+
+  /// No description provided for @trialProviderExpiredChip.
+  ///
+  /// In en, this message translates to:
+  /// **'Expired'**
+  String get trialProviderExpiredChip;
+
+  /// No description provided for @trialStartError.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to start trial. Please try again.'**
+  String get trialStartError;
+
+  /// No description provided for @trialAlreadyUsed.
+  ///
+  /// In en, this message translates to:
+  /// **'You have already used your free trial on this device.'**
+  String get trialAlreadyUsed;
+
+  /// No description provided for @trialInfoDialogTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Trial Details'**
+  String get trialInfoDialogTitle;
+
+  /// No description provided for @trialInfoModel.
+  ///
+  /// In en, this message translates to:
+  /// **'Model: qwen/qwen3.5-flash'**
+  String get trialInfoModel;
+
+  /// No description provided for @trialInfoUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'Proxied by Blinking trial backend'**
+  String get trialInfoUrl;
+
+  /// No description provided for @trialInfoCannotEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Trial provider cannot be edited.'**
+  String get trialInfoCannotEdit;
 }
 
 class _AppLocalizationsDelegate

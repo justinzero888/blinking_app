@@ -3,7 +3,7 @@
 class AppConstants {
   // App Info
   static const String appName = 'Blinking';
-  static const String appVersion = '1.1.0-beta.4';
+  static const String appVersion = '1.1.0-beta.5';
 
   // Storage Keys
   static const String keyThemeMode = 'theme_mode';

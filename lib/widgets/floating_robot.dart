@@ -1,9 +1,11 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/ai_persona_provider.dart';
 import '../providers/llm_config_notifier.dart';
 import '../core/services/llm_service.dart';
+import '../core/services/trial_service.dart';
 import '../screens/assistant/assistant_screen.dart';
 
 /// Floating animated robot widget overlaid on the main screen.
@@ -30,6 +32,7 @@ class _FloatingRobotWidgetState extends State<FloatingRobotWidget>
   late final Animation<double> _waveAnimation;
 
   bool _hasApiKey = false;
+  bool _trialExpired = false;
   LlmConfigNotifier? _llmNotifier;
 
   @override
@@ -71,7 +74,6 @@ class _FloatingRobotWidgetState extends State<FloatingRobotWidget>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Subscribe to LlmConfigNotifier so we re-check whenever the user saves an API key
     final notifier = context.read<LlmConfigNotifier>();
     if (_llmNotifier != notifier) {
       _llmNotifier?.removeListener(_checkApiKey);
@@ -83,8 +85,19 @@ class _FloatingRobotWidgetState extends State<FloatingRobotWidget>
 
   Future<void> _checkApiKey() async {
     final hasKey = await LlmService.hasApiKey();
-    if (mounted && hasKey != _hasApiKey) {
-      setState(() => _hasApiKey = hasKey);
+    final prefs = await SharedPreferences.getInstance();
+    final trialService = TrialService(prefs);
+    final trialActive = trialService.getStatus() == TrialStatus.active;
+    final trialExpired = trialService.getStatus() == TrialStatus.expired;
+    if (mounted) {
+      final keyChanged = hasKey != _hasApiKey;
+      final expiredChanged = trialExpired != _trialExpired;
+      if (keyChanged || expiredChanged) {
+        setState(() {
+          _hasApiKey = hasKey || trialActive;
+          _trialExpired = trialExpired && !hasKey;
+        });
+      }
     }
   }
 
@@ -98,13 +111,18 @@ class _FloatingRobotWidgetState extends State<FloatingRobotWidget>
   }
 
   void _openAssistant() {
+    final isZh = Localizations.localeOf(context).languageCode == 'zh';
     if (!_hasApiKey) {
-      final isZh = Localizations.localeOf(context).languageCode == 'zh';
+      final message = _trialExpired
+          ? (isZh
+              ? '试用已过期。请在 设置 → AI 服务配置 中添加 API Key 以继续使用 AI 助手。'
+              : 'Your trial has ended. Add your API key in Settings → AI Providers to continue.')
+          : (isZh
+              ? '请前往 设置 → AI 服务配置 添加 API Key 后使用助手'
+              : 'Add your API key in Settings → AI Providers to use the assistant');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(isZh
-              ? '请前往 设置 → AI 服务配置 添加 API Key 后使用助手'
-              : 'Add your API key in Settings → AI Providers to use the assistant'),
+          content: Text(message),
           duration: const Duration(seconds: 3),
         ),
       );
@@ -150,7 +168,7 @@ class _FloatingRobotWidgetState extends State<FloatingRobotWidget>
           : const Center(child: Text('🤖', style: TextStyle(fontSize: 28))),
     );
 
-    // No API key: grey out, add ! badge, stop animation
+    // No API key: grey out, add badge, stop animation
     if (!_hasApiKey) {
       return Positioned(
         right: 16,
@@ -169,16 +187,19 @@ class _FloatingRobotWidgetState extends State<FloatingRobotWidget>
                   child: Container(
                     width: 18,
                     height: 18,
-                    decoration: const BoxDecoration(
-                      color: Colors.orange,
+                    decoration: BoxDecoration(
+                      color: _trialExpired ? Colors.grey : Colors.orange,
                       shape: BoxShape.circle,
                     ),
-                    child: const Center(
-                      child: Text('!',
-                          style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white)),
+                    child: Center(
+                      child: Text(
+                        _trialExpired ? '\u{1F550}' : '!',
+                        style: TextStyle(
+                          fontSize: _trialExpired ? 12 : 11,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
                     ),
                   ),
                 ),

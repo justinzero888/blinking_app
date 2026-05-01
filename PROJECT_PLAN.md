@@ -5,7 +5,7 @@
 - **Type**: Personal memory capture app
 - **Framework**: Flutter
 - **Platforms**: Android (iOS future)
-- **Current Version**: 1.1.0-beta.3+18
+- **Current Version**: 1.1.0-beta.5+20
 
 ## Goals
 - Capture memories: text, audio, video, image
@@ -30,14 +30,33 @@
 | 9 | AI Assistant | Multi-turn LLM chat with Save Reflection | Working |
 | 10 | Entry Detail | Read-only entry view with share + Post to Chorus | Working |
 
+### Completed Features (beyond screens)
+| # | Item | Status |
+|---|------|--------|
+| 1 | AI assistant (multi-turn LLM chat + Save Reflection) | Done |
+| 2 | AI Secrets tag (exclude private notes from AI context) | Done |
+| 3 | Bilingual UI (EN/ZH) | Done |
+| 4 | Backup/Restore (ZIP + JSON) with progress bars | Done |
+| 5 | Card share (PNG export) | Done |
+| 6 | Chorus social posting (publish to blinkingchorus.com) | Done |
+| 7 | Habit import/export (JSON) | Done |
+| 8 | Legal docs (Privacy Policy + ToS) | Done |
+| 9 | Note cards + rich editor (flutter_quill, 100-word limit) | Done |
+| 10 | Card PNG cleanup (PROP-4) | Done |
+| 11 | DB indexes v11 (PROP-5) | Done |
+| 12 | Onboarding banner | Done |
+| 13 | 7-Day Trial API key flow — full stack (PROP-6) | Done |
+
 ### Remaining / Blocked
 | # | Item | Status |
 |---|------|--------|
 | 1 | Firebase / Cloud Sync | Not started — deps commented out |
-| 2 | iOS build | Blocked — Flutter upgrade required for Xcode 26 deprecated API fix; see infrastructure upgrade plan |
-| 3 | Chorus social feature | In progress — ChorusService + PostToChorusSheet added, wired to EntryDetail |
-| 4 | Custom emoji images E-1/E-2 | Deferred from v1.1.0 beta |
-| 5 | Card generation AI multi-design suggestions | Deferred from v1.1.0 beta |
+| 2 | iOS release | Moved to separate project `ClaudeDev/system-upgrade` |
+| 3 | Daily checklist entries (PROP-9) | Designed, planned — stretch goal for v1.1.1 |
+| 4 | AI Secrets lock icon on entries (PROP-7) | UX polish ~1h |
+| 5 | Keepsakes tab rename (PROP-8) | Wait for beta feedback |
+| 6 | Custom emoji images E-1/E-2 | Deferred |
+| 7 | Card generation AI multi-design suggestions | Deferred |
 
 ## Technical Architecture
 
@@ -65,7 +84,7 @@ lib/
 └── widgets/               # EmojiJarWidget, CardRenderer, FloatingRobotWidget, etc.
 ```
 
-### Database Schema (v10)
+### Database Schema (v11)
 | Table | Key Fields |
 |-------|-----------|
 | `entries` | id, type, content, tagIds, emotion, createdAt |
@@ -77,7 +96,31 @@ lib/
 | `note_cards` | id, folderId, templateId, content, richContent, aiSummary, renderedImagePath |
 | `note_card_entries` | cardId, entryId |
 
+## Launch Roadmap (Target: end of May 2026)
+
+| Week | Window | Focus |
+|------|--------|-------|
+| 1–2 | May 1–14 | PROP-6 alpha test, Play Store upload, monitor trial usage |
+| 3 | May 15–21 | PROP-9 (stretch goal) + PROP-7/PROP-8 polish |
+| 4 | May 22–30 | Launch readiness: Play Store listing, beta crash triage, smoke tests, version bump, release build |
+
 ## Development History
+
+### v1.1.0-beta.5+20 — 2026-04-30
+- **PROP-6: 7-Day Trial API Key Flow (full stack)**
+  - App-side: `DeviceService` (anonymous install UUID), `TrialService` (trial lifecycle with demo mode), Settings trial banner + provider entry + start flow, LLM service trial error handling, floating robot trial states, assistant expiry banner, i18n (13 new EN/ZH strings)
+  - Backend: Cloudflare Workers (2 endpoints: `/api/trial/start`, `/api/trial/chat`), D1/KV storage, rate limiting (20 req/day), proxy to OpenRouter `qwen/qwen3.5-flash`, kill switch via Workers secret
+  - Export/import: trial data excluded from backup/restore
+- **Test results:** 94/94 passing
+- **Build artifacts:** APK 70.5 MB, AAB 54.7 MB
+- **Backend:** Deployed at `blinkingchorus.com`
+
+### v1.1.0-beta.4+19 — 2026-04-29
+- PROP-4: Card PNG cleanup (orphan file deletion on card/folder/template delete)
+- PROP-5: DB indexes v11 (`entry_tags(entry_id)` + `note_card_entries(card_id)`)
+- Calendar routine checklist simplified to 2-element layout
+- Restore progress dialog with percentage and time estimate
+- 93 tests passing
 
 ### v1.1.0-beta.3+18 — 2026-04-28
 **Bug fixes:**
@@ -125,7 +168,7 @@ lib/
 
 ## Build Commands
 ```bash
-flutter test                          # 56 tests
+flutter test                          # 94 tests
 flutter analyze --no-pub              # 0 errors
 flutter build apk --debug
 flutter build apk --release
@@ -136,8 +179,8 @@ flutter build appbundle --release
 
 ### Open
 - Firebase / Cloud Sync — all deps commented out, sync toggle is a no-op
-- iOS build — blocked on Flutter upgrade for Xcode 26 deprecated API fix (Xcode 26.4.1 available; Flutter stable fix pending)
-- Chorus feature — service + sheet exist but backend API not confirmed
+- iOS release — moved to separate project `ClaudeDev/system-upgrade` (requires Xcode 26)
+- Daily checklist entries (PROP-9) — designed and planned, stretch goal for v1.1.1
 
 ### Resolved
 - Template name field shows Chinese under English locale (fixed v1.1.0-beta.3)
@@ -151,19 +194,26 @@ flutter build appbundle --release
 - Language setting lost on restart
 - Search and tag filter unwired in Moment screen
 - Duplicate AppProvider (deleted)
+- Card PNG orphan files on delete (PROP-4)
+- DB performance on queries (PROP-5 indexes)
+- 7-day trial API key flow (PROP-6 — full stack deployed)
+- Flutter 3.41.2→3.41.8 upgrade (unblocks Xcode 26)
 
 ## Next Steps
 
-1. Submit Android v1.1.0-beta.3+18 AAB to Google Play (Internal Testing → Production)
-2. Confirm Chorus backend API and complete PostToChorusSheet integration
-3. Firebase project setup + cloud sync implementation
-4. Entry detail read-only view polish
+1. Commit & push PROP-6 code to GitHub
+2. Upload v1.1.0-beta.5+20 AAB to Google Play Console (Internal Testing → Production)
+3. Monitor trial usage and OpenRouter costs during alpha soak
+4. Week 3 gate: if PROP-6 stable, begin PROP-9 daily checklist (v1.1.1 stretch)
+5. Week 4: launch readiness — Play Store listing, crash triage, smoke tests
 
 ## Active Plans
 
 | Plan | Status | Link |
 |------|--------|------|
-| Infrastructure Upgrade & iOS Release | DRAFT — awaiting Flutter stable + Xcode 26 | [2026-04-28-infrastructure-upgrade-ios-release.md](docs/plans/2026-04-28-infrastructure-upgrade-ios-release.md) |
+| 7-Day Trial API Key Flow (PROP-6) | ✅ Complete — deployed | [2026-04-30-prop-6-trial-api-key-plan.md](docs/plans/2026-04-30-prop-6-trial-api-key-plan.md) |
+| Daily Checklist Entry (PROP-9) | Design complete — stretch goal | [2026-04-30-prop-9-daily-checklist-plan.md](docs/plans/2026-04-30-prop-9-daily-checklist-plan.md) |
+| iOS Release | Moved to ClaudeDev/system-upgrade | — |
 
 ## Contact
 - Developer: Justin
