@@ -139,6 +139,26 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
 
   void _switchFormat(EntryFormat newFormat) {
     if (newFormat == _selectedFormat) return;
+
+    if (newFormat == EntryFormat.list && widget.existingEntry == null) {
+      final entryProvider = context.read<EntryProvider>();
+      final todayLists = entryProvider.getEntriesForDate(DateTime.now())
+          .where((e) => e.format == EntryFormat.list)
+          .toList();
+      if (todayLists.isNotEmpty) {
+        final isZh = context.read<LocaleProvider>().locale.languageCode == 'zh';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(isZh
+                ? '今天已有清单，请编辑现有清单'
+                : 'A list already exists for today. Edit the existing list instead.'),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+        return;
+      }
+    }
+
     setState(() {
       if (_selectedFormat == EntryFormat.note && newFormat == EntryFormat.list) {
         final noteText = _textController.text;
