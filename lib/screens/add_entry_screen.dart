@@ -484,16 +484,40 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
               return ListTile(
                 key: ValueKey(item.id),
                 dense: true,
-                leading: ReorderableDragStartListener(
-                  index: index,
-                  child: const Icon(Icons.drag_handle, size: 20),
+                leading: GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _listItems[index] = item.copyWith(isDone: !item.isDone);
+                    });
+                  },
+                  child: Icon(
+                    item.isDone ? Icons.check_box : Icons.check_box_outline_blank,
+                    size: 22,
+                    color: item.isDone ? Colors.grey : Theme.of(context).colorScheme.primary,
+                  ),
                 ),
-                title: Text(item.text, maxLines: 1, overflow: TextOverflow.ellipsis),
-                trailing: IconButton(
-                  icon: const Icon(Icons.close, size: 18),
-                  onPressed: () => _removeListItem(index),
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
+                title: Text(
+                  item.text,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    decoration: item.isDone ? TextDecoration.lineThrough : null,
+                    color: item.isDone ? Colors.grey : null,
+                  ),
+                ),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    ReorderableDragStartListener(
+                      index: index,
+                      child: const Icon(Icons.drag_handle, size: 20, color: Colors.grey),
+                    ),
+                    const SizedBox(width: 4),
+                    GestureDetector(
+                      onTap: () => _removeListItem(index),
+                      child: const Icon(Icons.close, size: 18, color: Colors.grey),
+                    ),
+                  ],
                 ),
               );
             },
