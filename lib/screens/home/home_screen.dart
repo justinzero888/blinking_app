@@ -168,6 +168,11 @@ class _HomeScreenState extends State<HomeScreen> {
       _isSameDay(e.createdAt, _selectedDate)
     ).toList();
 
+    final dayListEntries = dayEntries.where((e) => e.format == EntryFormat.list).toList();
+    final dayNoteEntries = dayEntries.where((e) => e.format != EntryFormat.list).toList();
+
+    final entryProvider = context.read<EntryProvider>();
+
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
@@ -191,6 +196,16 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
         const SizedBox(height: 16),
+
+        // List Entries Section — pinned above habits
+        if (dayListEntries.isNotEmpty) ...[
+          Text(
+            isZh ? '📋 今日清单' : '📋 Lists',
+            style: Theme.of(context).textTheme.titleSmall,
+          ),
+          const SizedBox(height: 8),
+          ..._buildListEntryCards(context, dayListEntries, entryProvider),
+        ],
 
         // Routines Section
         if (dayRoutines.isNotEmpty) ...[
@@ -269,16 +284,14 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(height: 8),
         ],
 
-        // Entries Section
-        if (dayEntries.isNotEmpty) ...[
+        // Notes Section
+        if (dayNoteEntries.isNotEmpty) ...[
           Text(
-            isZh
-                ? (isToday ? '📝 今日记录' : '📝 当日记录')
-                : (isToday ? '📝 Today\'s Entries' : '📝 Entries'),
+            isZh ? '📝 笔记' : '📝 Notes',
             style: Theme.of(context).textTheme.titleSmall,
           ),
           const SizedBox(height: 8),
-          ...dayEntries.map((entry) => Padding(
+          ...dayNoteEntries.map((entry) => Padding(
             padding: const EdgeInsets.only(bottom: 8),
             child: EntryCard(
               entry: entry,
@@ -288,13 +301,13 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
 
         // Emoji Jar Section — show when there are entries for the day
-        if (dayEntries.isNotEmpty) ...[
+        if (dayListEntries.isNotEmpty || dayNoteEntries.isNotEmpty) ...[
           const SizedBox(height: 16),
           _EmojiJarSection(date: _selectedDate),
         ],
 
         // Empty State
-        if (dayEntries.isEmpty && dayRoutines.isEmpty)
+        if (dayListEntries.isEmpty && dayNoteEntries.isEmpty && dayRoutines.isEmpty)
           Center(
             child: Padding(
               padding: const EdgeInsets.all(32),
@@ -328,6 +341,31 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
       ],
     );
+  }
+
+  List<Widget> _buildListEntryCards(
+      BuildContext context, List<Entry> listEntries, EntryProvider entryProvider) {
+    final carriedCount = entryProvider.lastCarriedCount;
+    final widgets = <Widget>[];
+    for (var i = 0; i < listEntries.length; i++) {
+      final entry = listEntries[i];
+      widgets.add(
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: EntryCard(
+            entry: entry,
+            onTap: () => _onEntryTapped(entry),
+            carriedOverCount: (i == 0 && carriedCount > 0) ? carriedCount : null,
+          ),
+        ),
+      );
+    }
+    if (carriedCount > 0) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        entryProvider.clearCarriedBanner();
+      });
+    }
+    return widgets;
   }
 
   Widget _buildRoutineChecklistItem(BuildContext context, Routine routine, {bool readOnly = false}) {
