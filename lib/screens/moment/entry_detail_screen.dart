@@ -9,6 +9,7 @@ import '../../models/entry.dart';
 import '../../providers/entry_provider.dart';
 import '../../providers/locale_provider.dart';
 import '../../providers/tag_provider.dart';
+import '../../l10n/app_localizations.dart';
 import '../../widgets/tag_chip.dart';
 import '../add_entry_screen.dart';
 import '../chorus/post_to_chorus_sheet.dart';
@@ -93,10 +94,13 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
                 padding: const EdgeInsets.only(bottom: 12),
                 child: Text(entry.emotion!, style: const TextStyle(fontSize: 32)),
               ),
-            SelectableText(
-              entry.content,
-              style: Theme.of(context).textTheme.bodyLarge,
-            ),
+            if (entry.format == EntryFormat.list)
+              ..._buildListContent(context, entry, isZh)
+            else
+              SelectableText(
+                entry.content,
+                style: Theme.of(context).textTheme.bodyLarge,
+              ),
             if (tags.isNotEmpty) ...[
               const SizedBox(height: 12),
               Wrap(
@@ -113,6 +117,59 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
         ),
       ),
     );
+  }
+
+  List<Widget> _buildListContent(
+      BuildContext context, Entry entry, bool isZh) {
+    final l = AppLocalizations.of(context)!;
+    final provider = context.read<EntryProvider>();
+    final items = entry.listItems ?? [];
+    final doneCount = items.where((i) => i.isDone).length;
+
+    return [
+      if (entry.content.isNotEmpty)
+        Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: Text(
+            entry.content,
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
+          ),
+        ),
+      ...items.map((item) => InkWell(
+            onTap: () => provider.toggleListItem(entry.id, item.id),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              child: Row(
+                children: [
+                  Icon(
+                    item.isDone ? Icons.check_box : Icons.check_box_outline_blank,
+                    size: 22,
+                    color: item.isDone ? Colors.grey : Theme.of(context).colorScheme.primary,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      item.text,
+                      style: TextStyle(
+                        fontSize: 16,
+                        decoration: item.isDone ? TextDecoration.lineThrough : null,
+                        color: item.isDone ? Colors.grey : null,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          )),
+      if (items.isNotEmpty)
+        Padding(
+          padding: const EdgeInsets.only(top: 8),
+          child: Text(
+            l.itemsDone(doneCount, items.length),
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey),
+          ),
+        ),
+    ];
   }
 }
 
