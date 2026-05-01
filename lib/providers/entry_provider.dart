@@ -14,6 +14,9 @@ class EntryProvider extends ChangeNotifier {
   String? _filterTagId;
   String _filterType = 'all'; // 'all', 'freeform', 'routine'
 
+  bool _carryForwardChecked = false;
+  int _lastCarriedCount = 0;
+
   EntryProvider(this._repository);
 
   // Getters
@@ -45,8 +48,8 @@ class EntryProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
   String get searchQuery => _searchQuery;
-  String? get filterTagId => _filterTagId;
-  String get filterType => _filterType;
+  int get lastCarriedCount => _lastCarriedCount;
+  void clearCarriedBanner() => _lastCarriedCount = 0;
 
   /// Load all entries from storage
   Future<void> loadEntries() async {
@@ -58,10 +61,27 @@ class EntryProvider extends ChangeNotifier {
       _entries = await _repository.getAll();
     } catch (e) {
       _error = e.toString();
+      _isLoading = false;
+      notifyListeners();
+      return;
     }
 
     _isLoading = false;
     notifyListeners();
+
+    if (!_carryForwardChecked) {
+      _carryForwardChecked = true;
+      try {
+        final carried = await _repository.checkAndCarryForward();
+        if (carried > 0) {
+          _entries = await _repository.getAll();
+          _lastCarriedCount = carried;
+          notifyListeners();
+        }
+      } catch (_) {
+        // Carry-forward failure should not block the app
+      }
+    }
   }
 
   /// Add a new entry
@@ -72,6 +92,9 @@ class EntryProvider extends ChangeNotifier {
     List<String> mediaUrls = const [],
     Map<String, dynamic>? metadata,
     String? emotion,
+    EntryFormat format = EntryFormat.note,
+    List<ListItem>? listItems,
+    bool listCarriedForward = false,
   }) async {
     _error = null;
 
@@ -83,6 +106,9 @@ class EntryProvider extends ChangeNotifier {
         mediaUrls: mediaUrls,
         metadata: metadata,
         emotion: emotion,
+        format: format,
+        listItems: listItems,
+        listCarriedForward: listCarriedForward,
       );
       _entries.insert(0, entry); // Add to beginning
       notifyListeners();
@@ -208,5 +234,22 @@ class EntryProvider extends ChangeNotifier {
     return counts.entries
         .reduce((a, b) => a.value >= b.value ? a : b)
         .key;
+  }
+
+  Future<void> toggleListItem(String entryId, String itemId) async {
+    try {
+      await _repository.toggleListItem(entryId, itemId);
+      final updatedEntry = await _repository.getById(entryId);
+      if (updatedEntry != null) {
+        final index = _entries.indexWhere((e) => e.id == entryId);
+        if (index != -1) {
+          _entries[index] = updatedEntry;
+          notifyListeners();
+        }
+      }
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+    }
   }
 }
