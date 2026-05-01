@@ -218,5 +218,5 @@ Use `try { await launchUrl(uri); } catch (_) { ... }` pattern. Do NOT use `canLa
 | v1.1.0-beta.3+18 | 7edfcef | DB v10 (source_template_id), template locale fix, EntryDetailScreen, ChorusService, 56 tests |
 | v1.1.0-beta.4+19 | 4d4b51f | Calendar routine checklist simplified, restore progress dialog, 79 tests |
 | v1.1.0-beta.4+19 | e1fbbd6 | PROP-4 card PNG cleanup, PROP-5 DB indexes v11, 93 tests, release notes |
-| v1.1.0-beta.5+20 | (pending) | PROP-6 trial API key (full stack): app UI + Cloudflare Worker backend; 94 tests |
+| v1.1.0-beta.5+20 | d769c1b | PROP-6 trial API key (full stack): app UI + Cloudflare Worker backend; 94 tests |
 | v1.1.0-beta.4+19 | (this session) | Flutter 3.41.2→3.41.8 upgrade (unblocks Xcode 26); iOS pipeline plan updated; iOS release moved to ClaudeDev/system-upgrade |
