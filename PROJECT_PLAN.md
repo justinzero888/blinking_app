@@ -4,8 +4,8 @@
 - **Name**: Blinking (记忆闪烁)
 - **Type**: Personal memory capture app
 - **Framework**: Flutter
-- **Platforms**: Android (iOS future)
-- **Current Version**: 1.1.0-beta.6+21
+- **Platforms**: Android + iOS (both live)
+- **Current Version**: 1.1.0-beta.7+22
 
 ## Goals
 - Capture memories: text, audio, video, image
@@ -50,15 +50,26 @@
 | 15 | AI Secrets lock icon on entries (PROP-7 / Issue #4) | Done |
 | 16 | Contextual FAB — per-tab icon + action (Issue #7) | Done |
 | 17 | HomeScreen "Calendar" → "My Day" (Issue #14) | Done |
-| 18 | Collapsible calendar — week strip, landscape-safe (Issue #13) | Done |
+ | 18 | Collapsible calendar — week strip, landscape-safe (Issue #13) | Done |
+| 19 | Carry-forward redesign — user-prompted + "Yesterday" flag (TC-11) | Done |
+ | 20 | Insights tab crash fix — empty tags guard | Done |
+| 21 | Moment tab icon differentiation — note vs checklist vs routine | Done |
+| 22 | Post-launch polish batch — Issues #9, #10, #11 | Done |
+| 23 | Post-launch polish disposition — Issues #7 (rejected), #8/#12 (design doc) | Done |
+| 24 | iOS App Store submission | Done |
+| 25 | Insights Phase 1 — hero stats row overflow fix (4th card clipped) | Done |
+| 26 | Insights Phase 2 — CT1: Writing Stats (avg words, active day, peak hour) | Done |
+| 27 | Insights Phase 2 — CT3: Tag-Mood Correlation (tag → mood score, min 3 entries) | Done |
+| 28 | Insights Phase 2 — CT2: Checklist Analytics (lists, completion rate, carry-forward, top item) | Done |
 
 ### Remaining / Blocked
 | # | Item | Status |
 |---|------|--------|
 | 1 | Firebase / Cloud Sync | Not started — deps commented out |
-| 2 | iOS release | Moved to separate project `ClaudeDev/system-upgrade` |
-| 3 | Post-launch polish (6 items, ~4.5h) | Deferred — see bug-reports.md |
-| 4 | Custom emoji images E-1/E-2 | Deferred |
+| 2 | Custom emoji images E-1/E-2 | Deferred |
+| 3 | **PROP-3: Promote Android to Production on Google Play** | ~15 min manual — launch-ready |
+| 4 | App Trial & Purchase Flow — implementation (Issues #8, #12) | Designed, not implemented |
+| 5 | **Issue #15: Insights Phase 2 — CT4: AI-Generated Insights** | ~1.5h remaining — depends on trial flow |
 
 ## Technical Architecture
 
@@ -86,7 +97,7 @@ lib/
 └── widgets/               # EmojiJarWidget, CardRenderer, FloatingRobotWidget, etc.
 ```
 
-### Database Schema (v11)
+### Database Schema (v12)
 | Table | Key Fields |
 |-------|-----------|
 | `entries` | id, type, content, tagIds, emotion, createdAt |
@@ -98,15 +109,66 @@ lib/
 | `note_cards` | id, folderId, templateId, content, richContent, aiSummary, renderedImagePath |
 | `note_card_entries` | cardId, entryId |
 
-## Launch Roadmap (Target: end of May 2026)
+## Launch Roadmap
+
+See **[Blinking Launch Plan](docs/plans/blinking-launch-plan-2026-05-02.md)** for the full timeline including competitive analysis, pricing strategy, and marketing plan.
 
 | Week | Window | Focus |
 |------|--------|-------|
-| 1–2 | May 1–14 | ~~PROP-6 alpha test~~ ✅ ~~PROP-9 completed~~ ✅ ~~PROP-8 Insights restructure~~ ✅ ~~Issue #1 future date lock~~ ✅ |
-| 3 | May 15–21 | Issue #13 (calendar landscape) + Issue #14 (title rename) + PROP-7 lock icon + carry-forward UAT |
-| 4 | May 22–30 | Launch readiness: Play Store listing, beta crash triage, smoke tests, version bump, release build |
+| 1–2 | May 1–14 | ✅ All P1/P2 UX issues. ✅ PROP-6. ✅ PROP-9. ✅ PROP-8. ✅ iOS App Store submission. ✅ Carry-forward redesign. ✅ Insights crash fix. |
+| 3 | May 15–21 | **Android launch:** smoke tests → version bump → 1.1.0 → Play Store production (PROP-3) |
+| 4 | May 22–30 | **Monitor:** crash reports, reviews, trial usage. v1.1.1: Insights tab enhancement (Issue #15), trial/purchase flow. |
 
 ## Development History
+
+### v1.1.0-beta.6+21 — 2026-05-04 (Insights Phase 2: CT1 + CT3)
+
+### v1.1.0-beta.7+22 — 2026-05-04 (Insights Phase 2: CT2 + Version Bump)
+- **CT2 — Checklist Analytics:** New section between Trends and Tag Impact. 4 stats: total lists, avg completion rate, items carried forward, most common item. `_ChecklistInsightsSection` + `_ChecklistStatRow` + `_ChecklistInsightsEmpty` widgets. New computed props: `totalLists`, `checklistCompletionRate`, `totalCarriedForward`, `topChecklistItem`.
+- **Version bump:** `1.1.0-beta.6+21` → `1.1.0-beta.7+22`. Android APK + AAB built. iOS build pushed to TestFlight.
+- **5 new i18n keys** (EN/ZH): `insightsChecklistSection`, `insightsListsCreated`, `insightsAvgCompletion`, `insightsItemsCarried`, `insightsTopItem`.
+- **UAT:** 8/8 test cases passed on both iOS and Android.
+- **Git commit:** All changes committed and pushed to GitHub.
+- **Tests:** 96/96 passing. **Lint:** 0 new errors.
+
+### v1.1.0-beta.6+21 — 2026-05-04 (Insights Phase 2: CT1 + CT3)
+- **CT1 — Writing Stats:** New section between heatmap and mood donut. 3 mini stat cards: avg words/entry (CJK+EN word counting), most active weekday, peak writing hour. `_WritingStatsSection` + `_MiniStatCard` widgets. New computed props: `averageEntryLength`, `mostActiveDayOfWeek`, `mostActiveHour`.
+- **CT3 — Tag-Mood Correlation:** New section between trends and mood jars. Shows top 5 tags with highest avg mood score (min 3 entries). Colored bar + emoji + score per tag. New computed prop: `tagMoodCorrelation`. `_TagMoodSection` + `_TagMoodEmpty` widgets.
+- **Bug fix:** Hero stats row overflow on iPhone — 4th card was clipped. Fixed with `Expanded` + `LayoutBuilder` responsive layout.
+- **5 new i18n keys** (EN/ZH): `insightsWritingStats`, `insightsAvgWords`, `insightsMostActiveDay`, `insightsTagImpact`, `insightsTagImpactFootnote`.
+- **UAT:** 12/12 test cases passed on both iOS and Android.
+- **Tests:** 96/96 passing. **Lint:** 0 new errors.
+- **Files:** `summary_provider.dart`, `cherished_memory_screen.dart`, `app_en.arb`, `app_zh.arb`
+
+### v1.1.0-beta.6+21 — 2026-05-03 (Post-Launch UX Polish Batch + Insight Tab Design)
+- **Issue #10 — Removed carry-forward auto-banner:** Dead code cleanup: `_lastCarriedCount`, `clearCarriedBanner()`, `carriedOverCount` param from `EntryCard`, `_buildCarriedOverBanner()` widget, `_buildListEntryCards()` method. Banner became redundant after explicit user-prompted carry-forward dialog + "Yesterday" labels.
+- **Issue #9 — One-list-per-day transition UX:** When toggling Note→List and a list already exists, a snackbar ("Today's list already exists — opening it") appears before a 300ms fade transition to the existing list. New i18n key `listAlreadyExistsHint`.
+- **Issue #11 — List checkbox UX consistency:** Helper text on list edit screen ("Tap to check · Drag to reorder · × to remove"), drag handle enlarged 20→24px, EntryDetailScreen subtitle "Checklist · X/Y done". New i18n keys `listEditHint`, `listDetailSubtitle`.
+- **Issue #7 — Calendar list badge:** Rejected (too crowded — calendar already has emotion + habit dots).
+- **Issues #8, #12 — App Trial & Purchase Flow:** Moved to new design doc `docs/plans/2026-05-03-trial-purchase-flow-design.md`.
+- **Bug reports:** 10/14 resolved, 1 rejected, 2 moved to dedicated design plan. No blocking UX items remain.
+- **Issue #15 — Enhance Insights tab UI:** Design doc created at `docs/plans/2026-05-03-insights-tab-enhancement.md`. Competitive benchmark (Daylio, Reflectly, Streaks, Day One, HabitNow). Proposed: hero stats cards, calendar heatmap, mood distribution donut, writing stats, checklist analytics, tag-mood correlation, AI-generated insights. ~6.5h total, no DB changes.
+- **Tests:** 96/96 passing.
+
+### v1.1.0-beta.6+21 — 2026-05-03 (Carry-Forward Redesign + Bug Fixes)
+- **TC-11 carry-forward simplification:** Past-date entries now view-only
+  - `EntryCard._buildListItem()` — no tap toggle for entries from previous dates
+  - `HomeScreen._onEntryTapped()` — routes past entries to `EntryDetailScreen` instead of `AddEntryScreen`
+  - `EntryDetailScreen` — edit button hidden for past entries, list checkboxes non-interactive
+  - `AddEntryScreen` — save guard blocks editing past-date entries; past entries show "View Memory" read-only mode
+- **TC-11 carry-forward redesign:** Replaced auto carry-forward with explicit user-prompted flow
+  - `ListItem.fromPreviousDay` field — flags items carried over from yesterday
+  - `EntryRepository` — removed `checkAndCarryForward()`; added `getYesterdayListEntry()`, `getUncheckedItems()`, `createTodayListWithItems()`, `hasTodayList()`
+  - `EntryProvider` — removed auto carry-forward from `loadEntries()`; added `getCarryForwardPreview()`, `carryForwardItems()`
+  - `HomeScreen` — shows `AlertDialog` on first app open each day asking user to carry forward unchecked items
+  - "Yesterday" label (`fromYesterdayLabel`) shown on carried items in `EntryCard`, `EntryDetailScreen`, `AddEntryScreen`
+  - 5 new i18n strings (EN/ZH): dialog title, message, Yes/No, from-yesterday label
+  - Prompt tracked per-day via `SharedPreferences` (`carry_forward_dialog_YYYY_M_D`)
+- **Bug fix:** `_TopTagsChart` crash when `tagProvider.tags` empty — added `|| tagProvider.tags.isEmpty` guard
+- **Moment tab:** Entry icons now differentiate note (`Icons.note`) vs checklist (`Icons.checklist`) vs routine (`Icons.check_circle`)
+- **iOS App Store submission complete** — both platforms now use same Flutter codebase
+- **Tests:** 96/96 passing
+- **Files:** 11 modified, tests updated
 
 ### v1.1.0-beta.6+21 — 2026-05-01 (UX Batch Resolution)
 - **9 UX issues resolved in one session:**
@@ -200,7 +262,7 @@ lib/
 
 ## Build Commands
 ```bash
-flutter test                          # 125 tests
+flutter test                          # 96 tests
 flutter analyze --no-pub              # 0 errors
 flutter build apk --debug
 flutter build apk --release
@@ -211,20 +273,16 @@ flutter build appbundle --release
 
 ### Open
 - Firebase / Cloud Sync — all deps commented out, sync toggle is a no-op
-- iOS release — moved to separate project `ClaudeDev/system-upgrade` (requires Xcode 26)
-- Carry-forward — implemented but pending manual UAT with date manipulation
-- 6 post-launch polish items in `docs/uxbugs/bug-reports.md` (none blocking)
+- Issue #15 Phase 2: Insights tab content enhancements (stats, checklists, correlation, AI — ~4h)
+- Issues #8, #12: Trial/purchase flow (design doc complete, ~1.5h implementation)
+- Restore: `ZipDecoder().decodeStream()` loads entire archive into memory — OOM risk on large (>500MB) backups. Needs streaming refactor for v1.1.1.
 
-### Resolved (this session)
-- Calendar landscape overflow — collapsible calendar with week strip ✅
-- HomeScreen title "Calendar" → "My Day" ✅
-- FAB on Routine tab — contextual FAB with routine dialog ✅
-- AI Secrets lock icon on entries ✅
-- EntryDetailScreen title overflow (4px) ✅
-- Keepsakes → Insights tab restructure ✅
-- Calendar future date interaction ✅
+### Post-Launch Polish (All Resolved)
+- Issues #9, #10, #11 — resolved 2026-05-03
+- Issue #7 — rejected (calendar too crowded)
+- Issues #8, #12 — moved to dedicated trial/purchase design plan
 
-### Resolved
+### Resolved (since v1.1.0-beta.3)
 - Template name field shows Chinese under English locale (fixed v1.1.0-beta.3)
 - AppConstants.appVersion out of sync with pubspec (fixed v1.1.0-beta.3)
 - Emoji jar test locale assumption wrong (fixed v1.1.0-beta.3)
@@ -244,22 +302,24 @@ flutter build appbundle --release
 
 ## Next Steps
 
-1. Carry-forward manual UAT (date manipulation test, TC-11)
-2. PROP-3 — Promote to Google Play Production (~15min)
-3. Post-launch polish: 6 items from bug-reports.md (~4.5h, not blocking)
-4. Week 4 launch readiness: Play Store listing, crash triage, smoke tests, version bump, release build
+1. **PROP-3: Promote Android to Production on Google Play** (~15 min) — smoke tests → version bump `1.1.0` → Play Store production
+2. v1.1.0: Trial & Purchase Flow implementation (~1.5h) — required for launch
+3. v1.1.0: Insights Phase 2 — CT2: Checklist Analytics (~45min) + CT4: AI-Generated Insights (~1.5h)
+4. Firebase / Cloud Sync (future, deps already in pubspec)
 
 ## Active Plans
 
 | Plan | Status | Link |
 |------|--------|------|
+| **Blinking Launch Plan (Android + iOS)** | **Active** | [2026-05-02](docs/plans/blinking-launch-plan-2026-05-02.md) |
+| **Insights Tab Enhancement (Issue #15)** | **Active — CT1+CT3 done, CT2+CT4 remaining** | [2026-05-03](docs/plans/2026-05-03-insights-tab-enhancement.md) |
+| **Insights CT1+CT3 UAT** | ✅ Passed (12/12) | [2026-05-04](docs/plans/2026-05-04-insights-phase2-ct1-ct3-uat.md) |
+| App Trial & Purchase Flow (Issues #8, #12) | Designed | [2026-05-03](docs/plans/2026-05-03-trial-purchase-flow-design.md) |
 | 7-Day Trial API Key Flow (PROP-6) | ✅ Complete | [2026-04-30-prop-6-trial-api-key-plan.md](docs/plans/2026-04-30-prop-6-trial-api-key-plan.md) |
 | Daily Checklist Entry (PROP-9) | ✅ Complete | [2026-04-30-prop-9-daily-checklist-plan.md](docs/plans/2026-04-30-prop-9-daily-checklist-plan.md) |
 | UAT — PROP-9 | ✅ Passed (14/15) | [2026-05-01-prop-9-uat-test-cases.md](docs/plans/2026-05-01-prop-9-uat-test-cases.md) |
-| UAT — Calendar future date | ✅ Passed | [2026-05-01-calendar-future-date-uat.md](docs/plans/2026-05-01-calendar-future-date-uat.md) |
-| UAT — Insights restructure | ✅ Passed | [2026-05-01-insights-restructure-uat.md](docs/plans/2026-05-01-insights-restructure-uat.md) |
-| UAT — Issues #4, #7, #14 | ✅ Passed | [2026-05-01-issues-4-7-14-uat.md](docs/plans/2026-05-01-issues-4-7-14-uat.md) |
-| iOS Release | Moved to ClaudeDev/system-upgrade | — |
+| Launch Readiness (Pre/Post) | Superseded | [2026-05-01](docs/plans/launch_readiness_2026-05-01.md) |
+| iOS Release | Moved to ClaudeDev/system-upgrade | [system-upgrade/master_plan.md](../system-upgrade/master_plan.md) |
 
 ## Contact
 - Developer: Justin

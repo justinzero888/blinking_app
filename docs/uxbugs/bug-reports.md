@@ -298,10 +298,13 @@ PROP-9 introduced daily checklist entries that are pinned above habits in the Ca
 
 ### 7. NEW: Calendar list badge indicator (days with checklist)
 
-**Status:** feature gap
+**Status:** REJECTED
 **Priority:** P3 (low)
 **Reported:** 2026-05-01
-**Effort:** ~1.5h
+**Resolved:** 2026-05-03
+**Effort:** ~0h
+
+**Resolution:** Feature rejected. Adding a checklist icon/indicator to calendar day cells would make the calendar view too crowded (it already shows emotion emojis and habit dots). The Moment timeline provides a complete list/notes view with type-differentiated icons.
 
 **Description:**
 The calendar grid currently shows emotion emoji badges and habit completion dots on each day cell. However, there is no indicator for days that have checklist entries. The PROP-9 design document noted this as a "nice-to-have": "A subtle ☑ indicator on calendar days that have a list entry." Without this, users can't see which past days had lists without navigating into each day.
@@ -331,10 +334,12 @@ The calendar grid currently shows emotion emoji badges and habit completion dots
 
 ### 8. NEW: Floating robot trial/error states UX clarity
 
-**Status:** review needed
+**Status:** MOVED — see `docs/plans/2026-05-03-trial-purchase-flow-design.md`
 **Priority:** P2 (medium)
 **Reported:** 2026-05-01
 **Effort:** ~1h
+
+**Resolution:** Deferred to a comprehensive App Trial and Purchase Flow Design covering both the floating robot (Issue #8) and Settings trial banner (Issue #12). These two touchpoints will be designed together for a coherent trial→purchase flow.
 
 **Description:**
 The floating robot has multiple visual states based on trial/API key status:
@@ -370,10 +375,13 @@ The current implementation may have edge cases: what does the robot show during 
 
 ### 9. NEW: One-list-per-day UX — transition feels jarring
 
-**Status:** review needed
+**Status:** RESOLVED
 **Priority:** P3 (low)
 **Reported:** 2026-05-01
+**Resolved:** 2026-05-03
 **Effort:** ~45min
+
+**Resolution:** When toggling Note→List and a list already exists for today, a snackbar ("Today's list already exists — opening it") appears before a smooth 300ms fade transition to the existing list. Snackbar auto-dismisses after 800ms. New i18n key `listAlreadyExistsHint`.
 
 **Description:**
 PROP-9 enforces one list per day. If the user already has a list for today and tries to create another via the Note/List toggle in `AddEntryScreen`, the app uses `pushReplacement` to navigate to the existing list in edit mode. This is functionally correct, but the screen transition (pushReplacement without a hero animation) may feel jarring or confusing — the user toggled a segmented button and suddenly the entire screen replaced itself with a different view.
@@ -403,10 +411,13 @@ PROP-9 enforces one list per day. If the user already has a list for today and t
 
 ### 10. NEW: Carry-forward banner timing — may be missed by users
 
-**Status:** review needed
+**Status:** RESOLVED
 **Priority:** P3 (low)
 **Reported:** 2026-05-01
+**Resolved:** 2026-05-03
 **Effort:** ~30min
+
+**Resolution:** Removed the auto-clear carry-forward banner entirely. After the carry-forward redesign (explicit user dialog + "Yesterday" labels on individual items), the banner became redundant. The explicit dialog ensures the user knows items were carried. The `fromYesterdayLabel` on each item provides a persistent indicator. Cleanup: removed `_lastCarriedCount`, `clearCarriedBanner()`, `carriedOverCount` param from `EntryCard`, `_buildListEntryCards()` method, and `_buildCarriedOverBanner()` widget.
 
 **Description:**
 The carry-forward banner ("X items carried over from yesterday") appears on the carried-forward EntryCard and auto-clears via `WidgetsBinding.instance.addPostFrameCallback` in HomeScreen. Since it clears on the next frame after rendering, a user who opens the app and immediately scrolls or navigates away may never see the banner. Additionally, the banner is only shown on the EntryCard within the Calendar day view — users who primarily use the Moments tab may never see it.
@@ -436,10 +447,16 @@ The carry-forward banner ("X items carried over from yesterday") appears on the 
 
 ### 11. NEW: List edit screen vs Calendar detail screen — duplicate checkbox UX
 
-**Status:** consistency concern
+**Status:** RESOLVED
 **Priority:** P3 (low)
 **Reported:** 2026-05-01
+**Resolved:** 2026-05-03
 **Effort:** ~1h
+
+**Resolution — Option A: Differentiate screens by purpose with subtle hints.**
+1. **AddEntryScreen list editor:** Helper text below title ("Tap to check · Drag to reorder · × to remove") appears when items exist. Drag handle enlarged from 20px to 24px for better discoverability.
+2. **EntryDetailScreen:** Added "Checklist · X/Y done" subtitle below title to distinguish list detail from note detail at a glance.
+3. New i18n keys: `listEditHint`, `listDetailSubtitle`.
 
 **Description:**
 After PROP-9, there are now three places where list checkboxes can be toggled:
@@ -474,10 +491,12 @@ The list edit screen was updated in commit `2c3fd94` to match the Calendar displ
 
 ### 12. NEW: Settings trial banner — location and dismissal UX
 
-**Status:** review needed
+**Status:** MOVED — see `docs/plans/2026-05-03-trial-purchase-flow-design.md`
 **Priority:** P3 (low)
 **Reported:** 2026-05-01
 **Effort:** ~45min
+
+**Resolution:** Deferred to a comprehensive App Trial and Purchase Flow Design covering both the floating robot (Issue #8) and Settings trial banner (Issue #12). These two touchpoints will be designed together for a coherent trial→purchase flow.
 
 **Description:**
 The Settings screen has a trial banner that shows trial status ("X days remaining" or "Trial expired"). The banner's placement and dismissibility need review: Can users dismiss it? If the trial is expired and the user has added their own API key, does the banner still show the expired trial? Does the banner compete visually with other Settings items?
@@ -515,45 +534,105 @@ The Settings screen has a trial banner that shows trial status ("X days remainin
 | 4 | AI Secrets lock icon (PROP-7) | P3 | ~1h | ✅ RESOLVED |
 | 5 | Keepsakes tab restructure → Insights (PROP-8) | P3 | ~3.5h | ✅ RESOLVED |
 | 6 | HomeScreen list/notes section headers | P2 | ~0h | ✅ NOTED (already exist) |
-| 7 | Calendar list badge indicator | P3 | ~1.5h | Deferred post-launch |
-| 8 | Robot trial/error state clarity | P2 | ~1h | Deferred post-launch |
-| 9 | One-list-per-day transition UX | P3 | ~45min | Deferred post-launch |
-| 10 | Carry-forward banner timing | P3 | ~30min | Deferred post-launch |
-| 11 | List checkbox UX consistency | P3 | ~1h | Deferred post-launch |
-| 12 | Settings trial banner dismiss | P3 | ~45min | Deferred post-launch |
+| 7 | Calendar list badge indicator | P3 | ~0h | ❌ REJECTED (too crowded) |
+| 8 | Robot trial/error state clarity | P2 | ~1h | 📋 MOVED to trial/purchase design |
+| 9 | One-list-per-day transition UX | P3 | ~45min | ✅ RESOLVED |
+| 10 | Carry-forward banner timing | P3 | ~30min | ✅ RESOLVED (removed) |
+| 11 | List checkbox UX consistency | P3 | ~1h | ✅ RESOLVED |
+| 12 | Settings trial banner dismiss | P3 | ~45min | 📋 MOVED to trial/purchase design |
 | 13 | Calendar grid too large in landscape/square | P1 | ~3h | ✅ RESOLVED |
 | 14 | HomeScreen title "Calendar" → "My Day" | P2 | ~15min | ✅ RESOLVED |
-| **Total resolved** | | | | **9 of 14** |
-| **Remaining (post-launch)** | | | **~4.5h** | |
+| **Total resolved** | | | | **10 of 14** |
+| **Rejected** | | | | **1 (Issue #7)** |
+| **Moved to new plan** | | | | **2 (Issues #8, #12)** |
 
 ---
 
-## What Remains (Post-Launch Polish)
+## What Remains (from original 14)
 
-| # | Issue | Priority | Effort |
-|---|-------|:--------:|:------:|
-| 7 | Calendar list badge indicator | P3 | ~1.5h |
-| 8 | Robot trial/error state clarity | P2 | ~1h |
-| 9 | One-list-per-day transition UX | P3 | ~45min |
-| 10 | Carry-forward banner timing | P3 | ~30min |
-| 11 | List checkbox UX consistency | P3 | ~1h |
-| 12 | Settings trial banner dismiss | P3 | ~45min |
+| # | Issue | Priority | Status |
+|---|-------|:--------:|--------|
+| 8 | Robot trial/error state clarity | P2 | 📋 Moved to `docs/plans/2026-05-03-trial-purchase-flow-design.md` |
+| 12 | Settings trial banner dismiss | P3 | 📋 Moved to `docs/plans/2026-05-03-trial-purchase-flow-design.md` |
 
-None of these are blocking for launch. All are polish items that improve existing working features.
+All P1/P2/P3 UX issues from the original 14 are now either resolved, rejected, or moved to a dedicated design plan. No blocking items remain.
+
+---
+
+## New Items (Post-Launch Polish Complete)
+
+### 15. NEW: Enhance UI for Insight tab
+
+**Status:** PENDING (design doc created)
+**Priority:** P2 (medium)
+**Reported:** 2026-05-03
+**Effort:** ~6.5h (cosmetic ~2.5h, content ~4h)
+
+**Description:**
+The Insights tab (洞察) currently shows a yearly mood jar carousel + 4 charts behind a Day/Week/Month scope picker. While functional, it lacks visual hierarchy (hero stats, calendar heatmap), engagement hooks (streaks, correlations), and the competitive polish seen in Daylio/Reflectly/Streaks. The tab should be the app's **value proposition showcase**, not just raw charts.
+
+**Resolution Plan:**
+See `docs/plans/2026-05-03-insights-tab-enhancement.md` for full competitive benchmark and detailed design covering:
+
+**Phase 1 — Cosmetic (~2.5h):**
+- C1: Hero stats cards (total entries, streak, habit rate, today's mood)
+- C2: Calendar heatmap (GitHub-style contribution grid)
+- C3: Mood distribution donut chart
+- C4: Visual hierarchy & polish (section cards, spacing, scope picker redesign)
+
+**Phase 2 — Content (~4h):**
+- CT1: Writing streak & stats (avg words, longest streak, most active day)
+- CT2: Checklist analytics (completion rate, top items)
+- CT3: Mood-tag correlation (which tags correlate with better moods — Daylio's killer feature)
+- CT4: AI-generated personalized insights (LLM-powered text takeaways)
+
+**No DB changes required** — all new data dimensions computed from existing tables.
+**Files:** `cherished_memory_screen.dart` (major rewrite), `summary_provider.dart` (8 new getters), ARB files (~15 new i18n keys)
+
+**Industry benchmark included:** Daylio, Reflectly, Streaks, Day One, HabitNow.
+
+---
+
+## Updated Summary Table
+
+| # | Issue | Priority | Effort | Status |
+|---|-------|:--------:|:------:|--------|
+| 1 | Calendar future date interaction | P1 | ~2h | ✅ RESOLVED |
+| 2 | FAB on Routine tab — now contextual | P2 | ~1.5h | ✅ RESOLVED |
+| 3 | "+ New Card" vs "+ New Entry" FAB overlap | P1 | ~0h | ✅ RESOLVED (cards removed) |
+| 4 | AI Secrets lock icon (PROP-7) | P3 | ~1h | ✅ RESOLVED |
+| 5 | Keepsakes tab restructure → Insights (PROP-8) | P3 | ~3.5h | ✅ RESOLVED |
+| 6 | HomeScreen list/notes section headers | P2 | ~0h | ✅ NOTED (already exist) |
+| 7 | Calendar list badge indicator | P3 | ~0h | ❌ REJECTED (too crowded) |
+| 8 | Robot trial/error state clarity | P2 | ~1h | 📋 MOVED to trial/purchase design |
+| 9 | One-list-per-day transition UX | P3 | ~45min | ✅ RESOLVED |
+| 10 | Carry-forward banner timing | P3 | ~30min | ✅ RESOLVED (removed) |
+| 11 | List checkbox UX consistency | P3 | ~1h | ✅ RESOLVED |
+| 12 | Settings trial banner dismiss | P3 | ~45min | 📋 MOVED to trial/purchase design |
+| 13 | Calendar grid too large in landscape/square | P1 | ~3h | ✅ RESOLVED |
+| 14 | HomeScreen title "Calendar" → "My Day" | P2 | ~15min | ✅ RESOLVED |
+| **15** | **Enhance UI for Insight tab** | **P2** | **~6.5h** | **🆕 Phase 1 done, Phase 2 designed** |
+| **Total resolved** | | | | **10 of 14** |
+| **Rejected** | | | | **1 (Issue #7)** |
+| **Moved to new plan** | | | | **2 (Issues #8, #12)** |
+| **New — Phase 1 done** | | | | **1 (Issue #15)** |
 
 ---
 
 ## Launch-Ready Status
 
-All P1 and P2 issues resolved. The app is ready for:
+All original UX issues resolved (10/14), rejected (1), or moved to dedicated design (2). No blocking items.
+The app is ready for:
 1. **PROP-3:** Promote Android to Production on Google Play (~15min manual)
-2. **Week 4:** Play Store listing review, crash triage, smoke tests, version bump, release build
+2. **Post-launch:** Monitor crash reports, reviews, trial usage
+3. **Post-launch v1.1.1:** Enhance Insights tab UI (Issue #15, designed, ~6.5h)
 
 ---
 
-## Current Clarification Questions (2026-05-01)
+## Current Clarification Questions (2026-05-03)
 
-1. **Issue #7 (Calendar list badge):** Implement now (~1.5h) or defer post-launch?
-2. **Issue #8 (Robot trial states):** Implement now (~1h) or defer?
-3. **Carry-forward UAT:** Manual date manipulation test still pending — schedule before launch?
-4. **PROP-3:** Ready to promote to Google Play Production? Monitor beta soak or promote now?
+1. **Issue #15 (Insights tab):** Proceed with Phase 1 (cosmetic ~2.5h) before launch or defer to v1.1.1?
+2. **Issue #15 hero cards:** Which 4 stats to show? (entries, streak, habit rate, mood — or different set?)
+3. **Issue #15 calendar heatmap:** All-time with horizontal scroll or last 6 months constrained?
+4. **Issue #15 AI insights:** Generate on-demand (Refresh button) or auto? Auto risks API cost for BYOK users.
+5. **PROP-3:** Promote Android to Production now or address insight tab first?

@@ -30,11 +30,12 @@ class _InsightsContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final summary = context.watch<SummaryProvider>();
     final jarProvider = context.watch<JarProvider>();
     final isZh = context.watch<LocaleProvider>().locale.languageCode == 'zh';
     final years = jarProvider.yearsWithData;
 
-    if (years.isEmpty) {
+    if (summary.totalEntries == 0) {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(32),
@@ -57,12 +58,574 @@ class _InsightsContent extends StatelessWidget {
     }
 
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
       children: [
-        _EmojiJarSection(years: years, isZh: isZh),
+        _HeroStatsRow(summary: summary, isZh: isZh),
         const SizedBox(height: 24),
-        const _SummaryCharts(),
+        _SectionCard(
+          title: isZh ? '📅 写作足迹' : '📅 Writing Activity',
+          child: _CalendarHeatmap(entriesPerDay: summary.entriesPerDay),
+        ),
+        const SizedBox(height: 24),
+        _SectionCard(
+          title: isZh ? '🔥 写作统计' : '🔥 Writing Stats',
+          child: _WritingStatsSection(summary: summary, isZh: isZh),
+        ),
+        const SizedBox(height: 24),
+        _SectionCard(
+          title: isZh ? '🎭 情绪分布' : '🎭 Mood Distribution',
+          child: _MoodDistributionChart(moodDistribution: summary.moodDistribution),
+        ),
+        const SizedBox(height: 24),
+        _SectionCard(
+          title: isZh ? '📊 趋势分析' : '📊 Trends',
+          trailing: _ScopePicker(
+            scope: summary.scope,
+            onChanged: summary.setScope,
+          ),
+          child: const _TrendCharts(),
+        ),
+        const SizedBox(height: 24),
+        _SectionCard(
+          title: isZh ? '✅ 清单洞察' : '✅ Checklist Insights',
+          child: _ChecklistInsightsSection(summary: summary, isZh: isZh),
+        ),
+        const SizedBox(height: 24),
+        _SectionCard(
+          title: isZh ? '🔬 标签与情绪' : '🔬 Tag Impact on Mood',
+          child: _TagMoodSection(summary: summary, isZh: isZh),
+        ),
+        const SizedBox(height: 24),
+        _EmojiJarSection(years: years, isZh: isZh),
       ],
+    );
+  }
+}
+
+class _HeroStatsRow extends StatelessWidget {
+  final SummaryProvider summary;
+  final bool isZh;
+
+  const _HeroStatsRow({required this.summary, required this.isZh});
+
+  @override
+  Widget build(BuildContext context) {
+    final jarProvider = context.watch<JarProvider>();
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final todayEmotions = jarProvider.getDayEmotions(today);
+    String todayMood;
+    if (todayEmotions.isEmpty) {
+      todayMood = '---';
+    } else {
+      final dominant = _dominantEmotion(todayEmotions);
+      todayMood = dominant;
+    }
+
+    final habitRate = (summary.recentHabitCompletionRate * 100).round();
+
+    final cards = [
+      _HeroCardData(
+        label: isZh ? '总记录' : 'Entries',
+        value: '${summary.totalEntries}',
+        icon: Icons.edit_note,
+        color: const Color(0xFF2A9D8F),
+      ),
+      _HeroCardData(
+        label: isZh ? '连续天数' : 'Day Streak',
+        value: '${summary.currentStreak}',
+        icon: Icons.local_fire_department,
+        color: const Color(0xFFE76F51),
+        onTap: () {
+          _showStreakTooltip(context, summary, isZh);
+        },
+      ),
+      _HeroCardData(
+        label: isZh ? '习惯完成' : 'Habit Rate',
+        value: '$habitRate%',
+        icon: Icons.check_circle_outline,
+        color: const Color(0xFF2A9D8F),
+      ),
+      _HeroCardData(
+        label: isZh ? '本周心情' : 'Week Mood',
+        value: todayMood,
+        icon: Icons.sentiment_satisfied_alt,
+        color: const Color(0xFFE9C46A),
+      ),
+    ];
+
+    return Row(
+      children: <Widget>[
+        for (int i = 0; i < cards.length; i++) ...[
+          if (i > 0) const SizedBox(width: 10),
+          Expanded(
+            child: LayoutBuilder(
+              builder: (context, constraints) =>
+                  _HeroCard(data: cards[i], width: constraints.maxWidth),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  String _dominantEmotion(List<String> emotions) {
+    final counts = <String, int>{};
+    for (final e in emotions) {
+      counts[e] = (counts[e] ?? 0) + 1;
+    }
+    return counts.entries.reduce((a, b) => a.value >= b.value ? a : b).key;
+  }
+
+  void _showStreakTooltip(
+      BuildContext context, SummaryProvider summary, bool isZh) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text(isZh ? '写作记录' : 'Writing Streak'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _streakRow(
+                isZh ? '当前连续' : 'Current streak',
+                '${summary.currentStreak} ${isZh ? '天' : 'days'}'),
+            const SizedBox(height: 8),
+            _streakRow(
+                isZh ? '最长连续' : 'Longest streak',
+                '${summary.longestStreak} ${isZh ? '天' : 'days'}'),
+            const SizedBox(height: 8),
+            _streakRow(
+                isZh ? '总记录天数' : 'Total active days',
+                '${summary.entriesPerDay.length} ${isZh ? '天' : 'days'}'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(isZh ? '关闭' : 'Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _streakRow(String label, String value) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(label),
+        Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
+      ],
+    );
+  }
+}
+
+class _HeroCardData {
+  final String label;
+  final String value;
+  final IconData icon;
+  final Color color;
+  final VoidCallback? onTap;
+
+  const _HeroCardData({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.color,
+    this.onTap,
+  });
+}
+
+class _HeroCard extends StatelessWidget {
+  final _HeroCardData data;
+  final double width;
+
+  const _HeroCard({required this.data, required this.width});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: data.onTap,
+      child: Card(
+        elevation: 2,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        child: Container(
+          width: width,
+          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(data.icon, size: 22, color: data.color),
+              const SizedBox(height: 6),
+              Text(
+                data.value,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                    ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 2),
+              Text(
+                data.label,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: Colors.grey[600],
+                      fontSize: 11,
+                    ),
+                textAlign: TextAlign.center,
+                maxLines: 1,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SectionCard extends StatelessWidget {
+  final String title;
+  final Widget child;
+  final Widget? trailing;
+
+  const _SectionCard({
+    required this.title,
+    required this.child,
+    this.trailing,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: Colors.grey[200]!),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  title,
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleMedium
+                      ?.copyWith(fontWeight: FontWeight.bold),
+                ),
+                if (trailing != null) trailing!,
+              ],
+            ),
+            const SizedBox(height: 12),
+            child,
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CalendarHeatmap extends StatelessWidget {
+  final Map<DateTime, int> entriesPerDay;
+
+  const _CalendarHeatmap({required this.entriesPerDay});
+
+  static const double _cellSize = 13;
+  static const double _gap = 2.5;
+  static const List<String> _dayLabels = ['', 'Mon', '', 'Wed', '', 'Fri', ''];
+
+  @override
+  Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final yearAgo = today.subtract(const Duration(days: 365));
+
+    DateTime startDate;
+    if (entriesPerDay.isNotEmpty) {
+      final earliest =
+          entriesPerDay.keys.reduce((a, b) => a.isBefore(b) ? a : b);
+      startDate = earliest.isBefore(yearAgo) ? earliest : yearAgo;
+    } else {
+      startDate = yearAgo;
+    }
+    while (startDate.weekday != DateTime.sunday) {
+      startDate = startDate.subtract(const Duration(days: 1));
+    }
+
+    DateTime endDate = today;
+    while (endDate.weekday != DateTime.saturday) {
+      endDate = endDate.add(const Duration(days: 1));
+    }
+
+    final weeks = <List<DateTime>>[];
+    var cursor = startDate;
+    while (cursor.isBefore(endDate) || cursor == endDate) {
+      final week = List.generate(
+          7, (d) => DateTime(cursor.year, cursor.month, cursor.day).add(Duration(days: d)));
+      weeks.add(week);
+      cursor = cursor.add(const Duration(days: 7));
+    }
+
+    final months = <int, int>{};
+    for (int w = 0; w < weeks.length; w++) {
+      final month = weeks[w].first.month;
+      months.putIfAbsent(month, () => w);
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Column(
+              children: _dayLabels
+                  .map((l) => SizedBox(
+                        height: _cellSize + _gap,
+                        child: l.isNotEmpty
+                            ? Center(
+                                child: Text(l,
+                                    style: const TextStyle(fontSize: 9, color: Colors.grey)))
+                            : null,
+                      ))
+                  .toList(),
+            ),
+            const SizedBox(width: 4),
+            Expanded(
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(
+                      height: 7 * (_cellSize + _gap),
+                      child: Row(
+                        children: weeks.asMap().entries.map((w) {
+                          final week = w.value;
+                          return Padding(
+                            padding: const EdgeInsets.only(right: _gap),
+                            child: Column(
+                              children: week.map((day) {
+                                final count = entriesPerDay[day] ?? 0;
+                                final isFuture = day.isAfter(today);
+                                return Container(
+                                  width: _cellSize,
+                                  height: _cellSize,
+                                  margin: EdgeInsets.only(bottom: _gap),
+                                  decoration: BoxDecoration(
+                                    color: _heatColor(count, isFuture),
+                                    borderRadius: BorderRadius.circular(2),
+                                  ),
+                                );
+                              }).toList(),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    SizedBox(
+                      height: 14,
+                      width: weeks.length * (_cellSize + _gap),
+                      child: Stack(
+                        children: months.entries.map((m) {
+                          final isZh = _isZhFromContext(context);
+                          final dateFormat = DateFormat(isZh ? 'M月' : 'MMM');
+                          final label = dateFormat.format(DateTime(2020, m.key));
+                          final left =
+                              m.value * (_cellSize + _gap);
+                          return Positioned(
+                            left: left,
+                            child: Text(
+                              label,
+                              style: const TextStyle(
+                                  fontSize: 9, color: Colors.grey),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            const Text('Less ', style: TextStyle(fontSize: 9, color: Colors.grey)),
+            _legendBox(const Color(0xFFE8E8E8)),
+            _legendBox(const Color(0xFF2A9D8F).withValues(alpha: 0.3)),
+            _legendBox(const Color(0xFF2A9D8F).withValues(alpha: 0.6)),
+            _legendBox(const Color(0xFF2A9D8F)),
+            const Text(' More', style: TextStyle(fontSize: 9, color: Colors.grey)),
+          ],
+        ),
+      ],
+    );
+  }
+
+  bool _isZhFromContext(BuildContext context) {
+    try {
+      return context.read<LocaleProvider>().locale.languageCode == 'zh';
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Color _heatColor(int count, bool isFuture) {
+    if (isFuture) return Colors.grey[100]!;
+    if (count == 0) return const Color(0xFFE8E8E8);
+    if (count == 1) return const Color(0xFF2A9D8F).withValues(alpha: 0.3);
+    if (count <= 3) return const Color(0xFF2A9D8F).withValues(alpha: 0.5);
+    if (count <= 5) return const Color(0xFF2A9D8F).withValues(alpha: 0.8);
+    return const Color(0xFF2A9D8F);
+  }
+
+  Widget _legendBox(Color color) {
+    return Container(
+      width: 10,
+      height: 10,
+      margin: const EdgeInsets.symmetric(horizontal: 1.5),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(2),
+      ),
+    );
+  }
+}
+
+class _MoodDistributionChart extends StatelessWidget {
+  final Map<String, int> moodDistribution;
+
+  const _MoodDistributionChart({required this.moodDistribution});
+
+  static const _moodGroups = {
+    '😊': ['😊', '🥰', '🤩'],
+    '😌': ['😌'],
+    '😐': ['😐', '😴'],
+    '😢': ['😔', '😢', '😰', '😤'],
+    '😡': ['😡'],
+  };
+
+  static const _moodColors = {
+    '😊': Color(0xFF2A9D8F),
+    '😌': Color(0xFFA8DADC),
+    '😐': Color(0xFFE9C46A),
+    '😢': Color(0xFF457B9D),
+    '😡': Color(0xFFE76F51),
+  };
+
+  static const _moodLabels = {
+    '😊': {'en': 'Great', 'zh': '很好'},
+    '😌': {'en': 'Good', 'zh': '不错'},
+    '😐': {'en': 'Okay', 'zh': '一般'},
+    '😢': {'en': 'Low', 'zh': '低落'},
+    '😡': {'en': 'Rough', 'zh': '不好'},
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final isZh = context.watch<LocaleProvider>().locale.languageCode == 'zh';
+    final grouped = _groupMoods();
+
+    if (grouped.isEmpty) {
+      return _emptyWidget(context);
+    }
+
+    final total = grouped.values.fold<int>(0, (a, b) => a + b);
+
+    return Column(
+      children: [
+        SizedBox(
+          height: 180,
+          child: PieChart(
+            PieChartData(
+              sectionsSpace: 2,
+              centerSpaceRadius: 40,
+              sections: grouped.entries.map((e) {
+                final pct = (e.value / total * 100).toStringAsFixed(0);
+                return PieChartSectionData(
+                  color: _moodColors[e.key] ?? Colors.grey,
+                  value: e.value.toDouble(),
+                  title: '$pct%',
+                  titleStyle: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                  radius: 50,
+                );
+              }).toList(),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 12,
+          runSpacing: 6,
+          children: grouped.entries.map((e) {
+            final label =
+                isZh ? _moodLabels[e.key]!['zh']! : _moodLabels[e.key]!['en']!;
+            return Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 10,
+                  height: 10,
+                  decoration: BoxDecoration(
+                    color: _moodColors[e.key],
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  '$label (${e.value})',
+                  style: const TextStyle(fontSize: 11, color: Colors.grey),
+                ),
+              ],
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+
+  Map<String, int> _groupMoods() {
+    final grouped = <String, int>{};
+    for (final entry in moodDistribution.entries) {
+      String? groupKey;
+      for (final g in _moodGroups.entries) {
+        if (g.value.contains(entry.key)) {
+          groupKey = g.key;
+          break;
+        }
+      }
+      if (groupKey != null) {
+        grouped[groupKey] = (grouped[groupKey] ?? 0) + entry.value;
+      }
+    }
+    grouped.removeWhere((_, v) => v == 0);
+    return grouped;
+  }
+
+  Widget _emptyWidget(BuildContext context) {
+    final isZh = context.watch<LocaleProvider>().locale.languageCode == 'zh';
+    return SizedBox(
+      height: 120,
+      child: Center(
+        child: Text(
+          isZh ? '暂无情绪数据' : 'No mood data yet',
+          style: const TextStyle(color: Colors.grey),
+        ),
+      ),
     );
   }
 }
@@ -75,65 +638,56 @@ class _EmojiJarSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          isZh ? '🫙 情绪罐' : '🫙 Mood Jars',
-          style: Theme.of(context)
-              .textTheme
-              .titleMedium
-              ?.copyWith(fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 12),
-        SizedBox(
-          height: 200,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            itemCount: years.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 12),
-            itemBuilder: (context, index) {
-              final year = years[index];
-              final jarProvider = context.watch<JarProvider>();
-              final emotions = jarProvider.getYearEmotions(year);
-              final entryCount = jarProvider.getYearEntryCount(year);
+    return _SectionCard(
+      title: isZh ? '🫙 情绪罐' : '🫙 Mood Jars',
+      child: SizedBox(
+        height: 200,
+        child: ListView.separated(
+          scrollDirection: Axis.horizontal,
+          itemCount: years.length,
+          separatorBuilder: (_, _) => const SizedBox(width: 12),
+          itemBuilder: (context, index) {
+            final year = years[index];
+            final jarProvider = context.watch<JarProvider>();
+            final emotions = jarProvider.getYearEmotions(year);
+            final entryCount = jarProvider.getYearEntryCount(year);
 
-              return SizedBox(
-                width: 120,
-                child: Column(
-                  children: [
-                    EmojiJarWidget(
-                      date: DateTime(year),
-                      emotionsOverride: emotions,
-                      size: 120,
-                      showAskAi: false,
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      '$year',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
-                    ),
-                    Text(
-                      isZh ? '$entryCount 条记录' : '$entryCount entries',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Colors.grey,
-                          ),
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
+            return SizedBox(
+              width: 120,
+              child: Column(
+                children: [
+                  EmojiJarWidget(
+                    date: DateTime(year),
+                    emotionsOverride: emotions,
+                    size: 120,
+                    showAskAi: false,
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    '$year',
+                    style:
+                        Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                  ),
+                  Text(
+                    isZh ? '$entryCount 条记录' : '$entryCount entries',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Colors.grey,
+                        ),
+                  ),
+                ],
+              ),
+            );
+          },
         ),
-      ],
+      ),
     );
   }
 }
 
-class _SummaryCharts extends StatelessWidget {
-  const _SummaryCharts();
+class _TrendCharts extends StatelessWidget {
+  const _TrendCharts();
 
   @override
   Widget build(BuildContext context) {
@@ -143,10 +697,6 @@ class _SummaryCharts extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _ScopePicker(
-            scope: provider.scope, onChanged: provider.setScope),
-        const SizedBox(height: 20),
-
         _SectionTitle(title: l.summaryNoteCount),
         const SizedBox(height: 8),
         _NoteCountChart(provider: provider),
@@ -165,7 +715,7 @@ class _SummaryCharts extends StatelessWidget {
         _SectionTitle(title: l.summaryTopTags),
         const SizedBox(height: 8),
         _TopTagsChart(provider: provider),
-        const SizedBox(height: 40),
+        const SizedBox(height: 8),
       ],
     );
   }
@@ -181,20 +731,20 @@ class _ScopePicker extends StatelessWidget {
   Widget build(BuildContext context) {
     final isZh = context.watch<LocaleProvider>().locale.languageCode == 'zh';
     return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
+      mainAxisSize: MainAxisSize.min,
       children: [
         _ScopeChip(
           label: isZh ? '日' : 'Day',
           selected: scope == SummaryScope.daily,
           onTap: () => onChanged(SummaryScope.daily),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: 4),
         _ScopeChip(
           label: isZh ? '周' : 'Week',
           selected: scope == SummaryScope.weekly,
           onTap: () => onChanged(SummaryScope.weekly),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: 4),
         _ScopeChip(
           label: isZh ? '月' : 'Month',
           selected: scope == SummaryScope.monthly,
@@ -216,9 +766,10 @@ class _ScopeChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ChoiceChip(
-      label: Text(label),
+      label: Text(label, style: const TextStyle(fontSize: 12)),
       selected: selected,
       onSelected: (_) => onTap(),
+      visualDensity: VisualDensity.compact,
     );
   }
 }
@@ -494,7 +1045,7 @@ class _TopTagsChart extends StatelessWidget {
     final tagProvider = context.watch<TagProvider>();
     final isZh = context.watch<LocaleProvider>().locale.languageCode == 'zh';
     final topTags = provider.topTags;
-    if (topTags.isEmpty) {
+    if (topTags.isEmpty || tagProvider.tags.isEmpty) {
       return const _EmptyChart();
     }
     final maxCount =
@@ -582,6 +1133,337 @@ Color _parseHexColor(String hex) {
   hex = hex.replaceFirst('#', '');
   if (hex.length == 6) hex = 'FF$hex';
   return Color(int.parse(hex, radix: 16));
+}
+
+class _WritingStatsSection extends StatelessWidget {
+  final SummaryProvider summary;
+  final bool isZh;
+
+  const _WritingStatsSection({required this.summary, required this.isZh});
+
+  static const _weekdayLabelsEn = [
+    '',
+    'Monday',
+    'Tuesday',
+    'Wednesday',
+    'Thursday',
+    'Friday',
+    'Saturday',
+    'Sunday',
+  ];
+  static const _weekdayLabelsZh = [
+    '',
+    '周一',
+    '周二',
+    '周三',
+    '周四',
+    '周五',
+    '周六',
+    '周日',
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final avgWords = summary.averageEntryLength;
+    final activeDay = summary.mostActiveDayOfWeek;
+    final activeHour = summary.mostActiveHour;
+
+    return Row(
+      children: [
+        Expanded(
+          child: _MiniStatCard(
+            icon: Icons.text_fields,
+            value: '${avgWords.toStringAsFixed(1)}',
+            label: isZh ? '平均字数' : 'avg words',
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _MiniStatCard(
+            icon: Icons.calendar_today,
+            value: activeDay != null
+                ? (isZh
+                    ? _weekdayLabelsZh[activeDay]
+                    : _weekdayLabelsEn[activeDay].substring(0, 3))
+                : '---',
+            label: isZh ? '最活跃日' : 'most active',
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _MiniStatCard(
+            icon: Icons.schedule,
+            value: activeHour != null ? '${activeHour}:00' : '---',
+            label: isZh ? '最活跃时段' : 'peak hour',
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _MiniStatCard extends StatelessWidget {
+  final IconData icon;
+  final String value;
+  final String label;
+
+  const _MiniStatCard({
+    required this.icon,
+    required this.value,
+    required this.label,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      elevation: 1,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 20, color: Theme.of(context).colorScheme.primary),
+            const SizedBox(height: 8),
+            Text(
+              value,
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                  ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: Colors.grey[600],
+                    fontSize: 11,
+                  ),
+              textAlign: TextAlign.center,
+              maxLines: 1,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ChecklistInsightsSection extends StatelessWidget {
+  final SummaryProvider summary;
+  final bool isZh;
+
+  const _ChecklistInsightsSection({required this.summary, required this.isZh});
+
+  @override
+  Widget build(BuildContext context) {
+    final totalLists = summary.totalLists;
+    final completionRate = summary.checklistCompletionRate;
+    final carriedForward = summary.totalCarriedForward;
+    final topItem = summary.topChecklistItem;
+
+    if (totalLists == 0) {
+      return _ChecklistInsightsEmpty(isZh: isZh);
+    }
+
+    return Column(
+      children: [
+        _ChecklistStatRow(
+          icon: Icons.list_alt,
+          value: '$totalLists',
+          label: isZh ? '已创建清单' : 'lists created',
+        ),
+        const SizedBox(height: 10),
+        _ChecklistStatRow(
+          icon: Icons.check_circle_outline,
+          value: '${(completionRate * 100).round()}%',
+          label: isZh ? '平均完成率' : 'avg completion',
+        ),
+        const SizedBox(height: 10),
+        _ChecklistStatRow(
+          icon: Icons.replay,
+          value: '$carriedForward',
+          label: isZh ? '已结转事项' : 'carried forward',
+        ),
+        if (topItem != null) ...[
+          const SizedBox(height: 10),
+          _ChecklistStatRow(
+            icon: Icons.push_pin,
+            value: '"${topItem.text}"',
+            label: '${isZh ? '最常见事项' : 'top item'} (${topItem.count}×)',
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _ChecklistStatRow extends StatelessWidget {
+  final IconData icon;
+  final String value;
+  final String label;
+
+  const _ChecklistStatRow({
+    required this.icon,
+    required this.value,
+    required this.label,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, size: 20, color: Theme.of(context).colorScheme.primary),
+        const SizedBox(width: 12),
+        Text(
+          value,
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+                fontSize: 15,
+              ),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          label,
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Colors.grey[600],
+                fontSize: 13,
+              ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ChecklistInsightsEmpty extends StatelessWidget {
+  final bool isZh;
+  const _ChecklistInsightsEmpty({required this.isZh});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 60,
+      child: Center(
+        child: Text(
+          isZh ? '创建清单即可查看洞察' : 'Create checklists to see insights',
+          style: const TextStyle(color: Colors.grey, fontSize: 13),
+        ),
+      ),
+    );
+  }
+}
+
+class _TagMoodSection extends StatelessWidget {
+  final SummaryProvider summary;
+  final bool isZh;
+
+  const _TagMoodSection({required this.summary, required this.isZh});
+
+  static const _moodEmojis = ['😡', '😡', '😢', '😐', '😌', '😊'];
+  static const _moodColors = {
+    1: Color(0xFFE76F51),
+    2: Color(0xFF457B9D),
+    3: Color(0xFFE9C46A),
+    4: Color(0xFFA8DADC),
+    5: Color(0xFF2A9D8F),
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final tagProvider = context.watch<TagProvider>();
+    final correlations = summary.tagMoodCorrelation;
+
+    if (correlations.isEmpty) {
+      return _TagMoodEmpty(isZh: isZh);
+    }
+
+    return Column(
+      children: [
+        ...correlations.take(5).map((c) {
+          final tag = tagProvider.tags.firstWhere(
+            (t) => t.id == c.tagId,
+            orElse: () => tagProvider.tags.first,
+          );
+          final name = isZh
+              ? tag.name
+              : (tag.nameEn.isNotEmpty ? tag.nameEn : tag.name);
+          final idx = c.avgScore.round().clamp(1, 5);
+          final emoji = _moodEmojis[idx];
+          final color = _moodColors[idx] ?? Colors.grey;
+
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 72,
+                  child: Text(
+                    name,
+                    style: const TextStyle(fontSize: 13),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: LinearProgressIndicator(
+                      value: c.avgScore / 5.0,
+                      minHeight: 14,
+                      backgroundColor: Colors.grey[100],
+                      valueColor: AlwaysStoppedAnimation<Color>(color),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  emoji,
+                  style: const TextStyle(fontSize: 16),
+                ),
+                const SizedBox(width: 4),
+                SizedBox(
+                  width: 36,
+                  child: Text(
+                    '${c.avgScore.toStringAsFixed(1)}/5',
+                    style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.grey),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }),
+        const SizedBox(height: 4),
+        Text(
+          isZh ? '显示出现 3 次以上的标签' : 'Tags with ≥3 entries shown',
+          style: const TextStyle(fontSize: 10, color: Colors.grey),
+        ),
+      ],
+    );
+  }
+}
+
+class _TagMoodEmpty extends StatelessWidget {
+  final bool isZh;
+  const _TagMoodEmpty({required this.isZh});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 80,
+      child: Center(
+        child: Text(
+          isZh ? '需要更多带标签和情绪的记录' : 'Need more entries with tags & emotions',
+          style: const TextStyle(color: Colors.grey, fontSize: 13),
+        ),
+      ),
+    );
+  }
 }
 
 class _EmptyChart extends StatelessWidget {

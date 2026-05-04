@@ -77,7 +77,14 @@ void main() {
     });
 
     testWidgets('Edit button is present in AppBar', (tester) async {
-      await tester.pumpWidget(_wrap(EntryDetailScreen(entry: _entry())));
+      final todayEntry = Entry(
+        id: 'e2',
+        type: EntryType.freeform,
+        content: 'Today entry',
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+      await tester.pumpWidget(_wrap(EntryDetailScreen(entry: todayEntry)));
       await tester.pump();
       expect(find.byIcon(Icons.edit_outlined), findsOneWidget);
     });

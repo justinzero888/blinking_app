@@ -18,7 +18,6 @@ class EntryCard extends StatelessWidget {
   final List<String> tagNames;
   final VoidCallback? onTap;
   final VoidCallback? onLongPress;
-  final int? carriedOverCount;
 
   const EntryCard({
     super.key,
@@ -26,7 +25,6 @@ class EntryCard extends StatelessWidget {
     this.tagNames = const [],
     this.onTap,
     this.onLongPress,
-    this.carriedOverCount,
   });
 
   @override
@@ -43,8 +41,6 @@ class EntryCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (carriedOverCount != null && carriedOverCount! > 0)
-                _buildCarriedOverBanner(context),
               if (isList) ..._buildListContent(context) else ...[
                 _buildHeader(context),
                 if (entry.content.isNotEmpty) _buildContent(context),
@@ -58,39 +54,7 @@ class EntryCard extends StatelessWidget {
     );
   }
 
-  Widget _buildCarriedOverBanner(BuildContext context) {
-    final isZh = context.read<LocaleProvider>().locale.languageCode == 'zh';
-    final l = AppLocalizations.of(context)!;
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.replay, size: 14),
-          const SizedBox(width: 4),
-          Expanded(
-            child: Text(
-              l.carriedOverBanner(carriedOverCount!),
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-          ),
-          GestureDetector(
-            onTap: () {
-              context.read<EntryProvider>().clearCarriedBanner();
-            },
-            child: const Icon(Icons.close, size: 14),
-          ),
-        ],
-      ),
-    );
-  }
-
   List<Widget> _buildListContent(BuildContext context) {
-    final isZh = context.read<LocaleProvider>().locale.languageCode == 'zh';
     final items = entry.listItems ?? [];
     final doneCount = items.where((i) => i.isDone).length;
     final totalCount = items.length;
@@ -148,34 +112,58 @@ class EntryCard extends StatelessWidget {
   }
 
   Widget _buildListItem(BuildContext context, ListItem item) {
+    final today = DateTime.now();
+    final entryDay = DateTime(entry.createdAt.year, entry.createdAt.month, entry.createdAt.day);
+    final todayDay = DateTime(today.year, today.month, today.day);
+    final isPastEntry = entryDay.isBefore(todayDay);
+    final l = AppLocalizations.of(context)!;
+
+    final child = Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        children: [
+          Icon(
+            item.isDone ? Icons.check_box : Icons.check_box_outline_blank,
+            size: 18,
+            color: item.isDone
+                ? Colors.grey
+                : isPastEntry
+                    ? Colors.grey[400]
+                    : Theme.of(context).colorScheme.primary,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              item.text,
+              style: TextStyle(
+                decoration: item.isDone ? TextDecoration.lineThrough : null,
+                color: item.isDone ? Colors.grey : null,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          if (item.fromPreviousDay) ...[
+            const SizedBox(width: 6),
+            Text(
+              l.fromYesterdayLabel,
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: Colors.grey[500],
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+
+    if (isPastEntry) return child;
+
     return InkWell(
       onTap: () {
         context.read<EntryProvider>().toggleListItem(entry.id, item.id);
       },
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 2),
-        child: Row(
-          children: [
-            Icon(
-              item.isDone ? Icons.check_box : Icons.check_box_outline_blank,
-              size: 18,
-              color: item.isDone ? Colors.grey : Theme.of(context).colorScheme.primary,
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                item.text,
-                style: TextStyle(
-                  decoration: item.isDone ? TextDecoration.lineThrough : null,
-                  color: item.isDone ? Colors.grey : null,
-                ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
-        ),
-      ),
+      child: child,
     );
   }
 

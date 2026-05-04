@@ -61,16 +61,17 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
           ],
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.edit_outlined),
-            tooltip: isZh ? '编辑' : 'Edit',
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => AddEntryScreen(existingEntry: entry),
+          if (!_isPastDate(entry))
+            IconButton(
+              icon: const Icon(Icons.edit_outlined),
+              tooltip: isZh ? '编辑' : 'Edit',
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => AddEntryScreen(existingEntry: entry),
+                ),
               ),
             ),
-          ),
           IconButton(
             icon: const Icon(Icons.share),
             tooltip: isZh ? '分享' : 'Share',
@@ -142,6 +143,7 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
     final provider = context.read<EntryProvider>();
     final items = entry.listItems ?? [];
     final doneCount = items.where((i) => i.isDone).length;
+    final readOnly = _isPastDate(entry);
 
     return [
       if (entry.content.isNotEmpty)
@@ -152,8 +154,16 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
             style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
           ),
         ),
+      if (items.isNotEmpty)
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Text(
+            l.listDetailSubtitle(doneCount, items.length),
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(color: Colors.grey[500]),
+          ),
+        ),
       ...items.map((item) => InkWell(
-            onTap: () => provider.toggleListItem(entry.id, item.id),
+            onTap: readOnly ? null : () => provider.toggleListItem(entry.id, item.id),
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 6),
               child: Row(
@@ -161,7 +171,11 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
                   Icon(
                     item.isDone ? Icons.check_box : Icons.check_box_outline_blank,
                     size: 22,
-                    color: item.isDone ? Colors.grey : Theme.of(context).colorScheme.primary,
+                    color: item.isDone
+                        ? Colors.grey
+                        : readOnly
+                            ? Colors.grey[400]
+                            : Theme.of(context).colorScheme.primary,
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -174,6 +188,16 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
                       ),
                     ),
                   ),
+                  if (item.fromPreviousDay) ...[
+                    const SizedBox(width: 8),
+                    Text(
+                      l.fromYesterdayLabel,
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: Colors.grey[500],
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -187,6 +211,13 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
           ),
         ),
     ];
+  }
+
+  bool _isPastDate(Entry entry) {
+    final today = DateTime.now();
+    final entryDay = DateTime(entry.createdAt.year, entry.createdAt.month, entry.createdAt.day);
+    final todayDay = DateTime(today.year, today.month, today.day);
+    return entryDay.isBefore(todayDay);
   }
 }
 

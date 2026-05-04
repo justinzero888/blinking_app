@@ -269,7 +269,7 @@ class _MomentScreenState extends State<MomentScreen> {
       margin: const EdgeInsets.only(bottom: 8),
       child: ListTile(
         leading: Icon(
-          _getEntryIcon(entry.type),
+          _getEntryIcon(entry),
           color: Theme.of(context).colorScheme.primary,
         ),
         title: Text(entry.content),
@@ -304,13 +304,10 @@ class _MomentScreenState extends State<MomentScreen> {
     );
   }
 
-  IconData _getEntryIcon(EntryType type) {
-    switch (type) {
-      case EntryType.routine:
-        return Icons.check_circle;
-      case EntryType.freeform:
-        return Icons.note;
-    }
+  IconData _getEntryIcon(Entry entry) {
+    if (entry.type == EntryType.routine) return Icons.check_circle;
+    if (entry.format == EntryFormat.list) return Icons.checklist;
+    return Icons.note;
   }
 
   bool _isToday(DateTime date) {

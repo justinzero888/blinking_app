@@ -394,4 +394,70 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get listSaveDisabledHint => 'Add at least one item';
+
+  @override
+  String get carryForwardDialogTitle => 'Unfinished from yesterday';
+
+  @override
+  String carryForwardDialogMessage(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          'You have $count unchecked items from yesterday. Add to today\'s list?',
+      one: 'You have 1 unchecked item from yesterday. Add to today\'s list?',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get carryForwardYes => 'Add';
+
+  @override
+  String get carryForwardNo => 'Skip';
+
+  @override
+  String get fromYesterdayLabel => 'Yesterday';
+
+  @override
+  String get listAlreadyExistsHint =>
+      'Today\'s list already exists — opening it';
+
+  @override
+  String get listEditHint => 'Tap to check · Drag to reorder · × to remove';
+
+  @override
+  String listDetailSubtitle(Object done, Object total) {
+    return 'Checklist · $done/$total done';
+  }
+
+  @override
+  String get insightsWritingStats => 'Writing Stats';
+
+  @override
+  String get insightsAvgWords => 'avg words';
+
+  @override
+  String get insightsMostActiveDay => 'most active';
+
+  @override
+  String get insightsTagImpact => 'Tag Impact on Mood';
+
+  @override
+  String get insightsTagImpactFootnote => 'Tags with ≥3 entries shown';
+
+  @override
+  String get insightsChecklistSection => 'Checklist Insights';
+
+  @override
+  String get insightsListsCreated => 'lists created';
+
+  @override
+  String get insightsAvgCompletion => 'avg completion';
+
+  @override
+  String get insightsItemsCarried => 'carried forward';
+
+  @override
+  String get insightsTopItem => 'top item';
 }

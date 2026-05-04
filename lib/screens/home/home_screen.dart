@@ -12,6 +12,7 @@ import '../../widgets/entry_card.dart';
 import '../../widgets/emoji_jar.dart';
 import '../../l10n/app_localizations.dart';
 import '../add_entry_screen.dart';
+import '../moment/entry_detail_screen.dart';
 
 /// My Day — daily dashboard with calendar navigation + today's overview
 class HomeScreen extends StatefulWidget {
@@ -28,6 +29,7 @@ class _HomeScreenState extends State<HomeScreen> {
   DateTime _focusedMonth = DateTime.now();
   bool _showOnboarding = false;
   bool _isCalendarExpanded = false;
+  bool _carryForwardChecked = false;
 
   @override
   void initState() {
@@ -201,7 +203,9 @@ class _HomeScreenState extends State<HomeScreen> {
     final routineProvider = context.watch<RoutineProvider>();
     final isToday = _isSameDay(_selectedDate, DateTime.now());
     final isPastDay = !isToday && _selectedDate.isBefore(DateTime.now());
-    final dayRoutines = routineProvider.getRoutinesForDate(_selectedDate);
+    final entryProvider = context.read<EntryProvider>();
+
+    _scheduleCarryForwardCheck(entryProvider);
 
     // Get selected day's entries
     final dayEntries = entries.where((e) =>
@@ -211,7 +215,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final dayListEntries = dayEntries.where((e) => e.format == EntryFormat.list).toList();
     final dayNoteEntries = dayEntries.where((e) => e.format != EntryFormat.list).toList();
 
-    final entryProvider = context.read<EntryProvider>();
+    final dayRoutines = routineProvider.getRoutinesForDate(_selectedDate);
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -244,7 +248,13 @@ class _HomeScreenState extends State<HomeScreen> {
             style: Theme.of(context).textTheme.titleSmall,
           ),
           const SizedBox(height: 8),
-          ..._buildListEntryCards(context, dayListEntries, entryProvider),
+          ...dayListEntries.map((entry) => Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: EntryCard(
+              entry: entry,
+              onTap: () => _onEntryTapped(entry),
+            ),
+          )),
         ],
 
         // Routines Section
@@ -383,31 +393,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  List<Widget> _buildListEntryCards(
-      BuildContext context, List<Entry> listEntries, EntryProvider entryProvider) {
-    final carriedCount = entryProvider.lastCarriedCount;
-    final widgets = <Widget>[];
-    for (var i = 0; i < listEntries.length; i++) {
-      final entry = listEntries[i];
-      widgets.add(
-        Padding(
-          padding: const EdgeInsets.only(bottom: 8),
-          child: EntryCard(
-            entry: entry,
-            onTap: () => _onEntryTapped(entry),
-            carriedOverCount: (i == 0 && carriedCount > 0) ? carriedCount : null,
-          ),
-        ),
-      );
-    }
-    if (carriedCount > 0) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        entryProvider.clearCarriedBanner();
-      });
-    }
-    return widgets;
-  }
-
   Widget _buildRoutineChecklistItem(BuildContext context, Routine routine, {bool readOnly = false}) {
     final isCompleted = routine.isCompletedOn(_selectedDate);
     final isMissed = readOnly && !isCompleted;
@@ -434,13 +419,77 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _onEntryTapped(Entry entry) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => AddEntryScreen(existingEntry: entry),
+  void _scheduleCarryForwardCheck(EntryProvider entryProvider) {
+    if (_carryForwardChecked) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _carryForwardChecked) return;
+      _carryForwardChecked = true;
+      final items = entryProvider.getCarryForwardPreview();
+      if (items != null && items.isNotEmpty) {
+        _showCarryForwardDialog(entryProvider, items);
+      }
+    });
+  }
+
+  Future<void> _showCarryForwardDialog(EntryProvider entryProvider, List<ListItem> items) async {
+    if (!mounted) return;
+    final prefs = await SharedPreferences.getInstance();
+    final today = DateTime.now();
+    final todayKey = 'carry_forward_dialog_${today.year}_${today.month}_${today.day}';
+    if (prefs.getBool(todayKey) == true) return;
+
+    final l = AppLocalizations.of(context)!;
+
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: Text(l.carryForwardDialogTitle),
+        content: Text(l.carryForwardDialogMessage(items.length)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l.carryForwardNo),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(l.carryForwardYes),
+          ),
+        ],
       ),
     );
+
+    if (!mounted) return;
+    await prefs.setBool(todayKey, true);
+
+    if (result == true) {
+      await entryProvider.carryForwardItems(items);
+      if (mounted) {
+        setState(() {});
+      }
+    }
+  }
+
+  void _onEntryTapped(Entry entry) {
+    final today = DateTime.now();
+    final entryDay = DateTime(entry.createdAt.year, entry.createdAt.month, entry.createdAt.day);
+    final todayDay = DateTime(today.year, today.month, today.day);
+
+    if (entryDay.isBefore(todayDay)) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => EntryDetailScreen(entry: entry),
+        ),
+      );
+    } else {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => AddEntryScreen(existingEntry: entry),
+        ),
+      );
+    }
   }
 
   bool _isSameDay(DateTime a, DateTime b) {

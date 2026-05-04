@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import '../models/entry.dart';
 import 'entry_provider.dart';
 import 'routine_provider.dart';
 
@@ -189,6 +190,89 @@ class SummaryProvider extends ChangeNotifier {
     }
   }
 
+  /// Total entries across all time
+  int get totalEntries => _entryProvider.allEntries.length;
+
+  /// Map of sanitized date -> entry count for heatmap and streak computation
+  Map<DateTime, int> get entriesPerDay {
+    final map = <DateTime, int>{};
+    for (final entry in _entryProvider.allEntries) {
+      final day =
+          DateTime(entry.createdAt.year, entry.createdAt.month, entry.createdAt.day);
+      map[day] = (map[day] ?? 0) + 1;
+    }
+    return map;
+  }
+
+  /// Current consecutive days with entries (starts from today if today has entries, else yesterday)
+  int get currentStreak {
+    final perDay = entriesPerDay;
+    if (perDay.isEmpty) return 0;
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    DateTime checkDay;
+    if (perDay.containsKey(today)) {
+      checkDay = today;
+    } else {
+      checkDay = today.subtract(const Duration(days: 1));
+      if (!perDay.containsKey(checkDay)) return 0;
+    }
+    int streak = 0;
+    while (perDay.containsKey(checkDay)) {
+      streak++;
+      checkDay = checkDay.subtract(const Duration(days: 1));
+    }
+    return streak;
+  }
+
+  /// Longest consecutive days with entries (all time)
+  int get longestStreak {
+    final perDay = entriesPerDay;
+    if (perDay.isEmpty) return 0;
+    final sorted = perDay.keys.toList()..sort();
+    int longest = 1;
+    int current = 1;
+    for (int i = 1; i < sorted.length; i++) {
+      if (sorted[i].difference(sorted[i - 1]).inDays == 1) {
+        current++;
+        if (current > longest) longest = current;
+      } else {
+        current = 1;
+      }
+    }
+    return longest;
+  }
+
+  /// Average habit completion rate across all active routines (last 30-day window)
+  double get recentHabitCompletionRate {
+    final routines = _routineProvider.routines.where((r) => r.isActive).toList();
+    if (routines.isEmpty) return 0.0;
+    final now = DateTime.now();
+    final thirtyDaysAgo = now.subtract(const Duration(days: 30));
+    double totalRate = 0;
+    for (final routine in routines) {
+      final completed = routine.completionLog
+          .where((log) =>
+              log.completedAt.isAfter(thirtyDaysAgo) &&
+              log.completedAt.isBefore(now.add(const Duration(days: 1))))
+          .length;
+      totalRate += (completed / 30.0).clamp(0.0, 1.0);
+    }
+    return totalRate / routines.length;
+  }
+
+  /// Mood distribution: map of emotion emoji -> count (all time)
+  Map<String, int> get moodDistribution {
+    final map = <String, int>{};
+    for (final entry in _entryProvider.allEntries) {
+      final emotion = entry.emotion;
+      if (emotion != null && emotion.isNotEmpty) {
+        map[emotion] = (map[emotion] ?? 0) + 1;
+      }
+    }
+    return map;
+  }
+
   /// Top 5 tags by usage count (tagId → count)
   List<({String tagId, int count})> get topTags {
     final counts = <String, int>{};
@@ -203,5 +287,138 @@ class SummaryProvider extends ChangeNotifier {
         .take(5)
         .map((e) => (tagId: e.key, count: e.value))
         .toList();
+  }
+
+  /// Average word count per entry (mixed CJK + English word counting)
+  double get averageEntryLength {
+    final entries = _entryProvider.allEntries;
+    if (entries.isEmpty) return 0;
+    int totalWords = 0;
+    for (final entry in entries) {
+      totalWords += _countWords(entry.content);
+    }
+    return (totalWords / entries.length * 10).roundToDouble() / 10;
+  }
+
+  /// Weekday with most entries (1=Mon..7=Sun, null if no entries)
+  int? get mostActiveDayOfWeek {
+    final perDay = entriesPerDay;
+    if (perDay.isEmpty) return null;
+    final counts = List.filled(8, 0);
+    for (final day in perDay.keys) {
+      counts[day.weekday] += perDay[day]!;
+    }
+    int bestDay = 1;
+    for (int i = 2; i <= 7; i++) {
+      if (counts[i] > counts[bestDay]) bestDay = i;
+    }
+    return counts[bestDay] > 0 ? bestDay : null;
+  }
+
+  /// Hour of day with most entries (null if no entries)
+  int? get mostActiveHour {
+    final entries = _entryProvider.allEntries;
+    if (entries.isEmpty) return null;
+    final counts = List.filled(24, 0);
+    for (final entry in entries) {
+      counts[entry.createdAt.hour]++;
+    }
+    int bestHour = 0;
+    for (int i = 1; i < 24; i++) {
+      if (counts[i] > counts[bestHour]) bestHour = i;
+    }
+    return counts[bestHour] > 0 ? bestHour : null;
+  }
+
+  /// Tag-mood correlation: for each tag with ≥3 entries having emotions,
+  /// compute average mood score (1-5 scale)
+  List<({String tagId, double avgScore, int entryCount})>
+      get tagMoodCorrelation {
+    final entries = _entryProvider.allEntries
+        .where((e) => e.emotion != null && e.emotion!.isNotEmpty)
+        .toList();
+    final tagScores = <String, List<double>>{};
+    for (final entry in entries) {
+      final score = _emotionScores[entry.emotion] ?? 3.0;
+      for (final tagId in entry.tagIds) {
+        tagScores.putIfAbsent(tagId, () => []);
+        tagScores[tagId]!.add(score);
+      }
+    }
+    final result = <({String tagId, double avgScore, int entryCount})>[];
+    for (final e in tagScores.entries) {
+      if (e.value.length < 3) continue;
+      final avg =
+          (e.value.reduce((a, b) => a + b) / e.value.length * 10).roundToDouble() / 10;
+      result.add((tagId: e.key, avgScore: avg, entryCount: e.value.length));
+    }
+    result.sort((a, b) => b.avgScore.compareTo(a.avgScore));
+    return result;
+  }
+
+  /// Total number of checklist entries
+  int get totalLists {
+    return _entryProvider.allEntries
+        .where((e) => e.format == EntryFormat.list)
+        .length;
+  }
+
+  /// Average checklist completion rate across all lists (0.0–1.0)
+  double get checklistCompletionRate {
+    final lists = _entryProvider.allEntries
+        .where((e) =>
+            e.format == EntryFormat.list &&
+            e.listItems != null &&
+            e.listItems!.isNotEmpty)
+        .toList();
+    if (lists.isEmpty) return 0.0;
+    double totalRate = 0;
+    for (final list in lists) {
+      final items = list.listItems!;
+      if (items.isEmpty) continue;
+      final done = items.where((i) => i.isDone).length;
+      totalRate += done / items.length;
+    }
+    return lists.isEmpty
+        ? 0.0
+        : (totalRate / lists.length * 100).roundToDouble() / 100;
+  }
+
+  /// Total number of list items carried forward from previous days
+  int get totalCarriedForward {
+    int count = 0;
+    for (final entry in _entryProvider.allEntries) {
+      if (entry.listItems == null) continue;
+      count += entry.listItems!.where((i) => i.fromPreviousDay).length;
+    }
+    return count;
+  }
+
+  /// Most common checklist item text across all lists (normalized to lowercase)
+  /// Returns null if no items exist
+  ({String text, int count})? get topChecklistItem {
+    final counts = <String, int>{};
+    for (final entry in _entryProvider.allEntries) {
+      if (entry.listItems == null) continue;
+      for (final item in entry.listItems!) {
+        final normalized = item.text.trim().toLowerCase();
+        if (normalized.isEmpty) continue;
+        counts[normalized] = (counts[normalized] ?? 0) + 1;
+      }
+    }
+    if (counts.isEmpty) return null;
+    final best =
+        counts.entries.reduce((a, b) => a.value >= b.value ? a : b);
+    return (text: best.key, count: best.value);
+  }
+
+  int _countWords(String text) {
+    if (text.isEmpty) return 0;
+    final cjk = RegExp(r'[\u4E00-\u9FFF\u3400-\u4DBF\uF900-\uFAFF]');
+    final cjkCount = cjk.allMatches(text).length;
+    final nonCjk = text.replaceAll(cjk, ' ');
+    final enCount =
+        nonCjk.trim().split(RegExp(r'\s+')).where((s) => s.isNotEmpty).length;
+    return cjkCount + enCount;
   }
 }

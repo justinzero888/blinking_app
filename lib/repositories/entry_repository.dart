@@ -130,34 +130,41 @@ class EntryRepository {
     await _storage.toggleListItem(entryId, itemId);
   }
 
-  Future<int> checkAndCarryForward() async {
+  Future<Entry?> getYesterdayListEntry() async {
     final allEntries = await getAll();
     final today = DateTime.now();
     final todayDate = DateTime(today.year, today.month, today.day);
-    int totalCarried = 0;
+    final yesterday = todayDate.subtract(const Duration(days: 1));
 
     for (final entry in allEntries) {
       if (entry.format != EntryFormat.list) continue;
-      if (entry.listCarriedForward) continue;
       final entryDate = DateTime(entry.createdAt.year, entry.createdAt.month, entry.createdAt.day);
-      if (!entryDate.isBefore(todayDate)) continue;
-      final unchecked = (entry.listItems ?? []).where((item) => !item.isDone).toList();
-      if (unchecked.isEmpty) continue;
-
-      final carriedItems = unchecked.asMap().entries.map((e) =>
-        e.value.copyWith(isDone: false, sortOrder: e.key)
-      ).toList();
-
-      await create(
-        type: EntryType.freeform,
-        content: entry.content,
-        format: EntryFormat.list,
-        listItems: carriedItems,
-        listCarriedForward: false,
-      );
-      await _storage.markListCarriedForward(entry.id);
-      totalCarried += carriedItems.length;
+      if (entryDate == yesterday) return entry;
     }
-    return totalCarried;
+    return null;
+  }
+
+  bool hasTodayList(List<Entry> allEntries) {
+    final today = DateTime.now();
+    final todayDate = DateTime(today.year, today.month, today.day);
+    return allEntries.any((e) {
+      if (e.format != EntryFormat.list) return false;
+      final d = DateTime(e.createdAt.year, e.createdAt.month, e.createdAt.day);
+      return d == todayDate;
+    });
+  }
+
+  List<ListItem> getUncheckedItems(Entry entry) {
+    return (entry.listItems ?? []).where((item) => !item.isDone).toList();
+  }
+
+  Future<Entry> createTodayListWithItems(List<ListItem> items, {String content = ''}) async {
+    final entry = await create(
+      type: EntryType.freeform,
+      content: content,
+      format: EntryFormat.list,
+      listItems: items,
+    );
+    return entry;
   }
 }

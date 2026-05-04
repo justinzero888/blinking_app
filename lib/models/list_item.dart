@@ -5,21 +5,30 @@ class ListItem {
   final String text;
   final bool isDone;
   final int sortOrder;
+  final bool fromPreviousDay;
 
   ListItem({
     required this.id,
     required this.text,
     this.isDone = false,
     required this.sortOrder,
+    this.fromPreviousDay = false,
   }) : assert(text.isNotEmpty, 'ListItem text must not be empty'),
        assert(text.length <= 200, 'ListItem text must be <= 200 chars');
 
-  ListItem copyWith({String? id, String? text, bool? isDone, int? sortOrder}) {
+  ListItem copyWith({
+    String? id,
+    String? text,
+    bool? isDone,
+    int? sortOrder,
+    bool? fromPreviousDay,
+  }) {
     return ListItem(
       id: id ?? this.id,
       text: text ?? this.text,
       isDone: isDone ?? this.isDone,
       sortOrder: sortOrder ?? this.sortOrder,
+      fromPreviousDay: fromPreviousDay ?? this.fromPreviousDay,
     );
   }
 
@@ -28,6 +37,7 @@ class ListItem {
         'text': text,
         'is_done': isDone,
         'sort_order': sortOrder,
+        'from_previous_day': fromPreviousDay,
       };
 
   factory ListItem.fromJson(Map<String, dynamic> json) => ListItem(
@@ -35,6 +45,7 @@ class ListItem {
         text: json['text'] as String,
         isDone: json['is_done'] as bool? ?? false,
         sortOrder: json['sort_order'] as int? ?? 0,
+        fromPreviousDay: json['from_previous_day'] as bool? ?? false,
       );
 
   static List<ListItem> listFromJson(String? json) {
@@ -55,11 +66,12 @@ class ListItem {
           id == other.id &&
           text == other.text &&
           isDone == other.isDone &&
-          sortOrder == other.sortOrder;
+          sortOrder == other.sortOrder &&
+          fromPreviousDay == other.fromPreviousDay;
 
   @override
-  int get hashCode => Object.hash(id, text, isDone, sortOrder);
+  int get hashCode => Object.hash(id, text, isDone, sortOrder, fromPreviousDay);
 
   @override
-  String toString() => 'ListItem(id: $id, text: $text, isDone: $isDone, sortOrder: $sortOrder)';
+  String toString() => 'ListItem(id: $id, text: $text, isDone: $isDone, sortOrder: $sortOrder, fromPreviousDay: $fromPreviousDay)';
 }

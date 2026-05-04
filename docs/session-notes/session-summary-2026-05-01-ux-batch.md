@@ -91,6 +91,9 @@ Resolved all P1 and P2 UX issues in a single extended session. The app's 5-tab n
 |-------|:-----:|--------|
 | Flutter unit + widget + integration | 96 | All passing |
 | Flutter analyze | 52 issues | 0 errors (all pre-existing warnings/infos) |
+| Version sync test | 4/4 | All passing |
+| Release APK | 65.0MB | Built |
+| Release AAB | 52.3MB | Built |
 | UAT — Calendar future date | 10/10 | ✅ |
 | UAT — Insights restructure | 15/15 | ✅ |
 | UAT — Issues #4, #7, #14 | 12/12 | ✅ |
@@ -104,6 +107,22 @@ Resolved all P1 and P2 UX issues in a single extended session. The app's 5-tab n
 |-----|-----------|-----|
 | EntryDetailScreen title "OVERFLOWED BY 4 PIXELS" | Lock icon + date `Row` in AppBar title competed with 3 action buttons for space | Wrapped date `Text` in `Flexible` with `TextOverflow.ellipsis` |
 | HomeScreen tests failed after title change | `AppLocalizations.of(context)!` returned null in test harness (no Localizations widget) | Made `_buildTitle()` null-safe: `l?.myDay ?? fallback` |
+
+---
+
+## Version Bump & Release
+
+| Item | Value |
+|------|-------|
+| **Previous** | `1.1.0-beta.5+20` |
+| **New** | `1.1.0-beta.6+21` |
+| **Files updated** | `pubspec.yaml`, `constants.dart`, `settings_screen.dart` (×2), `CLAUDE.md`, `PROJECT_PLAN.md` |
+| **Version test** | 4/4 passed |
+| **Release APK** | `build/app/outputs/flutter-apk/app-release.apk` — **65.0MB** (↓5.5MB from beta.5) |
+| **Release AAB** | `build/app/outputs/bundle/release/app-release.aab` — **52.3MB** (↓2.4MB from beta.5) |
+| **Size reduction** | flutter_quill removal (22 transitive deps cleaned) |
+| **Commit** | `e7aaf50` — 50 files, +3,135 / −3,551 lines |
+| **Push** | `master` → `origin/master` (GitHub) |
 
 ---
 

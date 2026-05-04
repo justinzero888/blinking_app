@@ -42,6 +42,18 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
     _loadExistingEntry();
   }
 
+  bool get _isPastEntry {
+    if (widget.existingEntry == null) return false;
+    final today = DateTime.now();
+    final entryDay = DateTime(
+      widget.existingEntry!.createdAt.year,
+      widget.existingEntry!.createdAt.month,
+      widget.existingEntry!.createdAt.day,
+    );
+    final todayDay = DateTime(today.year, today.month, today.day);
+    return entryDay.isBefore(todayDay);
+  }
+
   Future<void> _loadExistingEntry() async {
     if (widget.existingEntry != null) {
       final e = widget.existingEntry!;
@@ -147,11 +159,26 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
           .toList();
       if (todayLists.isNotEmpty) {
         final existingList = todayLists.first;
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (_) => AddEntryScreen(existingEntry: existingList),
+        final l = AppLocalizations.of(context)!;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(l.listAlreadyExistsHint),
+            duration: const Duration(milliseconds: 800),
           ),
         );
+        Future.delayed(const Duration(milliseconds: 400), () {
+          if (mounted) {
+            Navigator.of(context).pushReplacement(
+              PageRouteBuilder(
+                pageBuilder: (_, __, ___) => AddEntryScreen(existingEntry: existingList),
+                transitionDuration: const Duration(milliseconds: 300),
+                transitionsBuilder: (_, animation, __, child) {
+                  return FadeTransition(opacity: animation, child: child);
+                },
+              ),
+            );
+          }
+        });
         return;
       }
     }
@@ -275,6 +302,20 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
         : _textController.text.trim();
 
     if (widget.existingEntry != null) {
+      final today = DateTime.now();
+      final entryDay = DateTime(
+        widget.existingEntry!.createdAt.year,
+        widget.existingEntry!.createdAt.month,
+        widget.existingEntry!.createdAt.day,
+      );
+      final todayDay = DateTime(today.year, today.month, today.day);
+      if (entryDay.isBefore(todayDay)) {
+        if (mounted) {
+          Navigator.pop(context);
+        }
+        return;
+      }
+
       await entryProvider.updateEntry(
         widget.existingEntry!.copyWith(
           content: content,
@@ -332,14 +373,17 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.existingEntry != null
-            ? (isZh ? '编辑记录' : 'Edit Memory')
+            ? (_isPastEntry
+                ? (isZh ? '查看记录' : 'View Memory')
+                : (isZh ? '编辑记录' : 'Edit Memory'))
             : (isZh ? '添加记录' : 'Add Memory')),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.check, size: 28),
-            onPressed: _saveEntry,
-            tooltip: 'Save',
-          ),
+          if (!_isPastEntry)
+            IconButton(
+              icon: const Icon(Icons.check, size: 28),
+              onPressed: _saveEntry,
+              tooltip: 'Save',
+            ),
         ],
       ),
       body: SingleChildScrollView(
@@ -347,22 +391,25 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SegmentedButton<EntryFormat>(
-              segments: [
-                ButtonSegment(value: EntryFormat.note, label: Text(l.noteFormat)),
-                ButtonSegment(value: EntryFormat.list, label: Text(l.listFormat)),
-              ],
-              selected: {_selectedFormat},
-              onSelectionChanged: (format) => _switchFormat(format.first),
-              style: ButtonStyle(
-                visualDensity: VisualDensity.compact,
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            if (!_isPastEntry)
+              SegmentedButton<EntryFormat>(
+                segments: [
+                  ButtonSegment(value: EntryFormat.note, label: Text(l.noteFormat)),
+                  ButtonSegment(value: EntryFormat.list, label: Text(l.listFormat)),
+                ],
+                selected: {_selectedFormat},
+                onSelectionChanged: (format) => _switchFormat(format.first),
+                style: ButtonStyle(
+                  visualDensity: VisualDensity.compact,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
               ),
-            ),
-            const SizedBox(height: 16),
+            if (!_isPastEntry) const SizedBox(height: 16),
             if (isList) ..._buildListMode(context, isZh, l) else ..._buildNoteMode(context, isZh),
-            const SizedBox(height: 16),
-            ..._buildSharedSections(context, isZh, l),
+            if (!_isPastEntry) ...[
+              const SizedBox(height: 16),
+              ..._buildSharedSections(context, isZh, l),
+            ],
           ],
         ),
       ),
@@ -373,6 +420,7 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
     return [
       TextField(
         controller: _textController,
+        readOnly: _isPastEntry,
         maxLines: 6,
         decoration: InputDecoration(
           hintText: isZh ? '今天有什么想记录的？' : 'What\'s on your mind?',
@@ -405,6 +453,7 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
     return [
       TextField(
         controller: _titleController,
+        readOnly: _isPastEntry,
         decoration: InputDecoration(
           hintText: l.listTitleHint,
           filled: true,
@@ -430,7 +479,19 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
         ),
       ),
       const SizedBox(height: 12),
-      Row(
+      if (_listItems.isNotEmpty && !_isPastEntry)
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Text(
+            l.listEditHint,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: Colors.grey[500],
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+        ),
+      if (!_isPastEntry)
+        Row(
         children: [
           Expanded(
             child: TextField(
@@ -485,7 +546,7 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
                 key: ValueKey(item.id),
                 dense: true,
                 leading: GestureDetector(
-                  onTap: () {
+                  onTap: _isPastEntry ? null : () {
                     setState(() {
                       _listItems[index] = item.copyWith(isDone: !item.isDone);
                     });
@@ -493,24 +554,44 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
                   child: Icon(
                     item.isDone ? Icons.check_box : Icons.check_box_outline_blank,
                     size: 22,
-                    color: item.isDone ? Colors.grey : Theme.of(context).colorScheme.primary,
+                    color: item.isDone
+                        ? Colors.grey
+                        : _isPastEntry
+                            ? Colors.grey[400]
+                            : Theme.of(context).colorScheme.primary,
                   ),
                 ),
-                title: Text(
-                  item.text,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    decoration: item.isDone ? TextDecoration.lineThrough : null,
-                    color: item.isDone ? Colors.grey : null,
-                  ),
+                title: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        item.text,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          decoration: item.isDone ? TextDecoration.lineThrough : null,
+                          color: item.isDone ? Colors.grey : null,
+                        ),
+                      ),
+                    ),
+                    if (item.fromPreviousDay)
+                      Text(
+                        AppLocalizations.of(context)!.fromYesterdayLabel,
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: Colors.grey[500],
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                  ],
                 ),
-                trailing: Row(
+                trailing: _isPastEntry
+                    ? null
+                    : Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     ReorderableDragStartListener(
                       index: index,
-                      child: const Icon(Icons.drag_handle, size: 20, color: Colors.grey),
+                      child: const Icon(Icons.drag_handle, size: 24, color: Colors.grey),
                     ),
                     const SizedBox(width: 4),
                     GestureDetector(

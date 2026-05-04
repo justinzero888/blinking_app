@@ -14,9 +14,6 @@ class EntryProvider extends ChangeNotifier {
   String? _filterTagId;
   String _filterType = 'all'; // 'all', 'freeform', 'routine'
 
-  bool _carryForwardChecked = false;
-  int _lastCarriedCount = 0;
-
   EntryProvider(this._repository);
 
   // Getters
@@ -48,8 +45,6 @@ class EntryProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
   String get searchQuery => _searchQuery;
-  int get lastCarriedCount => _lastCarriedCount;
-  void clearCarriedBanner() => _lastCarriedCount = 0;
 
   /// Load all entries from storage
   Future<void> loadEntries() async {
@@ -68,20 +63,47 @@ class EntryProvider extends ChangeNotifier {
 
     _isLoading = false;
     notifyListeners();
+  }
 
-    if (!_carryForwardChecked) {
-      _carryForwardChecked = true;
-      try {
-        final carried = await _repository.checkAndCarryForward();
-        if (carried > 0) {
-          _entries = await _repository.getAll();
-          _lastCarriedCount = carried;
-          notifyListeners();
-        }
-      } catch (_) {
-        // Carry-forward failure should not block the app
+  List<ListItem>? getCarryForwardPreview() {
+    final today = DateTime.now();
+    final todayDate = DateTime(today.year, today.month, today.day);
+    final yesterday = todayDate.subtract(const Duration(days: 1));
+
+    if (_repository.hasTodayList(_entries)) return null;
+
+    for (final entry in _entries) {
+      if (entry.format != EntryFormat.list) continue;
+      final d = DateTime(entry.createdAt.year, entry.createdAt.month, entry.createdAt.day);
+      if (d != yesterday) continue;
+      final unchecked = _repository.getUncheckedItems(entry);
+      if (unchecked.isNotEmpty) return unchecked;
+    }
+    return null;
+  }
+
+  Future<void> carryForwardItems(List<ListItem> items) async {
+    final today = DateTime.now();
+    final todayDate = DateTime(today.year, today.month, today.day);
+    final yesterday = todayDate.subtract(const Duration(days: 1));
+
+    String title = '';
+    for (final entry in _entries) {
+      if (entry.format != EntryFormat.list) continue;
+      final d = DateTime(entry.createdAt.year, entry.createdAt.month, entry.createdAt.day);
+      if (d == yesterday) {
+        title = entry.content;
+        break;
       }
     }
+
+    final carriedItems = items.asMap().entries.map((e) =>
+      e.value.copyWith(isDone: false, sortOrder: e.key, fromPreviousDay: true)
+    ).toList();
+
+    await _repository.createTodayListWithItems(carriedItems, content: title);
+    _entries = await _repository.getAll();
+    notifyListeners();
   }
 
   /// Add a new entry

@@ -773,7 +773,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ListTile(
             leading: const Icon(Icons.info),
             title: const Text('Blinking (记忆闪烁)'),
-            subtitle: Text(isZh ? '版本 1.1.0-beta.6' : 'Version 1.1.0-beta.6'),
+            subtitle: Text(isZh ? '版本 1.1.0-beta.7' : 'Version 1.1.0-beta.7'),
           ),
         ],
       ),
@@ -1492,94 +1492,94 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (result != null && result.files.single.path != null) {
         final file = File(result.files.single.path!);
 
-        if (!mounted) return;
+      if (!mounted) return;
 
-        var phase = 0;
-        double progress = 0.0;
-        String estimateText = '';
-        final estimator = _BackupEstimator();
+      var phase = 0;
+      double progress = 0.0;
+      String estimateText = '';
+      final estimator = _BackupEstimator();
 
-        await showDialog<void>(
-          context: context,
-          barrierDismissible: false,
-          builder: (dialogContext) => StatefulBuilder(
-            builder: (_, setDialogState) {
-              if (phase == 0) {
-                return AlertDialog(
-                  title: Text(isZh ? '恢复数据' : 'Restore Data'),
-                  content: Text(isZh
-                      ? '从此备份恢复数据将替换您当前的所有数据。'
-                      : 'Restore data from this backup? This will replace all your current data.'),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(dialogContext),
-                      child: Text(isZh ? '取消' : 'Cancel'),
+      await showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (dialogContext) => StatefulBuilder(
+          builder: (_, setDialogState) {
+            if (phase == 0) {
+              return AlertDialog(
+                title: Text(isZh ? '恢复数据' : 'Restore Data'),
+                content: Text(isZh
+                    ? '从此备份恢复数据将替换您当前的所有数据。'
+                    : 'Restore data from this backup? This will replace all your current data.'),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(dialogContext),
+                    child: Text(isZh ? '取消' : 'Cancel'),
+                  ),
+                  ElevatedButton(
+                    onPressed: () async {
+                      setDialogState(() => phase = 1);
+                      await _performRestore(
+                        context,
+                        dialogContext,
+                        file,
+                        isZh,
+                        (p) {
+                          if (dialogContext.mounted) {
+                            setDialogState(() {
+                              progress = p;
+                              estimateText = estimator.estimate(p, isZh);
+                            });
+                          }
+                        },
+                      );
+                    },
+                    child: Text(isZh ? '恢复' : 'Restore'),
+                  ),
+                ],
+              );
+            }
+
+            // Phase 1: progress
+            return PopScope(
+              canPop: false,
+              child: AlertDialog(
+                title: Text(isZh ? '正在恢复...' : 'Restoring...'),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    LinearProgressIndicator(
+                        value: progress > 0 ? progress : null),
+                    const SizedBox(height: 12),
+                    Text(
+                      '${(progress * 100).round()}%',
+                      style: const TextStyle(
+                          fontSize: 24, fontWeight: FontWeight.bold),
                     ),
-                    ElevatedButton(
-                      onPressed: () async {
-                        setDialogState(() => phase = 1);
-                        await _performRestore(
-                          context,
-                          dialogContext,
-                          file,
-                          isZh,
-                          (p) {
-                            if (dialogContext.mounted) {
-                              setDialogState(() {
-                                progress = p;
-                                estimateText = estimator.estimate(p, isZh);
-                              });
-                            }
-                          },
-                        );
-                      },
-                      child: Text(isZh ? '恢复' : 'Restore'),
+                    if (estimateText.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(estimateText,
+                          style: const TextStyle(color: Colors.grey)),
+                    ],
+                    const SizedBox(height: 16),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.warning_amber_rounded,
+                            size: 16, color: Colors.orange),
+                        const SizedBox(width: 4),
+                        Text(
+                          isZh ? '请勿关闭应用' : 'Do not close the app',
+                          style: const TextStyle(color: Colors.orange),
+                        ),
+                      ],
                     ),
                   ],
-                );
-              }
-
-              // Phase 1: progress
-              return PopScope(
-                canPop: false,
-                child: AlertDialog(
-                  title: Text(isZh ? '正在恢复...' : 'Restoring...'),
-                  content: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      LinearProgressIndicator(
-                          value: progress > 0 ? progress : null),
-                      const SizedBox(height: 12),
-                      Text(
-                        '${(progress * 100).round()}%',
-                        style: const TextStyle(
-                            fontSize: 24, fontWeight: FontWeight.bold),
-                      ),
-                      if (estimateText.isNotEmpty) ...[
-                        const SizedBox(height: 4),
-                        Text(estimateText,
-                            style: const TextStyle(color: Colors.grey)),
-                      ],
-                      const SizedBox(height: 16),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(Icons.warning_amber_rounded,
-                              size: 16, color: Colors.orange),
-                          const SizedBox(width: 4),
-                          Text(
-                            isZh ? '请勿关闭应用' : 'Do not close the app',
-                            style: const TextStyle(color: Colors.orange),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
                 ),
-              );
-            },
-          ),
-        );
+              ),
+            );
+          },
+        ),
+      );
       }
     } catch (e) {
       if (mounted) _showError(context, isZh, e.toString());
@@ -1661,7 +1661,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _sendFeedback(BuildContext context, bool isZh) async {
     const email = 'blinkingfeedback@gmail.com';
-    const version = '1.1.0-beta.6'; // TODO: keep in sync with pubspec.yaml
+    const version = '1.1.0-beta.7'; // TODO: keep in sync with pubspec.yaml
     final subject = Uri.encodeComponent('Blinking App Feedback - v$version');
     final body = Uri.encodeComponent(
       'What happened:\n\n\nSteps to reproduce:\n\n\nExpected behavior:\n\n\nDevice & OS:\n\n',

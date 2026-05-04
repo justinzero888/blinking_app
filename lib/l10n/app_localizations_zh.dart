@@ -390,4 +390,67 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get listSaveDisabledHint => '请至少添加一个事项';
+
+  @override
+  String get carryForwardDialogTitle => '昨日未完成事项';
+
+  @override
+  String carryForwardDialogMessage(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '昨天的清单还有 $count 项未完成。要添加到今天的清单吗？',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get carryForwardYes => '添加';
+
+  @override
+  String get carryForwardNo => '跳过';
+
+  @override
+  String get fromYesterdayLabel => '昨日';
+
+  @override
+  String get listAlreadyExistsHint => '今天已有清单，正在打开';
+
+  @override
+  String get listEditHint => '点击选中 · 拖动排序 · × 删除';
+
+  @override
+  String listDetailSubtitle(Object done, Object total) {
+    return '清单 · $done/$total 已完成';
+  }
+
+  @override
+  String get insightsWritingStats => '写作统计';
+
+  @override
+  String get insightsAvgWords => '平均字数';
+
+  @override
+  String get insightsMostActiveDay => '最活跃日';
+
+  @override
+  String get insightsTagImpact => '标签与情绪';
+
+  @override
+  String get insightsTagImpactFootnote => '显示出现 3 次以上的标签';
+
+  @override
+  String get insightsChecklistSection => '清单洞察';
+
+  @override
+  String get insightsListsCreated => '已创建清单';
+
+  @override
+  String get insightsAvgCompletion => '平均完成率';
+
+  @override
+  String get insightsItemsCarried => '已结转事项';
+
+  @override
+  String get insightsTopItem => '最常见事项';
 }

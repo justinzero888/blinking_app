@@ -174,7 +174,7 @@ void main() {
       await storageService.addEntry(entry);
     }
 
-    test('carries forward unchecked items from yesterday', () async {
+    test('getYesterdayListEntry returns yesterday list', () async {
       final yesterday = DateTime.now().subtract(const Duration(days: 1));
       await _addEntry(yesterday, 'yesterday-1', [
         ListItem(id: 'a', text: 'Item A', isDone: false, sortOrder: 0),
@@ -182,72 +182,70 @@ void main() {
         ListItem(id: 'c', text: 'Item C', isDone: false, sortOrder: 2),
       ]);
 
-      final carried = await repository.checkAndCarryForward();
-      expect(carried, 2);
+      final entry = await repository.getYesterdayListEntry();
+      expect(entry, isNotNull);
+      expect(entry!.id, 'yesterday-1');
 
-      final allEntries = await repository.getAll();
-      final todayList = allEntries.where((e) => e.id != 'yesterday-1').toList();
-      expect(todayList.length, 1);
-      expect(todayList.first.content, 'Test List');
-      expect(todayList.first.format, EntryFormat.list);
-      expect(todayList.first.listItems!.length, 2);
-      expect(todayList.first.listItems!.every((i) => !i.isDone), true);
-
-      final updated = await repository.getById('yesterday-1');
-      expect(updated!.listCarriedForward, true);
+      final unchecked = repository.getUncheckedItems(entry);
+      expect(unchecked.length, 2);
+      expect(unchecked.every((i) => !i.isDone), true);
     });
 
-    test('does not carry forward when all items done', () async {
+    test('createTodayListWithItems creates today list', () async {
+      final items = [
+        ListItem(id: 'a', text: 'Item A', isDone: false, sortOrder: 0),
+        ListItem(id: 'c', text: 'Item C', isDone: false, sortOrder: 1),
+      ];
+      final entry = await repository.createTodayListWithItems(items);
+      expect(entry.format, EntryFormat.list);
+      expect(entry.listItems!.length, 2);
+
+      final all = await repository.getAll();
+      final todayEntries = all.where((e) {
+        final now = DateTime.now();
+        final d = DateTime(e.createdAt.year, e.createdAt.month, e.createdAt.day);
+        final t = DateTime(now.year, now.month, now.day);
+        return d == t && e.format == EntryFormat.list;
+      }).toList();
+      expect(todayEntries.length, 1);
+    });
+
+    test('getYesterdayListEntry returns null when all items done', () async {
       final yesterday = DateTime.now().subtract(const Duration(days: 1));
       await _addEntry(yesterday, 'done-1', [
         ListItem(id: 'a', text: 'Done A', isDone: true, sortOrder: 0),
         ListItem(id: 'b', text: 'Done B', isDone: true, sortOrder: 1),
       ]);
-      final carried = await repository.checkAndCarryForward();
-      expect(carried, 0);
-      expect((await repository.getAll()).length, 1);
+      final entry = await repository.getYesterdayListEntry();
+      expect(entry, isNotNull);
+      final unchecked = repository.getUncheckedItems(entry!);
+      expect(unchecked.isEmpty, true);
     });
 
-    test('skips entries already carried forward', () async {
-      final yesterday = DateTime.now().subtract(const Duration(days: 1));
-      await _addEntry(yesterday, 'skip-1',
-          [ListItem(id: 'a', text: 'Skip', isDone: false, sortOrder: 0)],
-          carriedForward: true);
-      final carried = await repository.checkAndCarryForward();
-      expect(carried, 0);
-    });
-
-    test('does not carry forward note entries', () async {
+    test('getYesterdayListEntry returns null for note entries', () async {
       final yesterday = DateTime.now().subtract(const Duration(days: 1));
       final note = Entry(
         id: 'note-y-1', type: EntryType.freeform, content: 'A note',
         format: EntryFormat.note, createdAt: yesterday, updatedAt: yesterday,
       );
       await storageService.addEntry(note);
-      final carried = await repository.checkAndCarryForward();
-      expect(carried, 0);
+      final entry = await repository.getYesterdayListEntry();
+      expect(entry, isNull);
     });
 
-    test('preserves original entry items unchanged after carry-forward', () async {
-      final yesterday = DateTime.now().subtract(const Duration(days: 1));
-      final items = [
-        ListItem(id: 'a', text: 'Original A', isDone: false, sortOrder: 0),
-        ListItem(id: 'b', text: 'Original B', isDone: true, sortOrder: 1),
-      ];
-      await _addEntry(yesterday, 'preserve-1', items);
-      await repository.checkAndCarryForward();
-      final original = await repository.getById('preserve-1');
-      expect(original!.listItems!.length, 2);
-      expect(original.listItems![0].text, 'Original A');
-      expect(original.listCarriedForward, true);
+    test('hasTodayList returns true when today list exists', () async {
+      await repository.createTodayListWithItems([
+        ListItem(id: 'a', text: 'Today task', isDone: false, sortOrder: 0),
+      ]);
+      final allEntries = await repository.getAll();
+      expect(repository.hasTodayList(allEntries), true);
     });
 
-    test('today entries are not carried forward', () async {
+    test('getYesterdayListEntry does not return today entries', () async {
       await _addEntry(DateTime.now(), 'today-1',
           [ListItem(id: 'a', text: 'Today task', isDone: false, sortOrder: 0)]);
-      final carried = await repository.checkAndCarryForward();
-      expect(carried, 0);
-      expect((await repository.getAll()).length, 1);
+      final entry = await repository.getYesterdayListEntry();
+      expect(entry, isNull);
     });
   });
 }

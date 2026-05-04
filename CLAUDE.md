@@ -6,12 +6,12 @@ Personal memory/habit-tracking Flutter app (记忆闪烁). Path: `/Users/justinz
 
 - **Flutter SDK:** `^3.11.0` (currently 3.41.8 stable, Apr 24 2026)
 - **macOS:** 26.2 (Tahoe beta) — requires Xcode 26, managed in `ClaudeDev/system-upgrade`
-- **Current version:** `1.1.0-beta.6+21` (pubspec.yaml)
+- **Current version:** `1.1.0-beta.7+22` (pubspec.yaml)
 - **DB version:** 12 (`kSchemaVersion = 12` in `DatabaseService`)
 - **Build AAB:** `flutter build appbundle --release`
 - **Build APK:** `flutter build apk --release`
 - **Lint:** `flutter analyze --no-pub` (target: 0 errors)
-- **Tests:** `flutter test` (125 tests, all passing)
+- **Tests:** `flutter test` (96 tests, all passing)
 - **Feedback email:** `blinkingfeedback@gmail.com`
 
 ---
@@ -37,14 +37,15 @@ Provider tree (defined in `lib/app.dart`):
 ### Navigation
 Bottom nav (5 tabs) in `MainScreen` (`lib/app.dart`):
 ```
-Calendar | Moment | Routine | 珍藏 | Settings
+Calendar | Moment | Routine | Insights | Settings
 ```
 - `FloatingRobotWidget` overlay (bobbing + pulsing 🤖, wave-on-tap) → `AssistantScreen` modal
-- `FloatingActionButton` (heroTag: `'main_add_entry_fab'`) → `AddEntryScreen`
+- `FloatingActionButton` (heroTag: `'main_add_entry_fab'`, contextual per tab) → `AddEntryScreen` or `AddRoutineDialog`
+- FAB hidden on Insights and Settings tabs
 
 ### Storage Layers
 - **SQLite** via `DatabaseService` singleton (accessed through `StorageService`)
-  - DB version 11; migration blocks: `< 2` (entries/routines), `< 3` (emotion/category), `< 4` (card tables), `< 5` (routine scheduling), `< 6` (template image + card AI summary), `< 7` (card rich content), `< 8` (routine `icon_image_path`), `< 9` (template `custom_image_path`), `< 10` (template `source_template_id`), `< 11` (indexes on `entry_tags(entry_id)` + `note_card_entries(card_id)`)
+  - DB version 12; migration blocks: `< 2` (entries/routines), `< 3` (emotion/category), `< 4` (card tables), `< 5` (routine scheduling), `< 6` (template image + card AI summary), `< 7` (card rich content), `< 8` (routine `icon_image_path`), `< 9` (template `custom_image_path`), `< 10` (template `source_template_id`), `< 11` (indexes on `entry_tags(entry_id)` + `note_card_entries(card_id)`), `< 12` (checklist: `entry_format`, `list_items`, `list_carried_forward`)
   - Tables: `entries`, `routines`, `tags`, `templates`, `card_folders`, `note_cards`, `note_card_entries`
 - **SharedPreferences** for: theme, locale, LLM provider config (`llm_providers`, `llm_selected_index`), AI persona (`ai_assistant_name`, `ai_assistant_personality`)
 - **File system** via `FileService` for media attachments, rendered card PNGs, custom template images, and card inline images (`card_images/`)
@@ -78,17 +79,17 @@ Calendar | Moment | Routine | 珍藏 | Settings
 | `lib/screens/moment/moment_screen.dart` | Entry list with live search + tag/date filter |
 | `lib/screens/moment/entry_detail_screen.dart` | Read-only entry detail view with share + Post to Chorus |
 | `lib/screens/routine/routine_screen.dart` | 3-tab: 全部 / 今日 / 记录; add/edit dialog with frequency/day/date pickers |
-| `lib/screens/cherished/cherished_memory_screen.dart` | 3-tab shell: 书架 / 卡片 / 总结 |
-| `lib/screens/cherished/shelf_tab.dart` | Yearly jar cards → `YearJarDetailScreen` |
-| `lib/screens/cherished/cards_tab.dart` | Card grid + folder filter; tap → `CardEditorScreen`; long-press → Edit/Share/Delete; FAB heroTag: `'cards_tab_new_card_fab'` |
-| `lib/screens/cherished/card_builder_dialog.dart` | Create card; AI merge (≤100 words); template editor sheet |
-| `lib/screens/cherished/card_editor_screen.dart` | flutter_quill rich text editor; word counter (X/100); image insert; save navigates to `CardPreviewScreen` |
-| `lib/screens/cherished/card_preview_screen.dart` | PNG preview of rendered card; Share (image-only) + Save actions |
-| `lib/screens/cherished/summary_tab.dart` | fl_chart visualizations (scope: 日/周/月) |
+| `lib/screens/cherished/cherished_memory_screen.dart` | Insights screen: yearly emoji jar carousel + 4 summary charts (note count, habit completion, mood trend, top tags) |
+| `lib/screens/cherished/shelf_tab.dart` | Yearly jar cards → `YearJarDetailScreen` (may be deprecated post-PROP-8) |
+| `lib/screens/cherished/cards_tab.dart` | Card grid + folder filter (may be deprecated post-PROP-8) |
+| `lib/screens/cherished/card_builder_dialog.dart` | Create card; AI merge (≤100 words); template editor sheet (deprecated) |
+| `lib/screens/cherished/card_editor_screen.dart` | flutter_quill rich text editor (deprecated — flutter_quill removed) |
+| `lib/screens/cherished/card_preview_screen.dart` | PNG preview of rendered card (deprecated) |
+| `lib/screens/cherished/summary_tab.dart` | fl_chart visualizations — merged into `cherished_memory_screen.dart` post-PROP-8 |
 | `lib/screens/chorus/post_to_chorus_sheet.dart` | Bottom sheet for posting entries to Chorus social platform |
 | `lib/screens/settings/settings_screen.dart` | LLM config, tags, language, export, AI 个性化, Send Feedback |
 | `lib/widgets/emoji_jar.dart` | `EmojiJarWidget` CustomPainter + AI bottom sheet |
-| `lib/widgets/card_renderer.dart` | Off-screen PNG render; `_autoFontSize()` 96px→9px; text area = height×0.8/width×0.88; custom bg image with rounded clip |
+| `lib/widgets/card_renderer.dart` | Off-screen PNG render; `_autoFontSize()` 96px→9px; text area = height×0.8/width×0.88; custom bg image with rounded clip (may be deprecated) |
 | `lib/widgets/floating_robot.dart` | Bobbing + pulse + wave-on-tap robot overlay (3 AnimationControllers); avatar = 🤖 emoji |
 | `lib/widgets/entry_card.dart` | Entry display card with share button |
 
@@ -153,12 +154,14 @@ Main FAB in `app.dart`: `heroTag: 'main_add_entry_fab'`. Cards tab FAB in `cards
 Use `try { await launchUrl(uri); } catch (_) { ... }` pattern. Do NOT use `canLaunchUrl` for `mailto:` — it is unreliable on iOS 14+ without `LSApplicationQueriesSchemes`.
 
 ### Daily Checklist (PROP-9)
-- **One list per day:** `AddEntryScreen._switchFormat()` checks `EntryProvider.getEntriesForDate(today)` for existing `EntryFormat.list` entries. If found, navigates directly to edit the existing list via `pushReplacement`.
+- **One list per day:** `AddEntryScreen._switchFormat()` checks `EntryProvider.getEntriesForDate(today)` for existing `EntryFormat.list` entries. If found, shows snackbar + 300ms fade transition to edit the existing list.
 - **Toggle data preservation:** Note→List extracts first 200 chars / first line break as title. List→Note concatenates items as `"- item\n"` lines into body text.
-- **Carry-forward:** `EntryRepository.checkAndCarryForward()` runs once per session (guard flag `_carryForwardChecked`). Uses Dart local date comparison (not SQLite UTC). Creates new `EntryType.freeform` entry with `EntryFormat.list`. Original entry marked `list_carried_forward = 1`.
-- **Carry-forward banner:** `EntryProvider._lastCarriedCount` set during carry-forward. `EntryCard` accepts optional `carriedOverCount` parameter. Banner auto-clears via `WidgetsBinding.instance.addPostFrameCallback` in HomeScreen.
-- **Checkbox consistency:** List edit screen uses same checkbox + strikethrough pattern as EntryCard and EntryDetailScreen. All three screens use `EntryProvider.toggleListItem()` for reactivity.
-- **EntryFormat enum:** Coexists with `EntryType`. Values: `note`, `list`. New DB column `entry_format` (not `entry_type` — avoids collision with existing `type` column).
+- **Carry-forward (user-prompted):** `EntryProvider.getCarryForwardPreview()` returns unchecked items from yesterday's list. `HomeScreen._scheduleCarryForwardCheck()` triggers on first load each day. Shows `AlertDialog` asking user to carry forward. Tracked per-day via `SharedPreferences` (`carry_forward_dialog_YYYY_M_D`).
+- **`ListItem.fromPreviousDay`:** Flag on items carried over. Rendered as italic "Yesterday" / "昨日" label in `EntryCard`, `EntryDetailScreen`, `AddEntryScreen`.
+- **Past-date entries view-only:** `EntryCard._buildListItem()` blocks toggle for past dates. `HomeScreen._onEntryTapped()` routes past entries to `EntryDetailScreen`. Edit button hidden for past entries. `AddEntryScreen` shows "View Memory" read-only mode with save guard.
+- **Carry-forward banner:** Removed entirely (redundant after explicit dialog + "Yesterday" labels).
+- **List edit UX:** Helper text below title ("Tap to check · Drag to reorder · × to remove"), drag handle 24px.
+- **EntryFormat enum:** Coexists with `EntryType`. Values: `note`, `list`. DB column `entry_format`.
 
 ---
 
@@ -176,60 +179,41 @@ Use `try { await launchUrl(uri); } catch (_) { ... }` pattern. Do NOT use `canLa
 | Entry detail read-only view with share + Post to Chorus | ✅ Done |
 | Habit import/export (JSON) | ✅ Done |
 | Legal docs (Privacy Policy + ToS) | ✅ Done |
-| Card PNG cleanup (PROP-4) | ✅ Done — code preserved |
+| Card PNG cleanup (PROP-4) | ✅ Done |
 | DB indexes v11 (PROP-5) | ✅ Done |
 | Onboarding banner (Calendar, one-time dismissible) | ✅ Done |
 | Trial API key flow (7-day free trial, app + backend) | ✅ Done (PROP-6) |
-| Daily Checklist Entry (ad-hoc lists, carry-forward, 1-per-day) | ✅ Done (PROP-9) |
+| Daily Checklist Entry (ad-hoc lists, user-prompted carry-forward, 1-per-day) | ✅ Done (PROP-9) |
 | Calendar future date lock (Issue #1) | ✅ Done |
 | Keepsakes → Insights restructure (PROP-8) | ✅ Done |
 | Insights tab — emoji jar carousel + summary charts | ✅ Done |
+| Insights tab Phase 1 — hero cards, heatmap, mood donut, visual polish (Issue #15) | ✅ Done |
+| Insights tab Phase 2 — CT1: Writing Stats (avg words, active day, peak hour) | ✅ Done |
+| Insights tab Phase 2 — CT3: Tag-Mood Correlation (tag → mood score, min 3 entries) | ✅ Done |
+| Insights tab Phase 2 — CT2: Checklist Analytics (lists, completion, carry-forward, top item) | ✅ Done |
+| Insights tab hero row overflow fix (4th card clipped on iPhone) | ✅ Done |
 | HomeScreen title "Calendar" → "My Day" (Issue #14) | ✅ Done |
 | Contextual FAB — per-tab icon + action (Issue #7) | ✅ Done |
 | Collapsible calendar — week strip default, landscape safe (Issue #13) | ✅ Done |
 | EntryDetailScreen title overflow fix | ✅ Done |
-| UX polish M1–M7, P1-1–P1-10, P2 items | ✅ Done |
+| Carry-forward redesign — user-prompted dialog + "Yesterday" flag | ✅ Done |
+| Past-date entries view-only lock | ✅ Done |
+| Insights tab crash fix (empty tags guard) | ✅ Done |
+| Moment tab icon differentiation (note/checklist/routine) | ✅ Done |
+| One-list-per-day transition UX (snackbar + fade) | ✅ Done |
+| List edit screen helper text + drag handle size | ✅ Done |
+| Carry-forward banner removal (dead code cleanup) | ✅ Done |
+| iOS App Store submission | ✅ Done |
 
 ### Pending
 | Priority | Item | Effort | Status |
 |----------|------|--------|--------|
 | P1 | PROP-3 — Promote Android to Production on Google Play | ~15 min manual | Ready |
-| P2 | Carry-forward manual UAT (TC-11 date manipulation) | ~15min | Pending |
+| P2 | Issue #15 Phase 2 — CT4: AI-Generated Insights | ~1.5h | Not started — depends on trial flow |
+| P2 | App Trial & Purchase Flow implementation | ~1.5h | Designed, not implemented |
+| P3 | Restore streaming refactor — avoid loading full ZIP into memory (OOM on large backups) | ~2h | Known limitation, not blocking |
 | P3 | Firebase / Cloud Sync | Large | All deps commented out in pubspec |
-| P3 | iOS release (Xcode 26 upgrade, App Store submission) | Moved | Managed in `ClaudeDev/system-upgrade` |
-| P3 | Post-launch polish (6 items) | ~4.5h | See bug-reports.md |
-
-### Post-Launch UX Polish (see docs/uxbugs/bug-reports.md)
-| # | Issue | Priority | Effort |
-|---|-------|:--------:|:------:|
-| 7 | Calendar list badge indicator | P3 | ~1.5h |
-| 8 | Robot trial/error state clarity | P2 | ~1h |
-| 9 | One-list-per-day transition UX | P3 | ~45min |
-| 10 | Carry-forward banner timing | P3 | ~30min |
-| 11 | List checkbox UX consistency | P3 | ~1h |
-| 12 | Settings trial banner dismiss | P3 | ~45min |
-
-### Launch Roadmap (Target: end of May 2026)
-
-| Week | Window | Focus |
-|------|--------|-------|
-| 1–2 | May 1–14 | ~~PROP-6~~ ✅ ~~PROP-9~~ ✅ ~~PROP-8 Insights~~ ✅ ~~Issue #1 future date~~ ✅ ~~Issues #4, #7, #13, #14~~ ✅ |
-| 3 | May 15–21 | Carry-forward UAT + post-launch polish items (#7–#12) |
-| 4 | May 22–30 | Launch readiness: Play Store listing, crash triage, smoke tests, version bump, release build, PROP-3 promotion |
-
-**Critical path cleared.** All P1/P2 issues resolved. 9 of 14 bug-reports items complete. App is launch-ready for Android.
-
-### Launch Roadmap (Target: end of May 2026)
-
-| Week | Window | Focus |
-|------|--------|-------|
-| 1–2 | May 1–14 | ~~PROP-6 alpha test~~ ✅ ~~PROP-9 completed~~ ✅ ~~PROP-8 Insights restructure~~ ✅ ~~Issue #1 future date lock~~ ✅ |
-| 3 | May 15–21 | Issue #13 (calendar landscape) + Issue #14 (title rename) + PROP-7 lock icon + carry-forward UAT |
-| 4 | May 22–30 | Launch readiness: Play Store listing, beta crash triage, smoke tests, version bump, release build |
-
-**Critical path:** PROP-6, PROP-9, PROP-8, Issue #1 all complete. Next priorities: Issue #13 (landscape UX), Issue #14 (title rename), PROP-3 (Play Store promotion).
-
-**iOS release work** (Xcode 26 upgrade, toolchain migration, App Store submission) has been moved to a separate management project at `/Users/justinzero/ClaudeDev/system-upgrade`. The plan document `docs/plans/2026-04-28-infrastructure-upgrade-ios-release.md` is superseded by the new project's planning.
+| P3 | Custom emoji images E-1/E-2 | N/A | Deferred |
 
 ---
 
@@ -252,5 +236,8 @@ Use `try { await launchUrl(uri); } catch (_) { ... }` pattern. Do NOT use `canLa
 | v1.1.0-beta.5+20 | d769c1b | PROP-6 trial API key (full stack): app UI + Cloudflare Worker backend; 94 tests |
 | v1.1.0-beta.5+20 | 63981bb–83d8ad9 | PROP-9 daily checklist (8 commits): DB v12, list builder, carry-forward, one-per-day; 125 tests |
 | v1.1.0-beta.5+20 | 2c3fd94 | List edit screen: checkbox + strikethrough consistency with Calendar |
-| v1.1.0-beta.6+21 | (this session) | 9 UX issues resolved: collapsible calendar, My Day rebrand, contextual FAB, Insights restructure (PROP-8), lock icon (PROP-7), future-date lock, landscape-safety, entry detail overflow fix |
-| v1.1.0-beta.4+19 | (this session) | Flutter 3.41.2→3.41.8 upgrade (unblocks Xcode 26); iOS pipeline plan updated; iOS release moved to ClaudeDev/system-upgrade |
+| v1.1.0-beta.6+21 | 2026-05-01 | 9 UX issues: collapsible calendar, My Day rebrand, contextual FAB, Insights restructure (PROP-8), lock icon (PROP-7), future-date lock, landscape-safety, entry detail overflow fix |
+| v1.1.0-beta.6+21 | 2026-05-03 | Carry-forward redesign (user-prompted dialog + "Yesterday" flag), past-date view-only, Insights crash fix, Moment icons, 3 post-launch polish items (#9, #10, #11) |
+| v1.1.0-beta.6+21 | 2026-05-03 | iOS App Store submission complete; App Trial & Purchase Flow design doc; Insights tab Phase 1 implementation (hero stats, heatmap, mood donut, visual polish); 96/96 tests; restore streaming OOM limitation identified |
+| v1.1.0-beta.6+21 | 2026-05-04 | Insights Phase 2 — CT1: Writing Stats (avg words, active day, peak hour); CT3: Tag-Mood Correlation (tag→mood score, min 3 entries); Hero card overflow fix (4th card clipped on iPhone); 5 new i18n keys; UAT 12/12 passed; 96/96 tests |
+| v1.1.0-beta.7+22 | 2026-05-04 | Insights Phase 2 — CT2: Checklist Analytics (lists, completion, carry-forward, top item); Version bump; Android APK+AAB built; iOS pushed to TestFlight; UAT 8/8 passed; Git push to GitHub |

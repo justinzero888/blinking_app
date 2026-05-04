@@ -841,6 +841,114 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Add at least one item'**
   String get listSaveDisabledHint;
+
+  /// No description provided for @carryForwardDialogTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Unfinished from yesterday'**
+  String get carryForwardDialogTitle;
+
+  /// No description provided for @carryForwardDialogMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{You have 1 unchecked item from yesterday. Add to today\'s list?} other{You have {count} unchecked items from yesterday. Add to today\'s list?}}'**
+  String carryForwardDialogMessage(num count);
+
+  /// No description provided for @carryForwardYes.
+  ///
+  /// In en, this message translates to:
+  /// **'Add'**
+  String get carryForwardYes;
+
+  /// No description provided for @carryForwardNo.
+  ///
+  /// In en, this message translates to:
+  /// **'Skip'**
+  String get carryForwardNo;
+
+  /// No description provided for @fromYesterdayLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Yesterday'**
+  String get fromYesterdayLabel;
+
+  /// No description provided for @listAlreadyExistsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Today\'s list already exists — opening it'**
+  String get listAlreadyExistsHint;
+
+  /// No description provided for @listEditHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to check · Drag to reorder · × to remove'**
+  String get listEditHint;
+
+  /// No description provided for @listDetailSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Checklist · {done}/{total} done'**
+  String listDetailSubtitle(Object done, Object total);
+
+  /// No description provided for @insightsWritingStats.
+  ///
+  /// In en, this message translates to:
+  /// **'Writing Stats'**
+  String get insightsWritingStats;
+
+  /// No description provided for @insightsAvgWords.
+  ///
+  /// In en, this message translates to:
+  /// **'avg words'**
+  String get insightsAvgWords;
+
+  /// No description provided for @insightsMostActiveDay.
+  ///
+  /// In en, this message translates to:
+  /// **'most active'**
+  String get insightsMostActiveDay;
+
+  /// No description provided for @insightsTagImpact.
+  ///
+  /// In en, this message translates to:
+  /// **'Tag Impact on Mood'**
+  String get insightsTagImpact;
+
+  /// No description provided for @insightsTagImpactFootnote.
+  ///
+  /// In en, this message translates to:
+  /// **'Tags with ≥3 entries shown'**
+  String get insightsTagImpactFootnote;
+
+  /// No description provided for @insightsChecklistSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Checklist Insights'**
+  String get insightsChecklistSection;
+
+  /// No description provided for @insightsListsCreated.
+  ///
+  /// In en, this message translates to:
+  /// **'lists created'**
+  String get insightsListsCreated;
+
+  /// No description provided for @insightsAvgCompletion.
+  ///
+  /// In en, this message translates to:
+  /// **'avg completion'**
+  String get insightsAvgCompletion;
+
+  /// No description provided for @insightsItemsCarried.
+  ///
+  /// In en, this message translates to:
+  /// **'carried forward'**
+  String get insightsItemsCarried;
+
+  /// No description provided for @insightsTopItem.
+  ///
+  /// In en, this message translates to:
+  /// **'top item'**
+  String get insightsTopItem;
 }
 
 class _AppLocalizationsDelegate
