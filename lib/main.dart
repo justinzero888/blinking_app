@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'app.dart';
 import 'core/services/storage_service.dart';
@@ -11,6 +12,8 @@ const _rcTestApiKey = String.fromEnvironment(
   defaultValue: 'test_FFZAekOZQXGwwReuLkrvQLTjyOP',
 );
 
+const _autoRestorePath = String.fromEnvironment('AUTO_RESTORE');
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -18,6 +21,14 @@ void main() async {
 
   final storageService = StorageService();
   await storageService.init();
+
+  // Debug: auto-restore from backup path if provided
+  if (_autoRestorePath.isNotEmpty) {
+    final file = File(_autoRestorePath);
+    if (await file.exists()) {
+      await storageService.restoreFromBackup(file);
+    }
+  }
 
   final purchasesService = PurchasesService();
   await purchasesService.init(unifiedKey: _rcTestApiKey);
