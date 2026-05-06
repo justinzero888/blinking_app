@@ -946,7 +946,7 @@ class _HabitSummaryCard extends StatelessWidget {
       final logDate = DateTime(c.completedAt.year, c.completedAt.month, c.completedAt.day);
       // Skip future dates
       if (logDate.isAfter(todayDate)) continue;
-      if (c.completedAt.isAfter(thisMonth.subtract(const Duration(days: 1)))) {
+      if (c.completedAt.isAfter(thisMonth.subtract(const Duration(seconds: 1)))) {
         monthCompletionsDays.add(
           '${c.completedAt.year}-${c.completedAt.month}-${c.completedAt.day}');
       }
