@@ -6,13 +6,14 @@ Personal memory/habit-tracking Flutter app (记忆闪烁). Path: `/Users/justinz
 
 - **Flutter SDK:** `^3.11.0` (currently 3.41.8 stable, Apr 24 2026)
 - **macOS:** 26.2 (Tahoe beta) — requires Xcode 26, managed in `ClaudeDev/system-upgrade`
-- **Current version:** `1.1.0-beta.7+22` (pubspec.yaml)
+- **Current version:** `1.1.0-beta.8+23` (pubspec.yaml)
 - **DB version:** 12 (`kSchemaVersion = 12` in `DatabaseService`)
 - **Build AAB:** `flutter build appbundle --release`
 - **Build APK:** `flutter build apk --release`
 - **Build iOS IPA:** Follow `docs/ios-testflight-build-push-guide.md`
 - **Lint:** `flutter analyze --no-pub` (target: 0 errors)
-- **Tests:** `flutter test` (106 tests, all passing)
+- **Tests:** `flutter test` (135 tests, all passing)
+- **RevenueCat:** Test Store verified. Purchase flow working. Key in `lib/main.dart`.
 - **Feedback email:** `blinkingfeedback@gmail.com`
 
 ---
@@ -34,6 +35,10 @@ Provider tree (defined in `lib/app.dart`):
 | `JarProvider` | `ProxyProvider<EntryProvider>` | Emotion aggregation by year/month/day |
 | `CardProvider` | `ChangeNotifier` | Folders, templates, note cards |
 | `SummaryProvider` | `ProxyProvider2<EntryProvider, RoutineProvider>` | Chart metrics (daily/weekly/monthly) |
+| `EntitlementService` | `ChangeNotifier` | State machine — preview/restricted/paid; 21d local preview, quota |
+| `PurchasesService` | `ChangeNotifier` | RevenueCat IAP — init in main.dart, purchase/restore flow |
+| `AiPersonaProvider` | `ChangeNotifier` | AI avatar, name, personality |
+| `LlmConfigNotifier` | `ChangeNotifier` | Signals when LLM provider/api key changes |
 
 ### Navigation
 Bottom nav (5 tabs) in `MainScreen` (`lib/app.dart`):
@@ -91,7 +96,7 @@ Calendar | Moment | Routine | Insights | Settings
 | `lib/screens/cherished/card_preview_screen.dart` | PNG preview of rendered card (deprecated) |
 | `lib/screens/cherished/summary_tab.dart` | fl_chart visualizations — merged into `cherished_memory_screen.dart` post-PROP-8 |
 | `lib/screens/chorus/post_to_chorus_sheet.dart` | Bottom sheet for posting entries to Chorus social platform |
-| `lib/screens/settings/settings_screen.dart` | LLM config, tags, language, export, AI 个性化, Send Feedback |
+| `lib/screens/settings/settings_screen.dart` | LLM config, tags, language, export, AI 个性化, Send Feedback. Contains debug toggle: 5-tap version text to cycle preview/restricted for IAP testing. |
 | `lib/screens/onboarding/onboarding_screen.dart` | 3-screen first-launch flow — philosophy, features, the deal; language toggle on screen 1 |
 | `lib/screens/onboarding/transition_screen.dart` | Day 21 transition — "Your 21 days are complete" |
 | `lib/screens/purchase/paywall_screen.dart` | Pro purchase — $9.99 one-time, feature checklist |
@@ -100,6 +105,27 @@ Calendar | Moment | Routine | Insights | Settings
 | `lib/widgets/card_renderer.dart` | Off-screen PNG render; `_autoFontSize()` 96px→9px; text area = height×0.8/width×0.88; custom bg image with rounded clip (may be deprecated) |
 | `lib/widgets/floating_robot.dart` | Bobbing + pulse + wave-on-tap robot overlay (3 AnimationControllers); avatar = 🤖 emoji |
 | `lib/widgets/entry_card.dart` | Entry display card with share button |
+
+---
+
+## IAP / RevenueCat Testing
+
+### Debug Toggle
+- Settings → About → tap version text **5x quickly** to cycle between `preview` and `restricted` modes
+- Restricted mode + tap robot → paywall appears
+
+### RevenueCat Test Store
+- Key configured in `lib/main.dart` via `_rcTestApiKey` (default: `test_` key from Project Settings → API Keys)
+- Test Store requires `purchases_flutter ≥ 9.8.0` (currently 9.16.1)
+- Purchases show in RevenueCat → Customers → **Sandbox** tab
+- Do NOT ship with Test Store key — use `--dart-define=RC_API_KEY=appl_/goog_` for production builds
+- Full setup doc: `docs/plans/revenuecat-setup-actual.md`
+
+### Entitlement Flow
+- Fresh install → 21-day PREVIEW (3 AI/day, free)
+- After preview or debug toggle → RESTRICTED → tap robot shows paywall
+- Purchase `blinking_pro` → PAID → 1,200 AI/year
+- `_applyLocalPreview()` respects pre-existing restricted/paid state (early return guard)
 
 ---
 
@@ -255,14 +281,12 @@ Use `try { await launchUrl(uri); } catch (_) { ... }` pattern. Do NOT use `canLa
 ### Pending
 | Priority | Item | Effort | Status |
 |----------|------|--------|--------|
-| P1 | Setup IAP (human) — RevenueCat, App Store Connect, Play Console | ~2h | ⬜ Pending |
+| P1 | Setup IAP — connect platform stores (App Store Connect + Play Console) for `appl_`/`goog_` keys | ~2h | ⬜ Pending — Test Store verified ✅ |
 | P1 | Set server secrets + deploy — JWT_SECRET, ENTITLEMENT_ENABLED, D1 migrations | ~10min | Deploy-ready |
 | P1 | PROP-3 — Promote Android to Production on Google Play | ~1.5h | Ready |
 | P3 | M4 Top-ups (denial sheet, consumable IAP) | ~3h | Post-launch |
 | P3 | Restore streaming refactor (OOM on large backups) | ~2h | Known limitation |
 | P3 | Firebase / Cloud Sync | Large | All deps commented out |
-| P3 | Custom emoji images E-1/E-2 | N/A | Deferred |
-| P3 | Routine redesign — Build/Do/Reflect tabs | ~2 weeks | Design plan ready at `docs/plans/2026-05-05-Blinking_Routine_Design_Plan.md` |
 
 ---
 

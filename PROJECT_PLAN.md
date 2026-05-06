@@ -5,7 +5,7 @@
 - **Type**: Personal memory capture app
 - **Framework**: Flutter
 - **Platforms**: Android + iOS (both live)
-- **Current Version**: 1.1.0-beta.7+22
+- **Current Version**: 1.1.0-beta.8+23
 
 ## Goals
 - Capture memories: text, audio, video, image
@@ -71,18 +71,16 @@
 | 36 | Server: Receipt validation endpoints (purchase, restore) + receipts D1 table | Done |
 | 37 | Server: Entitlement state machine (init, status, chat) + JWT + quota counter | Done |
 | 38 | Client: IAP integration (RevenueCat + PurchasesService + paywall wiring) | Done |
+| 39 | RevenueCat Test Store verified — purchase flow end-to-end on simulator | Done |
 
 ### Remaining / Blocked
 | # | Item | Status |
 |---|------|--------|
-| 1 | **S0/A0: Setup IAP (human)** — RevenueCat, App Store Connect, Play Console (~2h) | ⬜ Pending — see `docs/plans/2026-05-04-iap-setup-guide.md` |
+| 1 | **Setup IAP (human)** — RevenueCat Test Store ✅ verified. Remaining: connect App Store Connect + Play Console for production keys | ⬜ Pending — see `docs/plans/revenuecat-setup-actual.md` |
 | 2 | **Set server secrets + deploy** — JWT_SECRET, ENTITLEMENT_ENABLED, D1 migrations | ~10min — deploy-ready |
 | 3 | **PROP-3: Promote Android to Production on Google Play** | ~1.5h — launch-ready |
-| 4 | ~~M3 Onboarding~~ | ✅ Done |
-| 5 | ~~Routine redesign (Build/Do/Reflect)~~ | ✅ Done |
-| 6 | M4 Top-ups (denial sheet, consumable IAP) | ~3h — post-launch |
-| 7 | Firebase / Cloud Sync | Not started — deps commented out |
-| 8 | Custom emoji images E-1/E-2 | Deferred |
+| 4 | M4 Top-ups (denial sheet, consumable IAP) | ~3h — post-launch |
+| 5 | Firebase / Cloud Sync | Not started — deps commented out |
 
 ## Technical Architecture
 
@@ -134,7 +132,17 @@ See **[Blinking Launch Plan](docs/plans/blinking-launch-plan-2026-05-02.md)** fo
 
 ## Development History
 
-### v1.1.0-beta.6+21 — 2026-05-04 (Insights Phase 2: CT1 + CT3)
+### v1.1.0-beta.8+23 — 2026-05-06 (RevenueCat IAP — Test Store Verified)
+- **RevenueCat IAP fully verified on Test Store.** Purchase flow: paywall → Get Pro → native purchase dialog → "Welcome to Pro!" → entitlement activated.
+- **purchases_flutter upgraded to 9.16.1** (from 8.11.0) for Test Store support.
+- **PurchasesService** fix: `purchasePackage` API change in 9.x (returns `PurchaseResult`, not `CustomerInfo`).
+- **EntitlementService** fix: `_applyLocalPreview()` early return guard for restricted/paid state.
+- **Paywall** now calls `refreshCustomerInfo()` after purchase for immediate entitlement sync.
+- **Debug toggle:** 5-tap version text in Settings to cycle preview/restricted for IAP testing.
+- RevenueCat configuration: entitlement `pro_access` → product `blinking_pro` → offering `ofrng88832e4ac2` (set as Current).
+- CocoaPods updated: PurchasesHybridCommon 14.3.0 → 17.55.1, RevenueCat 5.67.1.
+- IAP setup guide updated to `docs/plans/revenuecat-setup-actual.md` with real process documented.
+- **Tests:** 135/135 passing. **Lint:** 0 errors.
 
 ### v1.1.0-beta.7+22 — 2026-05-04 (Insights Phase 2: CT2 + Version Bump)
 - **CT2 — Checklist Analytics:** New section between Trends and Tag Impact. 4 stats: total lists, avg completion rate, items carried forward, most common item. `_ChecklistInsightsSection` + `_ChecklistStatRow` + `_ChecklistInsightsEmpty` widgets. New computed props: `totalLists`, `checklistCompletionRate`, `totalCarriedForward`, `topChecklistItem`.
@@ -272,76 +280,6 @@ See **[Blinking Launch Plan](docs/plans/blinking-launch-plan-2026-05-02.md)** fo
 | v1.0.2 | Floating robot, LlmService, AssistantScreen real LLM |
 | v1.0.1 | Emotion picker, routine categories, calendar emoji |
 | v1.0.0 | Initial release |
-
-## Build Commands
-```bash
-flutter test                          # 96 tests
-flutter analyze --no-pub              # 0 errors
-flutter build apk --debug
-flutter build apk --release
-flutter build appbundle --release
-```
-
-## Known Issues
-
-### Open
-- Firebase / Cloud Sync — all deps commented out, sync toggle is a no-op
-- Issue #15 Phase 2: Insights tab content enhancements (stats, checklists, correlation, AI — ~4h)
-- Issues #8, #12: Trial/purchase flow (design doc complete, ~1.5h implementation)
-- Restore: `ZipDecoder().decodeStream()` loads entire archive into memory — OOM risk on large (>500MB) backups. Needs streaming refactor for v1.1.1.
-
-### Post-Launch Polish (All Resolved)
-- Issues #9, #10, #11 — resolved 2026-05-03
-- Issue #7 — rejected (calendar too crowded)
-- Issues #8, #12 — moved to dedicated trial/purchase design plan
-
-### Resolved (since v1.1.0-beta.3)
-- Template name field shows Chinese under English locale (fixed v1.1.0-beta.3)
-- AppConstants.appVersion out of sync with pubspec (fixed v1.1.0-beta.3)
-- Emoji jar test locale assumption wrong (fixed v1.1.0-beta.3)
-- Add Entry screen: Provider error
-- SQLite migration from SharedPreferences
-- Media persistence (FileService internal copy)
-- Gradle build failures (compilerOptions DSL, JavaCompile --release flag)
-- LLM API keys lost on restart
-- Language setting lost on restart
-- Search and tag filter unwired in Moment screen
-- Duplicate AppProvider (deleted)
-- Card PNG orphan files on delete (PROP-4)
-- DB performance on queries (PROP-5 indexes)
-- 7-day trial API key flow (PROP-6 — full stack deployed)
-- Flutter 3.41.2→3.41.8 upgrade (unblocks Xcode 26)
-- Daily checklist entries (PROP-9 — 8 commits, 31 new tests)
-
-## Next Steps
-
-1. **Setup IAP (human)** — RevenueCat, App Store Connect, Play Console (~2h). See `docs/plans/2026-05-04-iap-setup-guide.md`
-2. **Set server secrets + deploy** — JWT_SECRET, ENTITLEMENT_ENABLED, D1 migrations (~10min)
-3. **PROP-3: Promote Android to Production on Google Play** (~1.5h) — smoke tests → version bump `1.1.0` → AAB → Play Store
-4. M3 Onboarding (post-launch, ~3.5h) — first-launch flow, soft prompts, re-engagement triggers
-5. Firebase / Cloud Sync (future)
-
-## Build Commands
-| Platform | Command | Output |
-|----------|---------|--------|
-| Android APK | `flutter build apk --release` | `build/app/outputs/flutter-apk/app-release.apk` |
-| Android AAB | `flutter build appbundle --release` | `build/app/outputs/bundle/release/app-release.aab` |
-| iOS IPA | See `docs/ios-testflight-build-push-guide.md` | `build/ios/ipa/blinking.ipa` |
-
-## Active Plans
-
-| Plan | Status | Link |
-|------|--------|------|
-| **Blinking Launch Plan (Android + iOS)** | **Active** | [2026-05-02](docs/plans/blinking-launch-plan-2026-05-02.md) |
-| **Trial → Purchase → BYOK Implementation Plan** | **Active** | [2026-05-04](docs/plans/2026-05-04-trial-purchase-implementation-plan.md) |
-| **IAP Setup Guide 🆕** | **Active** | [2026-05-04](docs/plans/2026-05-04-iap-setup-guide.md) |
-| **App Trial & Purchase Flow (v1)** | 📄 Reference | [2026-05-03](docs/plans/2026-05-03-trial-purchase-flow-design.md) |
-| **Trial/Purchase Design Flows (v1)** | 📄 Authoritative | [2026-05-04](docs/plans/2026-05-04-Blinking-Trial-Purchase-Design-Flows.md) |
-| **Insights Tab Enhancement (Issue #15)** | ✅ Complete (C1-C4, CT1-CT4) | [2026-05-03](docs/plans/2026-05-03-insights-tab-enhancement.md) |
-| Insights CT1+CT3 UAT | ✅ Passed (12/12) | [2026-05-04](docs/plans/2026-05-04-insights-phase2-ct1-ct3-uat.md) |
-| Insights CT2 UAT | ✅ Passed (8/8) | [2026-05-04](docs/plans/2026-05-04-insights-phase2-ct2-uat.md) |
-| M1 Foundation UAT | ✅ Passed (20/20) | [2026-05-04](docs/plans/2026-05-04-m1-foundation-uat.md) |
-| 7-Day Trial API Key Flow (PROP-6) | ✅ Complete (superseded) | [2026-04-30](docs/plans/2026-04-30-prop-6-trial-api-key-plan.md) |
 
 ## Contact
 - Developer: Justin
