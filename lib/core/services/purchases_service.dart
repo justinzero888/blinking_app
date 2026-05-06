@@ -25,15 +25,21 @@ class PurchasesService extends ChangeNotifier {
   String? get lastError => _lastError;
 
   Future<void> init({
-    required String appleApiKey,
-    required String googleApiKey,
+    String? appleApiKey,
+    String? googleApiKey,
+    String? unifiedKey,
   }) async {
     if (_initialized) return;
 
-    final isAndroid = defaultTargetPlatform == TargetPlatform.android;
+    final platformKey = unifiedKey ??
+        (defaultTargetPlatform == TargetPlatform.android
+            ? googleApiKey
+            : appleApiKey);
+
+    if (platformKey == null || platformKey.isEmpty) return;
 
     await Purchases.configure(
-      PurchasesConfiguration(isAndroid ? googleApiKey : appleApiKey)
+      PurchasesConfiguration(platformKey)
         ..appUserID = await DeviceService.getDeviceId(),
     );
 

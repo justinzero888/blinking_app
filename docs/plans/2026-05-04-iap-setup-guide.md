@@ -18,44 +18,45 @@ Blinking Pro is a **one-time, non-consumable** in-app purchase at **$9.99 USD**.
 
 1. Go to [app.revenuecat.com](https://app.revenuecat.com)
 2. Create project: **"Blinking"**
-3. Select platform: **iOS** first, then add **Android** later
+3. Every new project comes with a **Test Store** and a pre-generated `test_` API key.
+   - Find it at: **Project Settings → API Keys** (the key that starts with `test_`)
+   - This key works immediately for development/testing without any store credentials.
+   - It is already configured in `lib/main.dart` via the `RC_API_KEY` environment variable.
 
-### 1.2 Add iOS App
+### 1.2 Add Blinking Pro (Test Products)
 
-1. In RevenueCat → Project Settings → Apps → **+ New**
-2. Name: `Blinking iOS`
-3. Bundle ID: `com.blinking.blinking`
-4. Enable "Apple App Store Server Notifications" if prompted
-5. Copy the **Apple API Key** (starts with `appl_`)
+1. RevenueCat → **Products** → **+ New**
+2. In the Test Store section, add product:
+   - ID: `blinking_pro`
+   - Type: **Non-consumable**
+   - Price: $9.99
+3. Create **Entitlement** → ID: `pro_access` → attach `blinking_pro`
 
-### 1.3 Add Android App
+### 1.3 Connect Platform Stores (for production keys)
 
-1. In RevenueCat → Project Settings → Apps → **+ New**
-2. Name: `Blinking Android`
-3. Package name: `com.blinking.blinking`
-4. Copy the **Google API Key** (starts with `goog_`)
+For real `appl_` / `goog_` keys, you must add store configurations under **Apps & Providers**:
 
-### 1.4 Add Blinking Pro to RevenueCat
+**iOS (requires App Store Connect setup first):**
+1. Apps & Providers → **+ New** → **App Store**
+2. Enter Bundle ID: `com.blinking.blinking`
+3. Requires: App Store Connect Shared Secret + In-App Purchase Key
+4. After saving, the `appl_` key appears under Project Settings → API Keys
 
-1. RevenueCat → Products → **+ New**
-2. iOS product ID: `blinking_pro`
-3. Android product ID: `blinking_pro`
-4. Type: **Non-consumable**
-5. Checkbox: "This product is available for purchase"
-6. Create entitlement → ID: `pro_access` → Product: `blinking_pro`
+**Android (requires Google Play Console setup first):**
+1. Apps & Providers → **+ New** → **Google Play**
+2. Enter Package Name: `com.blinking.blinking`
+3. Upload: Google Play Service Credentials JSON
+4. After saving, the `goog_` key appears under Project Settings → API Keys
 
-### 1.5 Add the API keys to the app
+### 1.4 Switch to Production Keys (before launch)
 
-In `main.dart`, before `runApp()`, add:
+When ready for production, set the platform keys via environment variable:
 
-```dart
-// Initialize RevenueCat
-final purchasesService = PurchasesService();
-await purchasesService.init(
-  appleApiKey: 'appl_YOUR_APPLE_KEY_HERE',    // from Step 1.2
-  googleApiKey: 'goog_YOUR_GOOGLE_KEY_HERE',  // from Step 1.3
-);
+```bash
+flutter build appbundle --release --dart-define=RC_API_KEY=goog_YOUR_KEY
 ```
+
+Or update the default in `lib/main.dart` from the `test_` key to the production `appl_`/`goog_` key.
 
 Or add after provider tree in `app.dart`:
 

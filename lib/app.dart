@@ -31,8 +31,9 @@ import 'core/services/export_service.dart';
 
 class BlinkingApp extends StatelessWidget {
   final StorageService storageService;
+  final PurchasesService purchasesService;
 
-  const BlinkingApp({super.key, required this.storageService});
+  const BlinkingApp({super.key, required this.storageService, required this.purchasesService});
 
   @override
   Widget build(BuildContext context) {
@@ -99,7 +100,7 @@ class BlinkingApp extends StatelessWidget {
         }),
 
         // PurchasesService — RevenueCat IAP
-        ChangeNotifierProvider(create: (_) => PurchasesService()),
+        ChangeNotifierProvider<PurchasesService>.value(value: purchasesService),
 
         // SummaryProvider — depends on EntryProvider + RoutineProvider
         ChangeNotifierProxyProvider2<EntryProvider, RoutineProvider,
