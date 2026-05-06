@@ -52,7 +52,7 @@ dependencies:
   fl_chart: ^0.70.0
 
   # IAP
-  purchases_flutter: ^8.4.0
+  purchases_flutter: ^9.8.0
 
 dev_dependencies:
   flutter_test:

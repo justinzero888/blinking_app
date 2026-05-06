@@ -76,7 +76,8 @@ class PurchasesService extends ChangeNotifier {
         return null;
       }
 
-      final customerInfo = await Purchases.purchasePackage(pkg);
+      final result = await Purchases.purchasePackage(pkg);
+      final customerInfo = result.customerInfo;
 
       if (customerInfo.entitlements.active.containsKey('pro_access')) {
         await _validateWithServer();
