@@ -155,14 +155,13 @@ The app normally starts in 21-day preview mode (free AI). To test the paywall:
 
 ## Production Keys (Next Steps)
 
-To get `appl_` and `goog_` keys for production:
-
-### iOS
-1. App Store Connect → Your App → In-App Purchases → + Non-Consumable → Product ID: `blinking_pro`
-2. App Store Connect → App Information → App Store Connect API → generate In-App Purchase Key
-3. App Store Connect → App Information → App-Specific Shared Secret
-4. RevenueCat → Apps & Providers → + New → App Store → enter Bundle ID + Shared Secret + In-App Purchase Key
-5. The `appl_` key will appear
+### iOS — ✅ Verified (App Store Sandbox)
+1. App Store Connect → In-App Purchases → created `blinking_pro` (Non-Consumable, $9.99)
+2. App Store Connect → App Information → Shared Secret: `cb7d69f2d98245de95e9eab7b4e0bbaf`
+3. App Store Connect → Users & Access → Keys → In-App Purchase Key: ID `S7GU3FWWH5`, Issuer `8525f01e-0925-49f8-9862-739031df8d50`
+4. RevenueCat → Apps & Providers → App Store → connected with above credentials
+5. Production key obtained: `appl_vgTGaiNtCARgmdgOzpJcZyITNAT`
+6. Sandbox purchase verified: "Welcome to Pro!" with sandbox tester account
 
 ### Android
 1. Google Play Console → Your App → Monetize → Products → In-app products → ID: `blinking_pro`
@@ -172,9 +171,9 @@ To get `appl_` and `goog_` keys for production:
 
 ### Switching to Production
 ```bash
-# Build with production key
+# Build with production keys
 flutter build appbundle --release --dart-define=RC_API_KEY=goog_YOUR_KEY
-flutter build ipa --release --dart-define=RC_API_KEY=appl_YOUR_KEY
+flutter build ipa --release --dart-define=RC_API_KEY=appl_vgTGaiNtCARgmdgOzpJcZyITNAT
 ```
 
 ---

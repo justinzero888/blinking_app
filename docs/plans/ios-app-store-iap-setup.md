@@ -1,6 +1,6 @@
 # iOS App Store IAP Setup Guide — Blinking Pro ($9.99)
 
-**Date:** 2026-05-06 | **Status:** In Progress
+**Date:** 2026-05-06 | **Status:** ✅ Verified (App Store Sandbox)
 
 Complete step-by-step for setting up `blinking_pro` on Apple App Store Connect and connecting it to RevenueCat for production.
 
