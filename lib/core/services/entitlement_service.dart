@@ -82,16 +82,27 @@ class EntitlementService extends ChangeNotifier {
 
     final startedStr = _prefs?.getString(_previewStartedKey);
     if (startedStr == null) {
-      // First time: start local preview
-      _prefs?.setString(_previewStartedKey, now.toIso8601String());
-      _previewDaysRemaining = _previewTotalDays;
+      // First time: start local preview. If we already have a saved
+      // days-remaining that is less than total, backfill the start date.
+      final savedDays = _prefs?.getInt(_previewDaysKey) ?? 0;
+      if (savedDays > 0 && savedDays < _previewTotalDays) {
+        final estimatedStart = now.subtract(Duration(days: _previewTotalDays - savedDays));
+        _prefs?.setString(_previewStartedKey, estimatedStart.toIso8601String());
+      } else {
+        _prefs?.setString(_previewStartedKey, now.toIso8601String());
+      }
+      _previewDaysRemaining = savedDays > 0 && savedDays < _previewTotalDays
+          ? savedDays
+          : _previewTotalDays;
       _state = EntitlementState.preview;
       _quotaRemaining = _previewDailyQuota;
       _quotaSource = 'preview_daily';
       _quotaRefill = 'Tomorrow';
       _prefs?.setString(_quotaDateKey, today);
       _prefs?.setString('trial_token', 'preview_local');
-      _prefs?.setString('trial_started_at', now.toIso8601String());
+      if (_prefs?.getString('trial_started_at') == null) {
+        _prefs?.setString('trial_started_at', now.toIso8601String());
+      }
       _saveState();
       return;
     }

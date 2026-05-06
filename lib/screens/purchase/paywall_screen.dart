@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../providers/locale_provider.dart';
 import '../../core/services/purchases_service.dart';
+import '../../core/services/entitlement_service.dart';
 import '../legal_doc_screen.dart';
 import '../../core/constants/legal_content.dart';
 
@@ -299,6 +301,10 @@ class PaywallScreen extends StatelessWidget {
       await service.refreshCustomerInfo();
 
       if (service.isPro) {
+        // Update local entitlement state to paid
+        final entitlement = context.read<EntitlementService>();
+        await _markEntitlementPaid(entitlement);
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(isZh ? '欢迎加入 Pro！' : 'Welcome to Pro!'),
@@ -307,7 +313,6 @@ class PaywallScreen extends StatelessWidget {
         );
         Navigator.pop(context);
       } else if (info != null) {
-        // Purchase returned but entitlement not yet active — may need server sync
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(isZh
@@ -331,28 +336,43 @@ class PaywallScreen extends StatelessWidget {
       );
       return;
     }
-    service.restorePurchases().then((info) {
-      if (context.mounted) {
-        if (info != null && service.isPro) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(isZh ? '已恢复 Pro。' : 'Pro restored.'),
-              backgroundColor: Colors.green,
-            ),
-          );
-          Navigator.pop(context);
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(isZh
-                  ? '未找到之前的 Pro 购买记录。'
-                  : 'No previous Pro purchase found.'),
-            ),
-          );
-        }
+    service.restorePurchases().then((info) async {
+      if (!context.mounted) return;
+      await service.refreshCustomerInfo();
+      if (service.isPro) {
+        final entitlement = context.read<EntitlementService>();
+        await _markEntitlementPaid(entitlement);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(isZh ? '已恢复 Pro。' : 'Pro restored.'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        Navigator.pop(context);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(isZh
+                ? '未找到之前的 Pro 购买记录。'
+                : 'No previous Pro purchase found.'),
+          ),
+        );
       }
     });
   }
+
+  Future<void> _markEntitlementPaid(EntitlementService entitlement) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('entitlement_jwt');
+    await prefs.setString('entitlement_state', 'paid');
+    await prefs.setInt('entitlement_quota', 1200);
+    await prefs.remove('entitlement_preview_started');
+    await prefs.setInt('entitlement_preview_days', -1);
+    await prefs.remove('entitlement_was_preview');
+    // Re-init to pick up new state
+    await entitlement.init(prefs);
+  }
+
 }
 
 class _TesseraArt extends StatelessWidget {

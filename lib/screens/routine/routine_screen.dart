@@ -433,7 +433,12 @@ class _DoTabState extends State<_DoTab> {
     final adhocAdded = provider.adhocRoutines
         .where((r) => widget.manuallyAdded.contains(r.id))
         .toList();
-    final allToday = [...scheduled, ...adhocAdded];
+    // Deduplicate — a routine might appear in both lists
+    final seen = <String>{};
+    final allToday = <Routine>[];
+    for (final r in [...scheduled, ...adhocAdded]) {
+      if (seen.add(r.id)) allToday.add(r);
+    }
 
     final pending = allToday.where((r) => !r.isCompletedToday).toList();
     final completed = allToday.where((r) => r.isCompletedToday).toList();
@@ -934,11 +939,15 @@ class _HabitSummaryCard extends StatelessWidget {
     final now = DateTime.now();
     final thisMonth = DateTime(now.year, now.month, 1);
 
-    // Monthly completion rate
-    final monthCompletions = habit.completionLog
-        .where((c) => c.completedAt.isAfter(thisMonth.subtract(const Duration(days: 1))))
-        .length;
-    final daysInMonth = DateTime(now.year, now.month + 1, 0).day;
+    // Monthly completion rate — count unique days, not total completions
+    final monthCompletionsDays = <String>{};
+    for (final c in habit.completionLog) {
+      if (c.completedAt.isAfter(thisMonth.subtract(const Duration(days: 1)))) {
+        monthCompletionsDays.add(
+          '${c.completedAt.year}-${c.completedAt.month}-${c.completedAt.day}');
+      }
+    }
+    final monthCompletions = monthCompletionsDays.length;
     final daysPassed = now.day;
     final monthRate = daysPassed > 0 ? monthCompletions / daysPassed : 0.0;
 

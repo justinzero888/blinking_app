@@ -854,8 +854,17 @@ class _NoteCountChart extends StatelessWidget {
                 },
               ),
             ),
-            leftTitles:
-                const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            leftTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 28,
+                interval: _niceInterval(maxCount),
+                getTitlesWidget: (value, meta) => Text(
+                  '${value.toInt()}',
+                  style: const TextStyle(fontSize: 9),
+                ),
+              ),
+            ),
             topTitles:
                 const AxisTitles(sideTitles: SideTitles(showTitles: false)),
             rightTitles:
@@ -933,8 +942,17 @@ class _RoutineCompletionChart extends StatelessWidget {
                 },
               ),
             ),
-            leftTitles:
-                const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            leftTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 32,
+                interval: 0.25,
+                getTitlesWidget: (value, meta) => Text(
+                  '${(value * 100).toInt()}%',
+                  style: const TextStyle(fontSize: 9),
+                ),
+              ),
+            ),
             topTitles:
                 const AxisTitles(sideTitles: SideTitles(showTitles: false)),
             rightTitles:
@@ -1020,8 +1038,23 @@ class _EmotionTrendChart extends StatelessWidget {
                 },
               ),
             ),
-            leftTitles:
-                const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            leftTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 28,
+                interval: 1,
+                getTitlesWidget: (value, meta) {
+                  switch (value.toInt()) {
+                    case 5: return const Text('😊', style: TextStyle(fontSize: 12));
+                    case 4: return const Text('😌', style: TextStyle(fontSize: 12));
+                    case 3: return const Text('😐', style: TextStyle(fontSize: 12));
+                    case 2: return const Text('😢', style: TextStyle(fontSize: 12));
+                    case 1: return const Text('😡', style: TextStyle(fontSize: 12));
+                    default: return const SizedBox.shrink();
+                  }
+                },
+              ),
+            ),
             topTitles:
                 const AxisTitles(sideTitles: SideTitles(showTitles: false)),
             rightTitles:
@@ -1109,8 +1142,17 @@ class _TopTagsChart extends StatelessWidget {
                 },
               ),
             ),
-            leftTitles:
-                const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            leftTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 28,
+                interval: _niceInterval(maxCount),
+                getTitlesWidget: (value, meta) => Text(
+                  '${value.toInt()}',
+                  style: const TextStyle(fontSize: 9),
+                ),
+              ),
+            ),
             topTitles:
                 const AxisTitles(sideTitles: SideTitles(showTitles: false)),
             rightTitles:
@@ -1707,40 +1749,136 @@ class _AiInsightsSectionState extends State<_AiInsightsSection> {
       _error = null;
     });
 
-    try {
-      final data = widget.summary.generateInsightsData(isZh: widget.isZh);
-      final prompt = widget.isZh
-          ? '你是一个个人日记洞察助手。根据以下用户数据，生成 3-5 条个性化、鼓励性的洞察。保持温暖、支持、数据驱动。突出模式、成就和建议。保持 150 字以内。不要使用 markdown。\n\n数据：${_formatJson(data)}'
-          : 'You are a personal journaling insights assistant. Given the data below, generate 3-5 personalized, encouraging insights. Be warm, supportive, and data-driven. Highlight patterns, achievements, and suggestions. Keep to 150 words max. Do not use markdown.\n\nData: ${_formatJson(data)}';
+    await Future.delayed(const Duration(milliseconds: 400)); // Brief pause for UX
 
-      final systemPrompt = widget.isZh
-          ? '你是一个名为 Blinking（记忆闪烁）的个人日记洞察助手。保持回复温暖、鼓励、简洁。'
-          : 'You are a personal journaling insights assistant for Blinking. Keep responses warm, encouraging, and concise.';
+    if (!mounted) return;
 
-      final result = await _callLlm(systemPrompt, prompt);
+    final data = widget.summary.generateInsightsData(isZh: widget.isZh);
+    final isZh = widget.isZh;
+    final sb = StringBuffer();
 
-      if (mounted && result != null) {
-        setState(() {
-          _insightsText = result;
-          _loading = false;
-        });
-      } else if (mounted) {
-        setState(() {
-          _error = widget.isZh ? '无法生成洞察，点击重试' : "Couldn't generate insights. Tap to retry.";
-          _loading = false;
-        });
+    // Rule-based insights — no LLM required
+    if (isZh) {
+      // Streak
+      final currentStreak = data['currentStreak'] as int? ?? 0;
+      if (currentStreak >= 7) {
+        sb.writeln('🔥 连续记录 $currentStreak 天！你正在建立持续复盘的好习惯。');
+      } else if (currentStreak >= 3) {
+        sb.writeln('📝 连续记录 $currentStreak 天，坚持下去！');
       }
-    } catch (_) {
-      if (mounted) {
-        setState(() {
-          _error = widget.isZh ? '无法生成洞察，点击重试' : "Couldn't generate insights. Tap to retry.";
-          _loading = false;
-        });
+
+      // Total entries
+      final total = data['totalEntries'] as int? ?? 0;
+      if (total > 0) {
+        sb.writeln('📓 共记录 $total 条笔记。');
       }
+
+      // Top emotion
+      final topEmotion = data['topEmotion'] as String?;
+      if (topEmotion != null) {
+        sb.writeln('😊 最常见的心情是：$topEmotion');
+      }
+
+      // Mood trend
+      final trend = data['moodTrend'] as String?;
+      if (trend == 'improving') {
+        sb.writeln('📈 心情趋势：上升中，继续保持！');
+      } else if (trend == 'declining') {
+        sb.writeln('📉 心情趋势略有下降。试试写几篇感恩日记吧。');
+      } else {
+        sb.writeln('📊 心情整体平稳。');
+      }
+
+      // Active day & hour
+      final activeDay = data['mostActiveDay'] as String?;
+      final activeHour = data['mostActiveHour'] as int?;
+      if (activeDay != null) {
+        sb.writeln('⏰ 你最喜欢在${_zhDayName(activeDay)}记录。');
+      }
+
+      // Checklist
+      final checklistRate = data['checklistCompletion'] as double?;
+      if (checklistRate != null) {
+        sb.writeln('✅ 清单完成率：${(checklistRate * 100).round()}%');
+      }
+
+      // Best month
+      final bestMonth = data['bestMonth'] as String?;
+      if (bestMonth != null) {
+        sb.writeln('🏆 最佳月份：$bestMonth');
+      }
+    } else {
+      final currentStreak = data['currentStreak'] as int? ?? 0;
+      if (currentStreak >= 7) {
+        sb.writeln('🔥 ${currentStreak}-day journaling streak! Great habit forming.');
+      } else if (currentStreak >= 3) {
+        sb.writeln('📝 ${currentStreak}-day streak — keep it up!');
+      }
+
+      final total = data['totalEntries'] as int? ?? 0;
+      if (total > 0) {
+        sb.writeln('📓 $total entries recorded.');
+      }
+
+      final topEmotion = data['topEmotion'] as String?;
+      if (topEmotion != null) {
+        sb.writeln('😊 Most common emotion: $topEmotion');
+      }
+
+      final trend = data['moodTrend'] as String?;
+      if (trend == 'improving') {
+        sb.writeln('📈 Mood trending up — keep doing what works!');
+      } else if (trend == 'declining') {
+        sb.writeln('📉 Mood slightly declining. Try a gratitude entry.');
+      } else {
+        sb.writeln('📊 Mood is stable overall.');
+      }
+
+      final activeDay = data['mostActiveDay'] as String?;
+      if (activeDay != null) {
+        sb.writeln('⏰ Most active on $activeDay.');
+      }
+
+      final checklistRate = data['checklistCompletion'] as double?;
+      if (checklistRate != null) {
+        sb.writeln('✅ Checklist completion: ${(checklistRate * 100).round()}%');
+      }
+
+      final bestMonth = data['bestMonth'] as String?;
+      if (bestMonth != null) {
+        sb.writeln('🏆 Best month: $bestMonth');
+      }
+    }
+
+    if (sb.isEmpty) {
+      sb.write(isZh
+          ? '开始记录你的第一条笔记，解锁个性化洞察 ✨'
+          : 'Start journaling to unlock personalized insights ✨');
+    }
+
+    if (mounted) {
+      setState(() {
+        _insightsText = sb.toString();
+        _loading = false;
+      });
+    }
+  }
+
+  String _zhDayName(String enDay) {
+    switch (enDay) {
+      case 'Monday': return '周一';
+      case 'Tuesday': return '周二';
+      case 'Wednesday': return '周三';
+      case 'Thursday': return '周四';
+      case 'Friday': return '周五';
+      case 'Saturday': return '周六';
+      case 'Sunday': return '周日';
+      default: return enDay;
     }
   }
 
   Future<String?> _callLlm(String systemPrompt, String prompt) async {
+    // Kept for potential future use, not called from insights anymore
     try {
       final prefs = await SharedPreferences.getInstance();
       final jsonStr = prefs.getString('llm_providers');
@@ -1799,4 +1937,25 @@ class _AiInsightsSectionState extends State<_AiInsightsSection> {
     }
     return sb.toString();
   }
+}
+
+/// Returns a nice interval for y-axis labels (1, 2, 5, 10, 20, 50, ...)
+double _niceInterval(num maxY) {
+  if (maxY <= 0) return 1;
+  final magnitude = maxY / 5.0;
+  final expStr = magnitude.toInt().toString();
+  final e = expStr.length - 1;
+  final p10 = e > 0 ? double.parse('1${List.filled(e, '0').join()}') : 1.0;
+  final normalized = magnitude / p10;
+  double nice;
+  if (normalized <= 1.5) {
+    nice = 1;
+  } else if (normalized <= 3) {
+    nice = 2;
+  } else if (normalized <= 7) {
+    nice = 5;
+  } else {
+    nice = 10;
+  }
+  return (nice * p10).ceilToDouble();
 }

@@ -371,6 +371,50 @@ class _SettingsScreenState extends State<SettingsScreen> {
       );
     }
 
+    // PAID — user has purchased Pro
+    if (state == EntitlementState.paid) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Colors.green.shade500, Colors.teal.shade400],
+            ),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              const Text('💎', style: TextStyle(fontSize: 22)),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      isZh ? 'Blinking Pro — 终身会员' : 'Blinking Pro — Lifetime',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      isZh
+                          ? '全部功能永久解锁 · 一年 1,200 次 AI 对话'
+                          : 'All features unlocked forever · 1,200 AI reflections/year',
+                      style: TextStyle(color: Colors.white70, fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     // RESTRICTED — after preview, no purchase
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),

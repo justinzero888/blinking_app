@@ -201,10 +201,10 @@ class LlmService {
     if (_isTrialActive(prefs)) {
       final token = prefs.getString('trial_token')!;
       if (token == 'preview_local') {
-        throw LlmException(
-          isLocalPreviewMessage(true),
-          LlmErrorType.networkError,
-        );
+        // Local preview is a UX-only preview state. AI requires
+        // a real API key (BYOK). Return empty config so the UI
+        // shows the "add your own key" prompt instead of a network error.
+        return {};
       }
       return {
         'name': 'Trial',
