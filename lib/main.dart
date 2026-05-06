@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'app.dart';
 import 'core/services/storage_service.dart';
 import 'core/services/device_service.dart';
@@ -26,6 +27,17 @@ void main() async {
   if (_autoRestorePath.isNotEmpty) {
     final file = File(_autoRestorePath);
     if (await file.exists()) {
+      // Reset entitlement state so restored data shows in preview mode
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('entitlement_state');
+      await prefs.remove('entitlement_jwt');
+      await prefs.remove('entitlement_quota');
+      await prefs.remove('entitlement_quota_date');
+      await prefs.remove('entitlement_preview_days');
+      await prefs.remove('entitlement_preview_started');
+      await prefs.remove('entitlement_was_preview');
+      await prefs.remove('onboarding_completed');
+
       await storageService.restoreFromBackup(file);
     }
   }
