@@ -196,8 +196,19 @@ class Routine {
   int get streak {
     if (completionLog.isEmpty) return 0;
 
-    final sortedLogs = List<RoutineCompletion>.from(completionLog)
+    final now = DateTime.now();
+    final todayDate = DateTime(now.year, now.month, now.day);
+
+    // Filter out future-dated completions and sort newest first
+    final sortedLogs = completionLog
+        .where((log) {
+          final logDate = DateTime(log.completedAt.year, log.completedAt.month, log.completedAt.day);
+          return !logDate.isAfter(todayDate);
+        })
+        .toList()
       ..sort((a, b) => b.completedAt.compareTo(a.completedAt));
+
+    if (sortedLogs.isEmpty) return 0;
 
     int count = 0;
     DateTime? lastDate;
@@ -211,8 +222,6 @@ class Routine {
       );
 
       if (lastDate == null) {
-        final today = DateTime.now();
-        final todayDate = DateTime(today.year, today.month, today.day);
         final yesterday = todayDate.subtract(const Duration(days: 1));
 
         if (logDate == todayDate || logDate == yesterday) {
@@ -252,8 +261,8 @@ class Routine {
     if (completionLog.isEmpty) return false;
     if (isCompletedToday) return false;
     final today = DateTime.now();
-    final yesterday = DateTime(today.year, today.month, today.day)
-        .subtract(const Duration(days: 1));
+    final todayDate = DateTime(today.year, today.month, today.day);
+    final yesterday = todayDate.subtract(const Duration(days: 1));
     final dayBefore = yesterday.subtract(const Duration(days: 1));
     return !isCompletedOn(yesterday) && isCompletedOn(dayBefore) && streak > 0;
   }
