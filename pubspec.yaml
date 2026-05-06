@@ -1,7 +1,7 @@
 name: blinking
 description: "A personal memory capture app for reflection and learning."
 publish_to: 'none'
-version: 1.1.0-beta.7+22
+version: 1.1.0-beta.8+23
 
 environment:
   sdk: ^3.11.0
@@ -31,6 +31,7 @@ dependencies:
   
   # Media
   image_picker: ^1.1.2
+  flutter_image_compress: ^2.4.0
   permission_handler: ^11.3.1
   
   # Utils
@@ -49,6 +50,9 @@ dependencies:
 
   # Charts
   fl_chart: ^0.70.0
+
+  # IAP
+  purchases_flutter: ^8.4.0
 
 dev_dependencies:
   flutter_test:

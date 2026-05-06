@@ -10,6 +10,7 @@ import '../../models/entry.dart';
 import '../../models/tag.dart';
 import '../../models/routine.dart';
 import '../utils/csv_utils.dart';
+import 'file_service.dart';
 import 'storage_service.dart';
 
 class ExportData {
@@ -74,10 +75,12 @@ class ExportService {
 
   ExportService(this._storage);
 
-  /// Export all data (JSON + Media) to a ZIP file
+  /// Export all data (JSON + Media) to a ZIP file.
+  /// Set [excludeMedia] to true for a text-only backup (no photos/avatars).
   Future<String> exportAll({
     DateTime? startDate,
     DateTime? endDate,
+    bool excludeMedia = false,
     void Function(double progress)? onProgress,
     /// [docDirOverride] is for testing only — overrides [getApplicationDocumentsDirectory].
     String? docDirOverride,
@@ -131,7 +134,8 @@ class ExportService {
         'entriesCount': filteredEntries.length,
         'tagsCount': tags.length,
         'routinesCount': routines.length,
-        'hasMedia': true,
+        'hasMedia': !excludeMedia,
+        'hasPersona': true,
       };
       final manifestBytes = utf8.encode(jsonEncode(manifest));
       zipEncoder.addArchiveFile(ArchiveFile('manifest.json', manifestBytes.length, manifestBytes));
@@ -157,51 +161,68 @@ class ExportService {
         zipEncoder.addArchiveFile(ArchiveFile('persona.json', personaBytes.length, personaBytes));
       }
 
-      // 4. Add media files — pre-scan sizes, stream one at a time, report progress
-      int totalBytes = 0;
-      final mediaDir = Directory(path_pkg.join(docDir.path, 'media'));
-      if (await mediaDir.exists()) {
-        // Collect media URLs from filtered entries when date range is active
-        final referencedMediaUrls = <String>{};
-        if (startDate != null || endDate != null) {
-          for (final entry in filteredEntries) {
-            referencedMediaUrls.addAll(entry.mediaUrls);
-          }
-        }
-
-        final entities = await mediaDir.list(recursive: true).toList();
-        final mediaFiles = entities.whereType<File>().toList();
-
-        // Pre-scan: collect files and their sizes
-        final fileSizes = <String, int>{};
-        for (final f in mediaFiles) {
-          final relativePath = path_pkg.relative(f.path, from: docDir.path);
-          // Skip files not referenced by filtered entries when date range is active
+      // 4. Add media files — pre-scan sizes, compress, stream one at a time, report progress
+      if (!excludeMedia) {
+        int totalBytes = 0;
+        final mediaDir = Directory(path_pkg.join(docDir.path, 'media'));
+        if (await mediaDir.exists()) {
+          // Collect media URLs from filtered entries when date range is active
+          final referencedMediaUrls = <String>{};
           if (startDate != null || endDate != null) {
-            if (!referencedMediaUrls.contains(relativePath)) continue;
+            for (final entry in filteredEntries) {
+              referencedMediaUrls.addAll(entry.mediaUrls);
+            }
           }
-          fileSizes[f.path] = await f.length();
-          totalBytes += fileSizes[f.path]!;
+
+          final entities = await mediaDir.list(recursive: true).toList();
+          final mediaFiles = entities.whereType<File>().toList();
+
+          // Pre-scan: collect files and their sizes (use original size for progress)
+          final fileSizes = <String, int>{};
+          for (final f in mediaFiles) {
+            final relativePath = path_pkg.relative(f.path, from: docDir.path);
+            if (startDate != null || endDate != null) {
+              if (!referencedMediaUrls.contains(relativePath)) continue;
+            }
+            fileSizes[f.path] = await f.length();
+            totalBytes += fileSizes[f.path]!;
+          }
+
+          int bytesProcessed = 0;
+          for (final file in mediaFiles) {
+            final relativePath = path_pkg.relative(file.path, from: docDir.path);
+            if (startDate != null || endDate != null) {
+              if (!referencedMediaUrls.contains(relativePath)) continue;
+            }
+            final fileSize = fileSizes[file.path] ?? 0;
+            final ext = path_pkg.extension(file.path).toLowerCase();
+            final isImage = [
+              '.jpg', '.jpeg', '.png', '.heic', '.heif', '.webp', '.bmp'
+            ].contains(ext);
+
+            if (isImage) {
+              final compressed = await FileService.compressImage(file.path);
+              if (compressed != null) {
+                await zipEncoder.addFile(compressed, relativePath);
+                try { await compressed.delete(); } catch (_) {}
+              } else {
+                await zipEncoder.addFile(file, relativePath);
+              }
+            } else {
+              await zipEncoder.addFile(file, relativePath);
+            }
+            bytesProcessed += fileSize;
+            if (totalBytes > 0) {
+              onProgress?.call(bytesProcessed / totalBytes);
+            }
+          }
         }
 
-        int bytesProcessed = 0;
-        for (final file in mediaFiles) {
-          final relativePath = path_pkg.relative(file.path, from: docDir.path);
-          // Skip files not referenced by filtered entries when date range is active
-          if (startDate != null || endDate != null) {
-            if (!referencedMediaUrls.contains(relativePath)) continue;
-          }
-          final fileSize = fileSizes[file.path] ?? 0;
-          await zipEncoder.addFile(file, relativePath);
-          bytesProcessed += fileSize;
-          if (totalBytes > 0) {
-            onProgress?.call(bytesProcessed / totalBytes);
-          }
-        }
+        // Signal 100% only when no media was present (loop already emitted 1.0 otherwise)
+        if (totalBytes == 0) onProgress?.call(1.0);
+      } else {
+        onProgress?.call(1.0);
       }
-
-      // Signal 100% only when no media was present (loop already emitted 1.0 otherwise)
-      if (totalBytes == 0) onProgress?.call(1.0);
 
       await zipEncoder.close();
       return filePath;

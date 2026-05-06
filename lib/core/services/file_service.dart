@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path_pkg;
 import 'package:uuid/uuid.dart';
@@ -11,7 +12,28 @@ class FileService {
 
   final _uuid = const Uuid();
 
+  static const _maxDimension = 1920;
+  static const _jpegQuality = 85;
+
+  static Future<File?> compressImage(String sourcePath) async {
+    try {
+      final result = await FlutterImageCompress.compressAndGetFile(
+        sourcePath,
+        '$sourcePath._compressed.jpg',
+        quality: _jpegQuality,
+        format: CompressFormat.jpeg,
+        minWidth: _maxDimension,
+        minHeight: _maxDimension,
+      );
+      if (result != null) {
+        return File(result.path);
+      }
+    } catch (_) {}
+    return null;
+  }
+
   /// Save a file to the app's internal documents directory.
+  /// Images are compressed to max 1920px, JPEG quality 85.
   /// Returns the relative path (usually just the filename) within the documents directory.
   Future<String> saveFile(String sourcePath) async {
     final File sourceFile = File(sourcePath);
@@ -25,14 +47,26 @@ class FileService {
       await mediaDir.create(recursive: true);
     }
 
-    final String extension = path_pkg.extension(sourcePath);
-    final String fileName = '${_uuid.v4()}$extension';
+    final String extension = path_pkg.extension(sourcePath).toLowerCase();
+    final bool isImage = ['.jpg', '.jpeg', '.png', '.heic', '.heif', '.webp', '.bmp']
+        .contains(extension);
+
+    final String fileName = '${_uuid.v4()}.jpg';
     final String targetPath = path_pkg.join(mediaDir.path, fileName);
 
-    await sourceFile.copy(targetPath);
-    
-    // Return the relative path from the documents directory
-    return path_pkg.join('media', fileName);
+    if (isImage) {
+      final compressed = await compressImage(sourcePath);
+      if (compressed != null) {
+        await compressed.copy(targetPath);
+        try { await compressed.delete(); } catch (_) {}
+        return path_pkg.join('media', fileName);
+      }
+    }
+
+    final String fallbackName = '${_uuid.v4()}$extension';
+    final String fallbackPath = path_pkg.join(mediaDir.path, fallbackName);
+    await sourceFile.copy(fallbackPath);
+    return path_pkg.join('media', fallbackName);
   }
 
   /// Get the full absolute path from a relative path.

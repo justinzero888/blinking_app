@@ -75,6 +75,8 @@ class EntryRepository {
     EntryFormat format = EntryFormat.note,
     List<ListItem>? listItems,
     bool listCarriedForward = false,
+    DateTime? createdAt,
+    DateTime? updatedAt,
   }) async {
     final now = DateTime.now();
     final entry = Entry(
@@ -83,8 +85,8 @@ class EntryRepository {
       content: content,
       tagIds: tagIds,
       mediaUrls: mediaUrls,
-      createdAt: now,
-      updatedAt: now,
+      createdAt: createdAt ?? now,
+      updatedAt: updatedAt ?? now,
       metadata: metadata,
       emotion: emotion,
       format: format,

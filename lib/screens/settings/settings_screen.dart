@@ -21,6 +21,10 @@ import '../../core/config/theme.dart';
 import '../../core/services/storage_service.dart';
 import '../../core/services/export_service.dart';
 import '../../core/services/trial_service.dart';
+import '../../core/services/entitlement_service.dart';
+import '../../core/services/soft_prompt_service.dart';
+import 'byok_setup_screen.dart';
+import '../purchase/paywall_screen.dart';
 
 enum _BackupRange { all, lastMonth, last3Months, last6Months, custom }
 
@@ -104,7 +108,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _pickAiAvatar() async {
     final picker = ImagePicker();
-    final picked = await picker.pickImage(source: ImageSource.gallery);
+    final picked = await picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 512,
+      maxHeight: 512,
+      imageQuality: 85,
+    );
     if (picked == null) return;
 
     try {
@@ -161,13 +170,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  List<Map<String, String>> get _displayProviders {
-    final ts = _trialService;
-    if (ts != null && ts.getStatus() == TrialStatus.active) {
-      return [ts.buildTrialProvider(), ..._llmProviders];
-    }
-    return _llmProviders;
-  }
+  List<Map<String, String>> get _displayProviders => _llmProviders;
 
   Future<void> _startTrial() async {
     final isZh = context.read<LocaleProvider>().locale.languageCode == 'zh';
@@ -211,187 +214,204 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  Widget _buildTrialBanner(bool isZh) {
-    final ts = _trialService;
-    final trialStatus = ts != null ? ts.getStatus() : TrialStatus.none;
+  Widget _buildEntitlementBanner(bool isZh) {
+    final entitlement = context.watch<EntitlementService>();
+    final state = entitlement.currentState;
+    final remaining = entitlement.remainingAI;
+    final daysLeft = entitlement.previewDaysRemaining;
+    final hasKey = entitlement.hasActiveBYOK;
 
-    switch (trialStatus) {
-      case TrialStatus.none:
-        return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Colors.blue.shade400, Colors.purple.shade400],
-              ),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+    // BYOK active — show clean status
+    if (hasKey) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.green.shade50,
+            border: Border.all(color: Colors.green.shade300),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              const Text('🔑', style: TextStyle(fontSize: 22)),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('🎉', style: TextStyle(fontSize: 24)),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            isZh ? '免费试用 AI \u2014 7 天' : 'Try AI for Free \u2014 7 Days',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
-                          ),
-                          Text(
-                            isZh ? '无需设置，立即开始聊天。' : 'No setup needed. Start chatting now.',
-                            style: TextStyle(color: Colors.white70, fontSize: 13),
-                          ),
-                        ],
+                    Text(
+                      isZh ? '使用自己的 Key' : 'Using your own key',
+                      style: TextStyle(
+                        color: Colors.green.shade800,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
                       ),
+                    ),
+                    Text(
+                      isZh ? 'AI 请求无限，由你的 Key 计费' : 'Unlimited AI requests, billed to your key',
+                      style: TextStyle(color: Colors.green.shade700, fontSize: 12),
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: _isStartingTrial ? null : _startTrial,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      foregroundColor: Colors.blue.shade700,
-                    ),
-                    child: _isStartingTrial
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : Text(
-                            isZh ? '开始免费试用 \u2192' : 'Start Free Trial \u2192',
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
-        );
+        ),
+      );
+    }
 
-      case TrialStatus.active:
-        final daysLeft = ts?.trialDaysLeft ?? 0;
-        return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.green.shade50,
-              border: Border.all(color: Colors.green.shade300),
-              borderRadius: BorderRadius.circular(12),
+    // PREVIEW — auto-activated, 21 days, 3 AI/day, full access
+    if (state == EntitlementState.preview) {
+      final quota = entitlement.previewDailyQuota;
+      final totalQuota = quota * entitlement.previewDaysTotal;
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Colors.blue.shade400, Colors.purple.shade400],
             ),
-            padding: const EdgeInsets.all(16),
-            child: Row(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Text('✨', style: TextStyle(fontSize: 22)),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      isZh
+                          ? '21 天全功能预览 — 剩余 $daysLeft 天'
+                          : '21-Day Preview — $daysLeft ${daysLeft == 1 ? 'day' : 'days'} left',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Text(
+                isZh
+                    ? '$quota 次 AI/天 · 全部功能解锁 · ${entitlement.previewDaysTotal} 天共 $totalQuota 次'
+                    : '$quota AI/day · Full access · $totalQuota total over ${entitlement.previewDaysTotal} days',
+                style: TextStyle(color: Colors.white70, fontSize: 12),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                isZh
+                    ? '预览结束后，核心功能永久免费。购买 Pro 解锁全部功能。'
+                    : 'After preview, core features remain free forever. Buy Pro to unlock everything.',
+                style: TextStyle(color: Colors.white60, fontSize: 11),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // RESTRICTED — after preview, no purchase
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.orange.shade50,
+          border: Border.all(color: Colors.orange.shade300),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
               children: [
-                Text('\u2705', style: TextStyle(fontSize: 24)),
+                const Text('⚡', style: TextStyle(fontSize: 22)),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              isZh
-                                  ? '试用中 \u2014 剩余 $daysLeft 天'
-                                  : 'Trial Active \u2014 $daysLeft ${daysLeft == 1 ? 'day' : 'days'} remaining',
-                              style: TextStyle(
-                                color: Colors.green.shade800,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 14,
-                              ),
-                            ),
-                          ),
-                        ],
+                      Text(
+                        isZh ? '免费模式' : 'Free Mode',
+                        style: TextStyle(
+                          color: Colors.orange.shade800,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
                       ),
                       Text(
                         isZh
-                            ? '每天 20 次请求 · 您可以随时添加自己的 Key'
-                            : '20 requests/day \u00b7 You can add your own key anytime',
-                        style: TextStyle(color: Colors.green.shade700, fontSize: 12),
+                            ? 'AI: $remaining/3 次每月 · 编辑习惯、备份、新建习惯已暂停'
+                            : 'AI: $remaining/3 per month · Edit habits, backup, new habits paused',
+                        style: TextStyle(color: Colors.orange.shade700, fontSize: 12),
                       ),
                     ],
                   ),
                 ),
               ],
             ),
-          ),
-        );
-
-      case TrialStatus.expired:
-        return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.orange.shade50,
-              border: Border.all(color: Colors.orange.shade300),
-              borderRadius: BorderRadius.circular(12),
+            const SizedBox(height: 6),
+            Text(
+              isZh
+                  ? '✅ 记录笔记、查看历史、打卡已有习惯 — 永久免费'
+                  : '✅ Notes, history, check-in existing habits — free forever',
+              style: TextStyle(color: Colors.orange.shade600, fontSize: 11),
             ),
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const Text('\u23F0', style: TextStyle(fontSize: 24)),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            isZh ? '试用已过期' : 'Trial Expired',
-                            style: TextStyle(
-                              color: Colors.orange.shade800,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                            ),
-                          ),
-                          Text(
-                            isZh
-                                ? '在下方添加您自己的 API Key 以继续使用 AI 助手。'
-                                : 'Add your own API key below to continue using the AI assistant.',
-                            style: TextStyle(color: Colors.orange.shade700, fontSize: 12),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const PaywallScreen()),
+                  );
+                },
+                icon: const Icon(Icons.workspace_premium, size: 18),
+                label: Text(
+                  isZh
+                      ? '获取 Blinking Pro — \$9.99 一次购买，终身使用'
+                      : 'Get Blinking Pro — \$9.99 once, lifetime access',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
-                const SizedBox(height: 10),
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton(
-                    onPressed: () => launchUrl(
-                      Uri.parse('https://openrouter.ai/keys'),
-                      mode: LaunchMode.externalApplication,
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.orange.shade800,
-                    ),
-                    child: Text(
-                      isZh ? '免费获取 Key \u2192' : 'Get a free key \u2192',
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                  ),
+                style: FilledButton.styleFrom(
+                  backgroundColor: Colors.orange.shade700,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
                 ),
-              ],
+              ),
             ),
-          ),
-        );
-    }
+            const SizedBox(height: 8),
+            Text(
+              isZh
+                  ? 'Pro 包含：全部功能 + 1,200 AI/年。用完可购买 \$4.99/500 次补充包。'
+                  : 'Pro includes: all features + 1,200 AI/year. Top-up \$4.99/500 when needed.',
+              style: TextStyle(color: Colors.orange.shade600, fontSize: 11),
+            ),
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const ByokSetupScreen()),
+                );
+              },
+              icon: const Icon(Icons.vpn_key, size: 16),
+              label: Text(isZh ? '或使用自己的 API Key（免费，无限次）' : 'Or BYOK — free, unlimited (own key)'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.orange.shade800,
+                padding: const EdgeInsets.symmetric(vertical: 10),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -408,145 +428,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
       body: ListView(
         children: [
-          // AI / LLM Provider Settings
-          _buildSectionHeader(isZh ? 'AI 服务配置' : 'AI Provider'),
-          _buildTrialBanner(isZh),
-          ...List.generate(_displayProviders.length, (index) {
-            final trialActive = _trialService?.getStatus() == TrialStatus.active;
-            final isTrial = trialActive && index == 0;
-            final provider = _displayProviders[index];
-            final userIndex = trialActive ? index - 1 : index;
-            final isSelected = !isTrial && _selectedLlmIndex == userIndex;
-            final hasKey = (provider['apiKey'] ?? '').isNotEmpty;
-            return Container(
-              color: (isSelected && hasKey)
-                  ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.08)
-                  : null,
-              child: ListTile(
-                leading: isTrial
-                    ? const Icon(Icons.card_giftcard, color: Colors.green)
-                    : Radio<int>(
-                        value: userIndex,
-                        groupValue: _selectedLlmIndex,
-                        onChanged: (value) {
-                          setState(() => _selectedLlmIndex = value!);
-                          _saveLlmSettings();
-                        },
-                      ),
-                title: Row(
-                  children: [
-                    Text(provider['name']!),
-                    if (isTrial) ...[
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: Colors.green,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          isZh ? '试用' : 'Trial',
-                          style: const TextStyle(
-                              fontSize: 10,
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                    ] else if (isSelected && hasKey) ...[
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.primary,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          isZh ? '使用中' : 'Active',
-                          style: const TextStyle(
-                              fontSize: 10,
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-                subtitle: Text(
-                  isTrial
-                      ? (() {
-                          final days = _trialService?.trialDaysLeft ?? 0;
-                          if (isZh) {
-                            return '剩余 $days 天 \u00b7 每天 20 次请求';
-                          }
-                          return '$days ${days == 1 ? 'day' : 'days'} remaining \u00b7 20 requests/day';
-                        })()
-                      : (hasKey
-                          ? '${isZh ? "模型" : "Model"}: ${provider['model']}'
-                          : isZh
-                              ? '模型: ${provider['model']} \u00b7 未配置 Key'
-                              : 'Model: ${provider['model']} \u00b7 No key set'),
-                ),
-                trailing: isTrial
-                    ? IconButton(
-                        icon: const Icon(Icons.info_outline, size: 20),
-                        onPressed: () => _showTrialInfoDialog(context, isZh),
-                      )
-                    : IconButton(
-                        icon: const Icon(Icons.edit, size: 20),
-                        onPressed: () => _showEditLlmDialog(context, userIndex, isZh),
-                      ),
-                selected: isSelected,
-                onTap: isTrial
-                    ? null
-                    : () {
-                        setState(() => _selectedLlmIndex = userIndex);
-                        _saveLlmSettings();
-                      },
-              ),
-            );
-          }),
+          // AI Section
+          _buildSectionHeader(isZh ? 'AI' : 'AI'),
+          _buildEntitlementBanner(isZh),
+          // BYOK entry point
           ListTile(
-            leading: const Icon(Icons.add, color: Colors.blue),
-            title: Text(isZh ? '添加 AI 服务' : 'Add AI Provider'),
-            onTap: () => _showAddLlmDialog(context, isZh),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.amber.shade50,
-                border: Border.all(color: Colors.amber.shade300),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              padding: const EdgeInsets.all(12),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(Icons.info_outline, size: 18, color: Colors.amber.shade800),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      isZh
-                          ? 'AI 功能需要您自行提供 API Key。您需自行承担：\n'
-                            '• API Key 的安全保管\n'
-                            '• 使用 AI 服务产生的 Token 费用\n'
-                            '• 发送给 AI 提供商的数据隐私（受该提供商条款约束）\n'
-                            'Blinking 不收集任何您的数据，AI 请求由您的设备直接发送至 AI 提供商。'
-                          : 'The AI feature requires your own API key. You are responsible for:\n'
-                            '• Keeping your API key secure\n'
-                            '• Any token costs charged by your AI provider\n'
-                            '• Data privacy with your AI provider (governed by their terms)\n'
-                            'Blinking does not collect your data. AI requests are sent directly from your device to the AI provider.',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.amber.shade900,
-                        height: 1.5,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+            leading: const Icon(Icons.vpn_key, color: Colors.indigo),
+            title: Text(isZh ? '使用自己的 Key' : 'Use my own key'),
+            subtitle: Text(
+              isZh ? 'OpenAI / Anthropic，你的数据直达提供商' : 'OpenAI / Anthropic, your data goes direct',
+              style: const TextStyle(fontSize: 12),
             ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ByokSetupScreen()),
+              );
+            },
           ),
           const Divider(),
 
@@ -700,7 +599,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
             leading: const Icon(Icons.archive_outlined),
             title: Text(isZh ? '完整备份 (ZIP)' : 'Full Backup (ZIP)'),
             subtitle: Text(isZh ? '包含所有数据和多媒体文件' : 'All data and media files'),
-            onTap: () => _handleBackup(context, isZh),
+            onTap: () async {
+              final entitlement = context.read<EntitlementService>();
+              if (!entitlement.canBackup && entitlement.isRestricted) {
+                final wentToPaywall = await SoftPromptService.showReengage(
+                  context,
+                  triggerKey: 'backup',
+                  title: isZh ? '备份功能需要 Pro' : 'Backup requires Pro',
+                  body: isZh
+                      ? '跨设备备份与恢复是 Pro 功能。你的笔记仍然安全地保存在本地。'
+                      : 'Backup & restore across devices is part of Pro. Your notes are still safe locally.',
+                );
+                if (wentToPaywall) return;
+              }
+              _handleBackup(context, isZh);
+            },
           ),
           ListTile(
             leading: const Icon(Icons.table_chart_outlined),
@@ -1262,6 +1175,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _handleBackup(BuildContext context, bool isZh) async {
     var phase = 0;
     var range = _BackupRange.all;
+    var includeMedia = false;
     DateTime? customFrom;
     DateTime? customTo;
     var progress = 0.0;
@@ -1365,6 +1279,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ],
                       ),
                     ],
+                    const Divider(height: 24),
+                    SwitchListTile(
+                      title: Text(isZh ? '包含图片' : 'Include photos'),
+                      subtitle: Text(isZh
+                          ? '文件较大, 关闭后仅导出文本数据 (~200 KB)'
+                          : 'Large files — off for text-only backup (~200 KB)'),
+                      value: includeMedia,
+                      onChanged: (v) => setDialogState(() => includeMedia = v),
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                    ),
                   ],
                 ),
               ),
@@ -1382,6 +1307,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       final path = await exportService.exportAll(
                         startDate: startDate,
                         endDate: endDate,
+                        excludeMedia: !includeMedia,
                         onProgress: (p) {
                           if (dialogContext.mounted) {
                             setDialogState(() {
@@ -1597,14 +1523,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
       final storage = context.read<StorageService>();
       await storage.restoreFromBackup(file, onProgress: onProgress);
 
-      if (!dialogContext.mounted) return;
-      Navigator.pop(dialogContext);
-
       if (!context.mounted) return;
       context.read<EntryProvider>().loadEntries();
       context.read<RoutineProvider>().loadRoutines();
       context.read<TagProvider>().loadTags();
       await context.read<AiPersonaProvider>().reload();
+
+      if (!dialogContext.mounted) return;
+      Navigator.pop(dialogContext);
 
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

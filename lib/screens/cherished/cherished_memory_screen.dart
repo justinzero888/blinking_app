@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 import '../../l10n/app_localizations.dart';
 import '../../providers/locale_provider.dart';
 import '../../providers/summary_provider.dart';
@@ -36,6 +39,9 @@ class _InsightsContent extends StatelessWidget {
     final years = jarProvider.yearsWithData;
 
     if (summary.totalEntries == 0) {
+      if (summary.isLoading) {
+        return const Center(child: CircularProgressIndicator());
+      }
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(32),
@@ -64,6 +70,12 @@ class _InsightsContent extends StatelessWidget {
         const SizedBox(height: 24),
         _SectionCard(
           title: isZh ? '📅 写作足迹' : '📅 Writing Activity',
+          trailing: summary.totalEntries > 0
+              ? Text(
+                  '${summary.totalEntries} ${isZh ? "条" : "entries"}',
+                  style: TextStyle(color: Colors.grey[400], fontSize: 12),
+                )
+              : null,
           child: _CalendarHeatmap(entriesPerDay: summary.entriesPerDay),
         ),
         const SizedBox(height: 24),
@@ -95,6 +107,8 @@ class _InsightsContent extends StatelessWidget {
           title: isZh ? '🔬 标签与情绪' : '🔬 Tag Impact on Mood',
           child: _TagMoodSection(summary: summary, isZh: isZh),
         ),
+        const SizedBox(height: 24),
+        _AiInsightsSection(summary: summary, isZh: isZh),
         const SizedBox(height: 24),
         _EmojiJarSection(years: years, isZh: isZh),
       ],
@@ -336,23 +350,22 @@ class _CalendarHeatmap extends StatelessWidget {
 
   const _CalendarHeatmap({required this.entriesPerDay});
 
-  static const double _cellSize = 13;
-  static const double _gap = 2.5;
+  static const double _cellSize = 16;
+  static const double _gap = 3;
   static const List<String> _dayLabels = ['', 'Mon', '', 'Wed', '', 'Fri', ''];
 
   @override
   Widget build(BuildContext context) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    final yearAgo = today.subtract(const Duration(days: 365));
 
     DateTime startDate;
     if (entriesPerDay.isNotEmpty) {
       final earliest =
           entriesPerDay.keys.reduce((a, b) => a.isBefore(b) ? a : b);
-      startDate = earliest.isBefore(yearAgo) ? earliest : yearAgo;
+      startDate = DateTime(earliest.year, earliest.month, 1);
     } else {
-      startDate = yearAgo;
+      startDate = DateTime(now.year, now.month, 1).subtract(const Duration(days: 90));
     }
     while (startDate.weekday != DateTime.sunday) {
       startDate = startDate.subtract(const Duration(days: 1));
@@ -462,9 +475,9 @@ class _CalendarHeatmap extends StatelessWidget {
           children: [
             const Text('Less ', style: TextStyle(fontSize: 9, color: Colors.grey)),
             _legendBox(const Color(0xFFE8E8E8)),
-            _legendBox(const Color(0xFF2A9D8F).withValues(alpha: 0.3)),
-            _legendBox(const Color(0xFF2A9D8F).withValues(alpha: 0.6)),
+            _legendBox(const Color(0xFF9CD4CB)),
             _legendBox(const Color(0xFF2A9D8F)),
+            _legendBox(const Color(0xFF0D3B34)),
             const Text(' More', style: TextStyle(fontSize: 9, color: Colors.grey)),
           ],
         ),
@@ -483,10 +496,10 @@ class _CalendarHeatmap extends StatelessWidget {
   Color _heatColor(int count, bool isFuture) {
     if (isFuture) return Colors.grey[100]!;
     if (count == 0) return const Color(0xFFE8E8E8);
-    if (count == 1) return const Color(0xFF2A9D8F).withValues(alpha: 0.3);
-    if (count <= 3) return const Color(0xFF2A9D8F).withValues(alpha: 0.5);
-    if (count <= 5) return const Color(0xFF2A9D8F).withValues(alpha: 0.8);
-    return const Color(0xFF2A9D8F);
+    if (count == 1) return const Color(0xFF9CD4CB);
+    if (count <= 3) return const Color(0xFF2A9D8F);
+    if (count <= 5) return const Color(0xFF1A7A6E);
+    return const Color(0xFF0D3B34);
   }
 
   Widget _legendBox(Color color) {
@@ -1484,5 +1497,306 @@ class _EmptyChart extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class _AiInsightsSection extends StatefulWidget {
+  final SummaryProvider summary;
+  final bool isZh;
+
+  const _AiInsightsSection({required this.summary, required this.isZh});
+
+  @override
+  State<_AiInsightsSection> createState() => _AiInsightsSectionState();
+}
+
+class _AiInsightsSectionState extends State<_AiInsightsSection> {
+  String? _insightsText;
+  bool _loading = false;
+  String? _error;
+
+  @override
+  Widget build(BuildContext context) {
+    final hasInsights =
+        _insightsText != null && _insightsText!.isNotEmpty;
+
+    if (widget.summary.totalEntries == 0) {
+      return SizedBox(
+        height: 80,
+        child: Center(
+          child: Text(
+            widget.isZh
+                ? '开始记录以获取 AI 洞察'
+                : 'Start journaling for AI insights',
+            style: const TextStyle(color: Colors.grey, fontSize: 13),
+          ),
+        ),
+      );
+    }
+
+    return _SectionCard(
+      title: widget.isZh ? '🤖 AI 个性化洞察' : '🤖 AI Insights',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (_loading)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 20),
+              child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+            )
+          else if (hasInsights)
+            _buildInsightsCard()
+          else if (_error != null)
+            _buildErrorState()
+          else
+            _buildFallbackInsights(),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: _loading ? null : _generateInsights,
+              icon: Icon(
+                Icons.auto_awesome,
+                size: 16,
+                color: _loading ? Colors.grey : null,
+              ),
+              label: Text(
+                _loading
+                    ? (widget.isZh ? '正在生成...' : 'Generating...')
+                    : (widget.isZh ? '刷新洞察' : 'Refresh Insights'),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInsightsCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Theme.of(context)
+            .colorScheme
+            .primaryContainer
+            .withValues(alpha: 0.2),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            _insightsText!,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  height: 1.5,
+                ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              const Icon(Icons.auto_awesome, size: 14, color: Colors.grey),
+              const SizedBox(width: 4),
+              Text(
+                widget.isZh ? 'AI 生成' : 'AI-generated',
+                style: const TextStyle(fontSize: 11, color: Colors.grey),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFallbackInsights() {
+    final summary = widget.summary;
+    final isZh = widget.isZh;
+    final lines = <String>[];
+
+    if (summary.currentStreak > 1) {
+      lines.add(isZh
+          ? '你已经连续记录了 ${summary.currentStreak} 天 — 继续加油！'
+          : "You've written for ${summary.currentStreak} days in a row — keep going!");
+    }
+    if (summary.longestStreak > 1) {
+      lines.add(isZh
+          ? '你最长连续记录是 ${summary.longestStreak} 天，能打破吗？'
+          : 'Your longest streak is ${summary.longestStreak} days — can you beat it?');
+    }
+    final topTag = summary.tagMoodCorrelation.isNotEmpty
+        ? summary.tagMoodCorrelation.first
+        : null;
+    if (topTag != null) {
+      final tagProvider = context.read<TagProvider>();
+      final tag = tagProvider.tags.firstWhere(
+        (t) => t.id == topTag.tagId,
+        orElse: () => tagProvider.tags.first,
+      );
+      final name = isZh
+          ? tag.name
+          : (tag.nameEn.isNotEmpty ? tag.nameEn : tag.name);
+      lines.add(isZh
+          ? '"$name" 标签让你最开心 😊'
+          : '"$name" entries make you happiest 😊');
+    }
+    final listsCount = summary.totalLists;
+    if (listsCount > 0) {
+      final rate = (summary.checklistCompletionRate * 100).round();
+      lines.add(isZh
+          ? '你创建了 $listsCount 个清单，平均完成率 $rate%'
+          : 'You created $listsCount lists, avg $rate% completion');
+    }
+
+    if (lines.isEmpty) {
+      lines.add(isZh ? '继续记录以获取更多洞察' : 'Keep journaling for more insights');
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.grey[50],
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: lines.map((l) {
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('• ', style: TextStyle(color: Colors.grey)),
+                Expanded(
+                  child: Text(
+                    l,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          height: 1.4,
+                        ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildErrorState() {
+    return GestureDetector(
+      onTap: _generateInsights,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.orange[50],
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Text(
+          _error!,
+          style: const TextStyle(fontSize: 13, color: Colors.orange),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _generateInsights() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+
+    try {
+      final data = widget.summary.generateInsightsData(isZh: widget.isZh);
+      final prompt = widget.isZh
+          ? '你是一个个人日记洞察助手。根据以下用户数据，生成 3-5 条个性化、鼓励性的洞察。保持温暖、支持、数据驱动。突出模式、成就和建议。保持 150 字以内。不要使用 markdown。\n\n数据：${_formatJson(data)}'
+          : 'You are a personal journaling insights assistant. Given the data below, generate 3-5 personalized, encouraging insights. Be warm, supportive, and data-driven. Highlight patterns, achievements, and suggestions. Keep to 150 words max. Do not use markdown.\n\nData: ${_formatJson(data)}';
+
+      final systemPrompt = widget.isZh
+          ? '你是一个名为 Blinking（记忆闪烁）的个人日记洞察助手。保持回复温暖、鼓励、简洁。'
+          : 'You are a personal journaling insights assistant for Blinking. Keep responses warm, encouraging, and concise.';
+
+      final result = await _callLlm(systemPrompt, prompt);
+
+      if (mounted && result != null) {
+        setState(() {
+          _insightsText = result;
+          _loading = false;
+        });
+      } else if (mounted) {
+        setState(() {
+          _error = widget.isZh ? '无法生成洞察，点击重试' : "Couldn't generate insights. Tap to retry.";
+          _loading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _error = widget.isZh ? '无法生成洞察，点击重试' : "Couldn't generate insights. Tap to retry.";
+          _loading = false;
+        });
+      }
+    }
+  }
+
+  Future<String?> _callLlm(String systemPrompt, String prompt) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final jsonStr = prefs.getString('llm_providers');
+      if (jsonStr == null || jsonStr.isEmpty) return null;
+
+      final providers = jsonDecode(jsonStr) as List<dynamic>;
+      if (providers.isEmpty) return null;
+
+      final selectedIndex = prefs.getInt('llm_selected_index') ?? 0;
+      final idx = selectedIndex.clamp(0, providers.length - 1);
+      final config = providers[idx] as Map<String, dynamic>;
+      final apiKey = config['apiKey'] as String? ?? '';
+      final baseUrl = config['baseUrl'] as String? ?? '';
+      final model = config['model'] as String? ?? 'qwen/qwen3.5-flash-02-23';
+
+      if (apiKey.isEmpty || baseUrl.isEmpty) return null;
+
+      final messages = [
+        {'role': 'system', 'content': systemPrompt},
+        {'role': 'user', 'content': prompt},
+      ];
+
+      final response = await http.post(
+        Uri.parse(baseUrl),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $apiKey',
+        },
+        body: jsonEncode({
+          'model': model,
+          'messages': messages,
+          'max_tokens': 300,
+          'temperature': 0.7,
+        }),
+      ).timeout(const Duration(seconds: 15));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final choices = data['choices'] as List<dynamic>;
+        if (choices.isNotEmpty) {
+          return choices[0]['message']['content'] as String?;
+        }
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  String _formatJson(Map<String, dynamic> data) {
+    final sb = StringBuffer();
+    for (final e in data.entries) {
+      if (e.value != null) {
+        sb.writeln('${e.key}: ${e.value}');
+      }
+    }
+    return sb.toString();
   }
 }

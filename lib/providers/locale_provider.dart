@@ -1,28 +1,39 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../core/config/constants.dart';
 
 /// Locale provider for managing language
 class LocaleProvider extends ChangeNotifier {
-  Locale _locale = const Locale('en');  // Default to English
-  
+  Locale _locale = const Locale('en');
+
   Locale get locale => _locale;
-  
+
   /// Supported locales
   static const List<Locale> supportedLocales = [
     Locale('en'),
     Locale('zh'),
   ];
-  
-  /// Load locale preference from storage
+
+  /// Load locale preference from storage, falling back to system locale
   Future<void> loadLocale() async {
     final prefs = await SharedPreferences.getInstance();
     final langCode = prefs.getString(AppConstants.keyLanguage);
-    
+
     if (langCode != null) {
       _locale = Locale(langCode);
-      notifyListeners();
+    } else {
+      _locale = _detectSystemLocale();
+      await prefs.setString(AppConstants.keyLanguage, _locale.languageCode);
     }
+    notifyListeners();
+  }
+
+  Locale _detectSystemLocale() {
+    final systemLocale = PlatformDispatcher.instance.locale;
+    final code = systemLocale.languageCode;
+    if (code == 'zh') return const Locale('zh');
+    return const Locale('en');
   }
   
   /// Set locale

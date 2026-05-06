@@ -104,7 +104,12 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
   }
 
   Future<void> _pickImage() async {
-    final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
+    final XFile? image = await _picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 1920,
+      maxHeight: 1920,
+      imageQuality: 85,
+    );
     if (image != null) {
       final media = Media(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -119,7 +124,12 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
   }
 
   Future<void> _takePhoto() async {
-    final XFile? photo = await _picker.pickImage(source: ImageSource.camera);
+    final XFile? photo = await _picker.pickImage(
+      source: ImageSource.camera,
+      maxWidth: 1920,
+      maxHeight: 1920,
+      imageQuality: 85,
+    );
     if (photo != null) {
       final media = Media(
         id: DateTime.now().millisecondsSinceEpoch.toString(),

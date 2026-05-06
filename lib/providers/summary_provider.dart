@@ -26,6 +26,8 @@ class SummaryProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  bool get isLoading => _entryProvider.isLoading;
+
   SummaryScope get scope => _scope;
   void setScope(SummaryScope s) {
     _scope = s;
@@ -420,5 +422,160 @@ class SummaryProvider extends ChangeNotifier {
     final enCount =
         nonCjk.trim().split(RegExp(r'\s+')).where((s) => s.isNotEmpty).length;
     return cjkCount + enCount;
+  }
+
+  /// Build structured data payload for CT4 AI-generated insights.
+  /// Used as the user prompt sent to the LLM.
+  Map<String, dynamic> generateInsightsData({bool isZh = false}) {
+    final perDay = entriesPerDay;
+    final daysTracked = perDay.length;
+    final moodDist = moodDistribution;
+    final totalMoods = moodDist.values.fold<int>(0, (a, b) => a + b);
+
+    String? topEmotion;
+    int topEmotionCount = 0;
+    for (final e in moodDist.entries) {
+      if (e.value > topEmotionCount) {
+        topEmotion = e.key;
+        topEmotionCount = e.value;
+      }
+    }
+
+    final trend = emotionTrend;
+    final trendLabel = _trendLabel(trend);
+
+    final activeDay = mostActiveDayOfWeek;
+    final tags = topTags;
+
+    final correlations = tagMoodCorrelation;
+
+    final best = _bestMonth;
+
+    final topTagNames = <String>[];
+    for (final t in tags.take(3)) {
+      topTagNames.add('$t ($t.count)');
+    }
+
+    return {
+      'totalEntries': totalEntries,
+      'daysTracked': daysTracked,
+      'currentStreak': currentStreak,
+      'longestStreak': longestStreak,
+      'topEmotion': topEmotion != null
+          ? '$topEmotion (${(topEmotionCount / totalMoods * 100).round()}%)'
+          : null,
+      'moodTrend': trendLabel,
+      'mostActiveDay': activeDay != null ? _weekdayName(activeDay) : null,
+      'mostActiveHour': mostActiveHour,
+      'topTags': topTagNames,
+      'tagMoodCorrelation': correlations
+          .take(3)
+          .map((c) => {'tagId': c.tagId, 'avgMood': c.avgScore})
+          .toList(),
+      'checklistCompletion': checklistCompletionRate,
+      'bestMonth': best != null
+          ? '${best.month} (${best.entryCount} entries, avg mood ${best.avgMood.toStringAsFixed(1)})'
+          : null,
+      'wordCountAvg': averageEntryLength,
+      'totalLists': totalLists,
+    };
+  }
+
+  String _trendLabel(List<({DateTime date, double score})> trend) {
+    if (trend.length < 2) return 'not enough data';
+    final first = trend.first.score;
+    final last = trend.last.score;
+    if (last > first + 0.3) return 'improving';
+    if (last < first - 0.3) return 'declining';
+    return 'stable';
+  }
+
+  String _weekdayName(int weekday) {
+    const names = [
+      '',
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+      'Sunday'
+    ];
+    return names[weekday];
+  }
+
+  ({String month, int entryCount, double avgMood})? get _bestMonth {
+    final perDay = entriesPerDay;
+    if (perDay.isEmpty) return null;
+    final monthly = <String, List<DateTime>>{};
+    for (final day in perDay.keys) {
+      final key =
+          '${day.year}-${day.month.toString().padLeft(2, '0')}';
+      monthly.putIfAbsent(key, () => []);
+      monthly[key]!.add(day);
+    }
+    final entries = _entryProvider.allEntries;
+    final emotionEntries =
+        entries.where((e) => e.emotion != null).toList();
+
+    String? bestMonth;
+    int bestEntries = 0;
+    double bestMood = 0;
+
+    for (final e in monthly.entries) {
+      final count = e.value
+          .fold<int>(0, (sum, d) => sum + (perDay[d] ?? 0));
+      if (count > bestEntries) {
+        bestEntries = count;
+        bestMonth = e.key;
+      }
+    }
+
+    if (bestMonth == null) return null;
+
+    final monthEmotionEntries = emotionEntries.where((e) {
+      final key =
+          '${e.createdAt.year}-${e.createdAt.month.toString().padLeft(2, '0')}';
+      return key == bestMonth;
+    }).toList();
+
+    if (monthEmotionEntries.isNotEmpty) {
+      double total = 0;
+      for (final e in monthEmotionEntries) {
+        total += _emotionScores[e.emotion] ?? 3.0;
+      }
+      bestMood = (total / monthEmotionEntries.length * 10).roundToDouble() / 10;
+    }
+
+    const monthNames = [
+      '',
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December'
+    ];
+    final parts = bestMonth!.split('-');
+    final monthIdx = int.parse(parts[1]);
+    final year = parts[0];
+
+    return (
+      month: '${monthNames[monthIdx]} $year',
+      entryCount: bestEntries,
+      avgMood: bestMood,
+    );
+  }
+
+  /// Data fingerprint for cache invalidation in CT4.
+  /// Changes when significant data changes.
+  String get insightsDataFingerprint {
+    return '${totalEntries}_${entriesPerDay.length}_${currentStreak}_${(checklistCompletionRate * 100).round()}';
   }
 }

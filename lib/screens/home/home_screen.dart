@@ -10,6 +10,7 @@ import '../../models/entry.dart';
 import '../../widgets/calendar_widget.dart';
 import '../../widgets/entry_card.dart';
 import '../../widgets/emoji_jar.dart';
+import '../../core/services/soft_prompt_service.dart';
 import '../../l10n/app_localizations.dart';
 import '../add_entry_screen.dart';
 import '../moment/entry_detail_screen.dart';
@@ -412,8 +413,9 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         onTap: readOnly
             ? null
-            : () {
+            : () async {
                 context.read<RoutineProvider>().toggleComplete(routine.id, date: _selectedDate);
+                await SoftPromptService.maybeShow(context);
               },
       ),
     );

@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'core/config/theme.dart';
 import 'core/services/storage_service.dart';
+import 'core/services/trial_service.dart';
+import 'core/services/entitlement_service.dart';
+import 'core/services/purchases_service.dart';
 import 'repositories/repositories.dart';
 import 'providers/routine_provider.dart';
 import 'providers/entry_provider.dart';
@@ -17,6 +21,8 @@ import 'screens/moment/moment_screen.dart';
 import 'screens/routine/routine_screen.dart';
 import 'screens/cherished/cherished_memory_screen.dart';
 import 'screens/settings/settings_screen.dart';
+import 'screens/onboarding/transition_screen.dart';
+import 'screens/onboarding/onboarding_screen.dart';
 import 'screens/add_entry_screen.dart';
 import 'widgets/floating_robot.dart';
 import 'l10n/app_localizations.dart';
@@ -83,6 +89,18 @@ class BlinkingApp extends StatelessWidget {
         // LlmConfigNotifier — signals when API key / provider changes
         ChangeNotifierProvider(create: (_) => LlmConfigNotifier()),
 
+        // EntitlementService — preview / restricted / paid state machine
+        ChangeNotifierProvider(create: (_) {
+          final service = EntitlementService();
+          SharedPreferences.getInstance().then((prefs) {
+            service.init(prefs);
+          });
+          return service;
+        }),
+
+        // PurchasesService — RevenueCat IAP
+        ChangeNotifierProvider(create: (_) => PurchasesService()),
+
         // SummaryProvider — depends on EntryProvider + RoutineProvider
         ChangeNotifierProxyProvider2<EntryProvider, RoutineProvider,
             SummaryProvider>(
@@ -135,6 +153,38 @@ class _MainScreenState extends State<MainScreen> {
       const InsightsScreen(),
       const SettingsScreen(),
     ];
+    _checkOnboarding();
+  }
+
+  Future<void> _checkOnboarding() async {
+    await Future.delayed(const Duration(milliseconds: 300));
+    if (!mounted) return;
+
+    final completed = await OnboardingScreen.hasCompleted();
+    if (!completed && mounted) {
+      await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const OnboardingScreen()),
+      );
+    }
+    _checkTransitionScreen();
+  }
+
+  Future<void> _checkTransitionScreen() async {
+    await Future.delayed(const Duration(milliseconds: 1500));
+    if (!mounted) return;
+
+    final entitlement = context.read<EntitlementService>();
+    final shown = await TransitionScreen.hasBeenShown();
+
+    if (!shown &&
+        entitlement.isRestricted &&
+        entitlement.wasPreview) {
+      await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const TransitionScreen()),
+      );
+    }
   }
 
   void _onTabTapped(int index) {

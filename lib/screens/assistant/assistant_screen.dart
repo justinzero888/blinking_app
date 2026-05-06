@@ -6,6 +6,7 @@ import '../../providers/ai_persona_provider.dart';
 import '../../providers/locale_provider.dart';
 import '../../models/entry.dart';
 import '../../core/services/llm_service.dart';
+import '../../core/services/soft_prompt_service.dart';
 
 class AssistantScreen extends StatefulWidget {
   const AssistantScreen({super.key});
@@ -456,6 +457,7 @@ class _AssistantScreenState extends State<AssistantScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(isZhSnack ? '反思已保存到记录 ✨' : 'Reflection saved ✨')),
       );
+      await SoftPromptService.maybeShow(context);
     }
   }
 

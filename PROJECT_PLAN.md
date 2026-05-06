@@ -61,15 +61,28 @@
 | 26 | Insights Phase 2 — CT1: Writing Stats (avg words, active day, peak hour) | Done |
 | 27 | Insights Phase 2 — CT3: Tag-Mood Correlation (tag → mood score, min 3 entries) | Done |
 | 28 | Insights Phase 2 — CT2: Checklist Analytics (lists, completion rate, carry-forward, top item) | Done |
+| 29 | M1 Foundation — EntitlementService (server-authoritative state + quotas) | Done |
+| 30 | M1 Foundation — Floating robot rewrite (entitlement-aware state matrix, long-press overlay) | Done |
+| 31 | M1 Foundation — BYOK setup screen (6 providers, dropdown, ping validation) | Done |
+| 32 | M1 Foundation — CT4: AI-Generated Insights (LLM + rule-based fallback, Refresh button) | Done |
+| 33 | M1 Foundation — Settings → AI entitlement banner (PREVIEW/RESTRICTED/BYOK) | Done |
+| 34 | M2 Purchase — Paywall screen ($9.99 Pro, feature checklist, in-app legal docs) | Done |
+| 35 | M2 Purchase — Day 21 Transition screen (what stays vs pauses, one-time guard) | Done |
+| 36 | Server: Receipt validation endpoints (purchase, restore) + receipts D1 table | Done |
+| 37 | Server: Entitlement state machine (init, status, chat) + JWT + quota counter | Done |
+| 38 | Client: IAP integration (RevenueCat + PurchasesService + paywall wiring) | Done |
 
 ### Remaining / Blocked
 | # | Item | Status |
 |---|------|--------|
-| 1 | Firebase / Cloud Sync | Not started — deps commented out |
-| 2 | Custom emoji images E-1/E-2 | Deferred |
-| 3 | **PROP-3: Promote Android to Production on Google Play** | ~15 min manual — launch-ready |
-| 4 | App Trial & Purchase Flow — implementation (Issues #8, #12) | Designed, not implemented |
-| 5 | **Issue #15: Insights Phase 2 — CT4: AI-Generated Insights** | ~1.5h remaining — depends on trial flow |
+| 1 | **S0/A0: Setup IAP (human)** — RevenueCat, App Store Connect, Play Console (~2h) | ⬜ Pending — see `docs/plans/2026-05-04-iap-setup-guide.md` |
+| 2 | **Set server secrets + deploy** — JWT_SECRET, ENTITLEMENT_ENABLED, D1 migrations | ~10min — deploy-ready |
+| 3 | **PROP-3: Promote Android to Production on Google Play** | ~1.5h — launch-ready |
+| 4 | ~~M3 Onboarding~~ | ✅ Done |
+| 5 | ~~Routine redesign (Build/Do/Reflect)~~ | ✅ Done |
+| 6 | M4 Top-ups (denial sheet, consumable IAP) | ~3h — post-launch |
+| 7 | Firebase / Cloud Sync | Not started — deps commented out |
+| 8 | Custom emoji images E-1/E-2 | Deferred |
 
 ## Technical Architecture
 
@@ -302,24 +315,33 @@ flutter build appbundle --release
 
 ## Next Steps
 
-1. **PROP-3: Promote Android to Production on Google Play** (~15 min) — smoke tests → version bump `1.1.0` → Play Store production
-2. v1.1.0: Trial & Purchase Flow implementation (~1.5h) — required for launch
-3. v1.1.0: Insights Phase 2 — CT2: Checklist Analytics (~45min) + CT4: AI-Generated Insights (~1.5h)
-4. Firebase / Cloud Sync (future, deps already in pubspec)
+1. **Setup IAP (human)** — RevenueCat, App Store Connect, Play Console (~2h). See `docs/plans/2026-05-04-iap-setup-guide.md`
+2. **Set server secrets + deploy** — JWT_SECRET, ENTITLEMENT_ENABLED, D1 migrations (~10min)
+3. **PROP-3: Promote Android to Production on Google Play** (~1.5h) — smoke tests → version bump `1.1.0` → AAB → Play Store
+4. M3 Onboarding (post-launch, ~3.5h) — first-launch flow, soft prompts, re-engagement triggers
+5. Firebase / Cloud Sync (future)
+
+## Build Commands
+| Platform | Command | Output |
+|----------|---------|--------|
+| Android APK | `flutter build apk --release` | `build/app/outputs/flutter-apk/app-release.apk` |
+| Android AAB | `flutter build appbundle --release` | `build/app/outputs/bundle/release/app-release.aab` |
+| iOS IPA | See `docs/ios-testflight-build-push-guide.md` | `build/ios/ipa/blinking.ipa` |
 
 ## Active Plans
 
 | Plan | Status | Link |
 |------|--------|------|
 | **Blinking Launch Plan (Android + iOS)** | **Active** | [2026-05-02](docs/plans/blinking-launch-plan-2026-05-02.md) |
-| **Insights Tab Enhancement (Issue #15)** | **Active — CT1+CT3 done, CT2+CT4 remaining** | [2026-05-03](docs/plans/2026-05-03-insights-tab-enhancement.md) |
-| **Insights CT1+CT3 UAT** | ✅ Passed (12/12) | [2026-05-04](docs/plans/2026-05-04-insights-phase2-ct1-ct3-uat.md) |
-| App Trial & Purchase Flow (Issues #8, #12) | Designed | [2026-05-03](docs/plans/2026-05-03-trial-purchase-flow-design.md) |
-| 7-Day Trial API Key Flow (PROP-6) | ✅ Complete | [2026-04-30-prop-6-trial-api-key-plan.md](docs/plans/2026-04-30-prop-6-trial-api-key-plan.md) |
-| Daily Checklist Entry (PROP-9) | ✅ Complete | [2026-04-30-prop-9-daily-checklist-plan.md](docs/plans/2026-04-30-prop-9-daily-checklist-plan.md) |
-| UAT — PROP-9 | ✅ Passed (14/15) | [2026-05-01-prop-9-uat-test-cases.md](docs/plans/2026-05-01-prop-9-uat-test-cases.md) |
-| Launch Readiness (Pre/Post) | Superseded | [2026-05-01](docs/plans/launch_readiness_2026-05-01.md) |
-| iOS Release | Moved to ClaudeDev/system-upgrade | [system-upgrade/master_plan.md](../system-upgrade/master_plan.md) |
+| **Trial → Purchase → BYOK Implementation Plan** | **Active** | [2026-05-04](docs/plans/2026-05-04-trial-purchase-implementation-plan.md) |
+| **IAP Setup Guide 🆕** | **Active** | [2026-05-04](docs/plans/2026-05-04-iap-setup-guide.md) |
+| **App Trial & Purchase Flow (v1)** | 📄 Reference | [2026-05-03](docs/plans/2026-05-03-trial-purchase-flow-design.md) |
+| **Trial/Purchase Design Flows (v1)** | 📄 Authoritative | [2026-05-04](docs/plans/2026-05-04-Blinking-Trial-Purchase-Design-Flows.md) |
+| **Insights Tab Enhancement (Issue #15)** | ✅ Complete (C1-C4, CT1-CT4) | [2026-05-03](docs/plans/2026-05-03-insights-tab-enhancement.md) |
+| Insights CT1+CT3 UAT | ✅ Passed (12/12) | [2026-05-04](docs/plans/2026-05-04-insights-phase2-ct1-ct3-uat.md) |
+| Insights CT2 UAT | ✅ Passed (8/8) | [2026-05-04](docs/plans/2026-05-04-insights-phase2-ct2-uat.md) |
+| M1 Foundation UAT | ✅ Passed (20/20) | [2026-05-04](docs/plans/2026-05-04-m1-foundation-uat.md) |
+| 7-Day Trial API Key Flow (PROP-6) | ✅ Complete (superseded) | [2026-04-30](docs/plans/2026-04-30-prop-6-trial-api-key-plan.md) |
 
 ## Contact
 - Developer: Justin

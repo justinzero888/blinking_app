@@ -318,13 +318,14 @@ This message is:
 
 | # | Item | Effort | Status |
 |---|------|:------:|--------|
+| A0 | **Setup IAP (human)** — RevenueCat project, Play Console product, RevenueCat SDK keys | ~2h | ⬜ Pending — see `docs/plans/2026-05-04-iap-setup-guide.md` |
 | A1 | Carry-forward simplified: past entries now view-only (no toggle, no edit save) | Done | ✅ Done |
 | A2 | Pre-launch smoke tests (15 test cases from launch readiness plan) | ~30min | ⬜ Pending |
 | A3 | Review Play Store listing: title, description, screenshots | ~30min | ⬜ Pending |
 | A4 | Create feature graphic (1024×500) | ~1h | ⬜ Pending |
 | A5 | Generate phone screenshots (EN + ZH, phone + tablet) | ~1h | ⬜ Pending |
 | A6 | Set up privacy policy URL (GitHub Pages) | ~30min | ⬜ Pending |
-| A7 | Version bump: `1.1.0-beta.6` → `1.1.0` (production) | ~15min | ⬜ Pending |
+| A7 | Version bump: `1.1.0-beta.7` → `1.1.0` (production) | ~15min | ⬜ Pending |
 | A8 | Build & sign production AAB | ~10min | ⬜ Pending |
 | A9 | Upload to Play Console → Production | ~10min | ⬜ Pending |
 | A10 | Set staged rollout to 10–20% | ~5min | ⬜ Pending |
@@ -349,6 +350,7 @@ This message is:
 
 | # | Item | Effort | Status |
 |---|------|:------:|--------|
+| S0 | **Setup IAP (human)** — RevenueCat project + product, App Store Connect IAP, RevenueCat API keys in app | ~2h | ⬜ Pending — see `docs/plans/2026-05-04-iap-setup-guide.md` |
 | S1 | Privacy Policy page live (GitHub Pages or blinkingchorus.com) | ~30min | ⬜ Pending |
 | S2 | Terms of Service page live | ~15min | ⬜ Pending |
 | S3 | Press kit page (logo, screenshots, description, contact) | ~1h | ⬜ Pending |

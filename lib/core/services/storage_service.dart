@@ -616,17 +616,21 @@ class StorageService {
         // Restore AI persona settings from persona.json
         final personaFile = archive.findFile('persona.json');
         if (personaFile != null) {
-          final personaStr = utf8.decode(personaFile.content as List<int>);
-          final personaMap = json.decode(personaStr) as Map<String, dynamic>;
-          if (personaMap.containsKey('ai_assistant_name')) {
-            await _prefs.setString('ai_assistant_name', personaMap['ai_assistant_name'] as String);
-          }
-          if (personaMap.containsKey('ai_assistant_personality')) {
-            await _prefs.setString('ai_assistant_personality', personaMap['ai_assistant_personality'] as String);
-          }
-          if (personaMap.containsKey('ai_avatar_zip_path')) {
-            final restoredPath = path_pkg.join(docDir.path, personaMap['ai_avatar_zip_path'] as String);
-            await _prefs.setString('ai_avatar_path', restoredPath);
+          try {
+            final personaStr = utf8.decode(personaFile.content as List<int>);
+            final personaMap = json.decode(personaStr) as Map<String, dynamic>;
+            if (personaMap.containsKey('ai_assistant_name')) {
+              await _prefs.setString('ai_assistant_name', personaMap['ai_assistant_name'] as String);
+            }
+            if (personaMap.containsKey('ai_assistant_personality')) {
+              await _prefs.setString('ai_assistant_personality', personaMap['ai_assistant_personality'] as String);
+            }
+            if (personaMap.containsKey('ai_avatar_zip_path')) {
+              final restoredPath = path_pkg.join(docDir.path, personaMap['ai_avatar_zip_path'] as String);
+              await _prefs.setString('ai_avatar_path', restoredPath);
+            }
+          } catch (_) {
+            // persona.json corrupted — skip persona restore, data is already imported
           }
         }
       } finally {

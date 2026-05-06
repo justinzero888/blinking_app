@@ -159,14 +159,26 @@ class LlmService {
     return _isTrialActive(prefs);
   }
 
+  static String isLocalPreviewMessage(bool isZh) {
+    return isZh
+        ? 'AI 服务需要服务器支持。请使用自己的 API Key（设置 → 使用自己的 Key），或等待服务器部署。'
+        : 'AI requires the server to be available. Use your own API key (Settings → Use my own key), or wait for server deployment.';
+  }
+
   static bool _isTrialActive(SharedPreferences prefs) {
     final token = prefs.getString('trial_token');
     if (token == null || token.isEmpty) return false;
     final startedAtStr = prefs.getString('trial_started_at');
     if (startedAtStr == null) return false;
     final startedAt = DateTime.parse(startedAtStr);
-    final expiryDate = startedAt.add(const Duration(days: 7));
+    final expiryDate = startedAt.add(const Duration(days: 21));
     return !DateTime.now().isAfter(expiryDate);
+  }
+
+  /// Whether the current trial token is local-only (no server available)
+  static Future<bool> isLocalPreview() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('trial_token') == 'preview_local';
   }
 
   Future<Map<String, dynamic>> _loadConfig() async {
@@ -188,6 +200,12 @@ class LlmService {
 
     if (_isTrialActive(prefs)) {
       final token = prefs.getString('trial_token')!;
+      if (token == 'preview_local') {
+        throw LlmException(
+          isLocalPreviewMessage(true),
+          LlmErrorType.networkError,
+        );
+      }
       return {
         'name': 'Trial',
         'model': 'qwen/qwen3.5-flash-02-23',

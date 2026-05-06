@@ -192,7 +192,7 @@ class Routine {
     );
   }
 
-  /// Calculate streak (consecutive days)
+  /// Calculate streak (consecutive days, with 1-day grace period)
   int get streak {
     if (completionLog.isEmpty) return 0;
 
@@ -201,6 +201,7 @@ class Routine {
 
     int count = 0;
     DateTime? lastDate;
+    bool graceUsed = false;
 
     for (final log in sortedLogs) {
       final logDate = DateTime(
@@ -210,7 +211,6 @@ class Routine {
       );
 
       if (lastDate == null) {
-        // Check if completed today or yesterday
         final today = DateTime.now();
         final todayDate = DateTime(today.year, today.month, today.day);
         final yesterday = todayDate.subtract(const Duration(days: 1));
@@ -227,8 +227,17 @@ class Routine {
           count++;
           lastDate = logDate;
         } else if (logDate == lastDate) {
-          // Same day, skip
           continue;
+        } else if (!graceUsed) {
+          final skippedDate = lastDate.subtract(const Duration(days: 1));
+          final expectedAfterSkip = skippedDate.subtract(const Duration(days: 1));
+          if (logDate == expectedAfterSkip) {
+            count += 2; // skip day counts toward streak
+            lastDate = logDate;
+            graceUsed = true;
+          } else {
+            break;
+          }
         } else {
           break;
         }
@@ -236,6 +245,34 @@ class Routine {
     }
 
     return count;
+  }
+
+  /// Whether the routine has a missed day but streak is protected by grace
+  bool get inGrace {
+    if (completionLog.isEmpty) return false;
+    if (isCompletedToday) return false;
+    final today = DateTime.now();
+    final yesterday = DateTime(today.year, today.month, today.day)
+        .subtract(const Duration(days: 1));
+    final dayBefore = yesterday.subtract(const Duration(days: 1));
+    return !isCompletedOn(yesterday) && isCompletedOn(dayBefore) && streak > 0;
+  }
+
+  /// Days remaining in grace period before streak resets (1 = still protected)
+  int get graceDaysLeft => inGrace ? 1 : 0;
+
+  /// Number of consecutive days missed (0 = completed today or yesterday)
+  int get consecutiveMissedDays {
+    if (isCompletedToday) return 0;
+    var missed = 0;
+    final today = DateTime.now();
+    final todayDate = DateTime(today.year, today.month, today.day);
+    var cursor = todayDate.subtract(const Duration(days: 1));
+    while (!isCompletedOn(cursor) && missed < 31) {
+      missed++;
+      cursor = cursor.subtract(const Duration(days: 1));
+    }
+    return missed;
   }
 
   /// Check if completed on a specific date
