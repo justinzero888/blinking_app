@@ -940,8 +940,12 @@ class _HabitSummaryCard extends StatelessWidget {
     final thisMonth = DateTime(now.year, now.month, 1);
 
     // Monthly completion rate — count unique days, not total completions
+    final todayDate = DateTime(now.year, now.month, now.day);
     final monthCompletionsDays = <String>{};
     for (final c in habit.completionLog) {
+      final logDate = DateTime(c.completedAt.year, c.completedAt.month, c.completedAt.day);
+      // Skip future dates
+      if (logDate.isAfter(todayDate)) continue;
       if (c.completedAt.isAfter(thisMonth.subtract(const Duration(days: 1)))) {
         monthCompletionsDays.add(
           '${c.completedAt.year}-${c.completedAt.month}-${c.completedAt.day}');
@@ -949,7 +953,7 @@ class _HabitSummaryCard extends StatelessWidget {
     }
     final monthCompletions = monthCompletionsDays.length;
     final daysPassed = now.day;
-    final monthRate = daysPassed > 0 ? monthCompletions / daysPassed : 0.0;
+    final monthRate = daysPassed > 0 ? (monthCompletions / daysPassed).clamp(0.0, 1.0) : 0.0;
 
     // Day-of-week patterns
     final dayNames = isZh

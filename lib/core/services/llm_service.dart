@@ -12,6 +12,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 ///   llm_selected_index → int
 class LlmService {
   static const _defaultTimeout = Duration(seconds: 60);
+  static const _trialApiKey = String.fromEnvironment('TRIAL_API_KEY');
 
   /// Send a single-turn prompt and return the assistant's reply text.
   /// Throws [LlmException] if no provider is configured or the call fails.
@@ -201,9 +202,15 @@ class LlmService {
     if (_isTrialActive(prefs)) {
       final token = prefs.getString('trial_token')!;
       if (token == 'preview_local') {
-        // Local preview is a UX-only preview state. AI requires
-        // a real API key (BYOK). Return empty config so the UI
-        // shows the "add your own key" prompt instead of a network error.
+        // Use trial API key for the 21-day local preview (provided via --dart-define)
+        if (_trialApiKey.isNotEmpty) {
+          return {
+            'name': 'Blinking Trial',
+            'model': 'qwen/qwen3.5-flash-02-23',
+            'apiKey': _trialApiKey,
+            'baseUrl': 'https://openrouter.ai/api/v1',
+          };
+        }
         return {};
       }
       return {
