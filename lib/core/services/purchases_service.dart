@@ -43,36 +43,57 @@ class PurchasesService extends ChangeNotifier {
         ..appUserID = await DeviceService.getDeviceId(),
     );
 
-    _customerInfo = await Purchases.getCustomerInfo();
-    _offerings = await Purchases.getOfferings();
+    try {
+      _customerInfo = await Purchases.getCustomerInfo();
+      _offerings = await Purchases.getOfferings();
+    } catch (e) {
+      _lastError = e.toString();
+    }
     _initialized = true;
     notifyListeners();
   }
 
   Future<CustomerInfo?> purchaseProduct(String productId) async {
-    if (!_initialized) return null;
+    if (!_initialized) {
+      _lastError = 'Store not initialized';
+      return null;
+    }
 
     _lastError = null;
     _purchasing = true;
     notifyListeners();
 
     try {
+      Package? pkg;
+
+      // Try current offering first
       final offering = _offerings?.current;
-      if (offering == null) {
-        _lastError = 'No offerings available';
-        return null;
+      if (offering != null) {
+        for (final p in offering.availablePackages) {
+          if (p.storeProduct.identifier == productId) {
+            pkg = p;
+            break;
+          }
+        }
       }
 
-      Package? pkg;
-      for (final p in offering.availablePackages) {
-        if (p.storeProduct.identifier == productId) {
-          pkg = p;
-          break;
+      // Fallback: search all offerings
+      if (pkg == null && _offerings != null) {
+        for (final off in _offerings!.all.values) {
+          for (final p in off.availablePackages) {
+            if (p.storeProduct.identifier == productId) {
+              pkg = p;
+              break;
+            }
+          }
+          if (pkg != null) break;
         }
       }
 
       if (pkg == null) {
-        _lastError = 'Product $productId not found';
+        _lastError = 'Product $productId not found. Check RevenueCat dashboard: offering must be set as "Current" and contain this product.';
+        _purchasing = false;
+        notifyListeners();
         return null;
       }
 

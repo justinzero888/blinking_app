@@ -292,8 +292,13 @@ class PaywallScreen extends StatelessWidget {
       );
       return;
     }
-    service.purchaseProduct('blinking_pro').then((info) {
-      if (info != null && service.isPro && context.mounted) {
+    service.purchaseProduct('blinking_pro').then((info) async {
+      if (!context.mounted) return;
+
+      // Refresh customer info to sync latest entitlements
+      await service.refreshCustomerInfo();
+
+      if (service.isPro) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(isZh ? '欢迎加入 Pro！' : 'Welcome to Pro!'),
@@ -301,7 +306,16 @@ class PaywallScreen extends StatelessWidget {
           ),
         );
         Navigator.pop(context);
-      } else if (service.lastError != null && context.mounted) {
+      } else if (info != null) {
+        // Purchase returned but entitlement not yet active — may need server sync
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(isZh
+                ? '购买已提交，正在验证... 请稍后点击"恢复购买"'
+                : 'Purchase submitted, verifying... Tap "Restore Purchases" in a moment'),
+          ),
+        );
+      } else if (service.lastError != null) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(service.lastError!)),
         );

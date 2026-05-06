@@ -73,6 +73,10 @@ class EntitlementService extends ChangeNotifier {
   // ── Local / Offline Preview ─────────────────────────────────────────
 
   void _applyLocalPreview() {
+    // Don't override an explicit restricted or paid state
+    if (_state == EntitlementState.restricted || _state == EntitlementState.paid) {
+      return;
+    }
     final now = DateTime.now();
     final today = _dateKey(now);
 

@@ -84,6 +84,61 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _loadAiSettings();
   }
 
+  int _debugTapCount = 0;
+  DateTime _lastDebugTap = DateTime.now();
+
+  void _debugToggleEntitlement() {
+    final now = DateTime.now();
+    if (now.difference(_lastDebugTap).inSeconds > 2) _debugTapCount = 0;
+    _lastDebugTap = now;
+    _debugTapCount++;
+    if (_debugTapCount < 5) return;
+    _debugTapCount = 0;
+    _forceRestrictedForTesting();
+  }
+
+  Future<void> _forceRestrictedForTesting() async {
+    final prefs = await SharedPreferences.getInstance();
+    final currentState = context.read<EntitlementService>().currentState;
+    final isZh = context.read<LocaleProvider>().locale.languageCode == 'zh';
+
+    if (currentState == EntitlementState.restricted) {
+      // Reset to preview for testing
+      await prefs.remove('entitlement_state');
+      await prefs.remove('entitlement_quota');
+      await prefs.remove('entitlement_quota_date');
+      await prefs.remove('entitlement_preview_started');
+      await prefs.remove('entitlement_preview_days');
+      await prefs.remove('entitlement_jwt');
+      await prefs.remove('entitlement_was_preview');
+      final svc = context.read<EntitlementService>();
+      await svc.init(prefs);
+    } else {
+      // Force restricted to test paywall
+      await prefs.remove('entitlement_jwt');
+      await prefs.setString('entitlement_state', 'restricted');
+      await prefs.setInt('entitlement_quota', 0);
+      await prefs.setBool('entitlement_was_preview', true);
+      await prefs.setInt('entitlement_preview_days', 0);
+      // Set preview_started to an old date so _applyLocalPreview skips
+      await prefs.setString('entitlement_preview_started', '2020-01-01T00:00:00.000');
+      final svc = context.read<EntitlementService>();
+      await svc.init(prefs);
+    }
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            isZh ? 'Debug: 切换至 ${currentState == EntitlementState.restricted ? "预览" : "限制"} 模式' 
+                 : 'Debug: Switched to ${currentState == EntitlementState.restricted ? "preview" : "restricted"} mode',
+          ),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
   Future<void> _loadAiSettings() async {
     final prefs = await SharedPreferences.getInstance();
     if (mounted) {
@@ -686,7 +741,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ListTile(
             leading: const Icon(Icons.info),
             title: const Text('Blinking (记忆闪烁)'),
-            subtitle: Text(isZh ? '版本 1.1.0-beta.7' : 'Version 1.1.0-beta.7'),
+            subtitle: GestureDetector(
+              onTap: () => _debugToggleEntitlement(),
+              child: Text(isZh ? '版本 1.1.0-beta.8' : 'Version 1.1.0-beta.8'),
+            ),
           ),
         ],
       ),
