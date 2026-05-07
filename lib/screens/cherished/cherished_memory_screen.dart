@@ -1744,12 +1744,30 @@ class _AiInsightsSectionState extends State<_AiInsightsSection> {
   }
 
   Future<void> _generateInsights() async {
+    // Limit to once per day
+    final prefs = await SharedPreferences.getInstance();
+    final today = DateTime.now();
+    final todayKey = '${today.year}-${today.month}-${today.day}';
+    final lastRefresh = prefs.getString('insights_last_refresh');
+    if (lastRefresh == todayKey && _insightsText != null) {
+      if (mounted) {
+        final isZh = widget.isZh;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(isZh ? '今日已刷新，明天再来' : 'Already refreshed today — come back tomorrow'),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+      return;
+    }
+
     setState(() {
       _loading = true;
       _error = null;
     });
 
-    await Future.delayed(const Duration(milliseconds: 400)); // Brief pause for UX
+    await Future.delayed(const Duration(milliseconds: 400));
 
     if (!mounted) return;
 
@@ -1857,6 +1875,7 @@ class _AiInsightsSectionState extends State<_AiInsightsSection> {
     }
 
     if (mounted) {
+      await prefs.setString('insights_last_refresh', todayKey);
       setState(() {
         _insightsText = sb.toString();
         _loading = false;

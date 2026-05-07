@@ -365,6 +365,46 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     : 'After preview, core features remain free forever. Buy Pro to unlock everything.',
                 style: TextStyle(color: Colors.white60, fontSize: 11),
               ),
+              const SizedBox(height: 8),
+              // Get Pro button
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const PaywallScreen()),
+                    );
+                  },
+                  icon: const Icon(Icons.workspace_premium, size: 16),
+                  label: Text(
+                    isZh ? '获取 Blinking Pro — \$9.99' : 'Get Blinking Pro — \$9.99',
+                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                  ),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Colors.white24,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 6),
+              // BYOK link
+              OutlinedButton.icon(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const ByokSetupScreen()),
+                  );
+                },
+                icon: const Icon(Icons.vpn_key, size: 14),
+                label: Text(isZh ? '使用自己的 API Key' : 'Bring your own key'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.white70,
+                  side: const BorderSide(color: Colors.white30),
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                ),
+              ),
             ],
           ),
         ),
