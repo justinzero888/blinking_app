@@ -13,6 +13,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 class LlmService {
   static const _defaultTimeout = Duration(seconds: 60);
   static const _trialApiKey = String.fromEnvironment('TRIAL_API_KEY');
+  static const _proApiKey = String.fromEnvironment('PRO_API_KEY');
 
   /// Send a single-turn prompt and return the assistant's reply text.
   /// Throws [LlmException] if no provider is configured or the call fails.
@@ -141,7 +142,7 @@ class LlmService {
   }
 
   /// Returns true if the currently selected provider has a non-empty API key,
-  /// or if a trial is active.
+  /// or if a built-in key (trial/pro) is available.
   static Future<bool> hasApiKey() async {
     final prefs = await SharedPreferences.getInstance();
     final jsonStr = prefs.getString('llm_providers');
@@ -157,40 +158,28 @@ class LlmService {
         }
       } catch (_) {}
     }
-    return _isTrialActive(prefs);
+    // Check built-in keys based on entitlement state
+    final state = prefs.getString('entitlement_state') ?? 'preview';
+    if (state == 'preview' && _trialApiKey.isNotEmpty) return true;
+    if ((state == 'paid' || state == 'restricted') && _proApiKey.isNotEmpty) return true;
+    return false;
   }
 
-  static String isLocalPreviewMessage(bool isZh) {
-    return isZh
-        ? 'AI 服务需要服务器支持。请使用自己的 API Key（设置 → 使用自己的 Key），或等待服务器部署。'
-        : 'AI requires the server to be available. Use your own API key (Settings → Use my own key), or wait for server deployment.';
-  }
-
-  static bool _isTrialActive(SharedPreferences prefs) {
-    final token = prefs.getString('trial_token');
-    if (token == null || token.isEmpty) return false;
-    final startedAtStr = prefs.getString('trial_started_at');
-    if (startedAtStr == null) return false;
-    final startedAt = DateTime.parse(startedAtStr);
-    final expiryDate = startedAt.add(const Duration(days: 21));
-    return !DateTime.now().isAfter(expiryDate);
-  }
-
-  /// Whether the current trial token is local-only (no server available)
-  static Future<bool> isLocalPreview() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('trial_token') == 'preview_local';
+  static bool _hasActiveTrial(SharedPreferences prefs) {
+    final state = prefs.getString('entitlement_state') ?? 'preview';
+    return state == 'preview' || state == 'paid' || state == 'restricted';
   }
 
   Future<Map<String, dynamic>> _loadConfig() async {
     final prefs = await SharedPreferences.getInstance();
-    final jsonStr = prefs.getString('llm_providers');
-    final selectedIdx = prefs.getInt('llm_selected_index') ?? 0;
 
+    // 1. BYOK takes priority — user's own key always wins
+    final jsonStr = prefs.getString('llm_providers');
     if (jsonStr != null) {
       try {
         final providers = jsonDecode(jsonStr) as List<dynamic>;
         if (providers.isNotEmpty) {
+          final selectedIdx = prefs.getInt('llm_selected_index') ?? 0;
           final idx = selectedIdx.clamp(0, providers.length - 1);
           final provider = providers[idx] as Map<String, dynamic>;
           final apiKey = provider['apiKey'] as String? ?? '';
@@ -199,25 +188,22 @@ class LlmService {
       } catch (_) {}
     }
 
-    if (_isTrialActive(prefs)) {
-      final token = prefs.getString('trial_token')!;
-      if (token == 'preview_local') {
-        // Use trial API key for the 21-day local preview (provided via --dart-define)
-        if (_trialApiKey.isNotEmpty) {
-          return {
-            'name': 'Blinking Trial',
-            'model': 'qwen/qwen3.5-flash-02-23',
-            'apiKey': _trialApiKey,
-            'baseUrl': 'https://openrouter.ai/api/v1',
-          };
-        }
-        return {};
-      }
+    // 2. No BYOK — use built-in keys based on entitlement state
+    final state = prefs.getString('entitlement_state') ?? 'preview';
+
+    Map<String, String>? builtIn;
+    if (state == 'preview' && _trialApiKey.isNotEmpty) {
+      builtIn = {'name': 'Blinking Trial', 'apiKey': _trialApiKey};
+    } else if ((state == 'paid' || state == 'restricted') && _proApiKey.isNotEmpty) {
+      builtIn = {'name': 'Blinking Pro', 'apiKey': _proApiKey};
+    }
+
+    if (builtIn != null) {
       return {
-        'name': 'Trial',
+        'name': builtIn['name']!,
         'model': 'qwen/qwen3.5-flash-02-23',
-        'apiKey': token,
-        'baseUrl': 'https://blinkingchorus.com/api/trial/chat',
+        'apiKey': builtIn['apiKey']!,
+        'baseUrl': 'https://openrouter.ai/api/v1',
       };
     }
 
