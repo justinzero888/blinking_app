@@ -530,22 +530,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
           // AI Section
           _buildSectionHeader(isZh ? 'AI' : 'AI'),
           _buildEntitlementBanner(isZh),
-          // BYOK entry point
-          ListTile(
-            leading: const Icon(Icons.vpn_key, color: Colors.indigo),
-            title: Text(isZh ? '使用自己的 Key' : 'Use my own key'),
-            subtitle: Text(
-              isZh ? 'OpenAI / Anthropic，你的数据直达提供商' : 'OpenAI / Anthropic, your data goes direct',
-              style: const TextStyle(fontSize: 12),
-            ),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const ByokSetupScreen()),
-              );
-            },
-          ),
           const Divider(),
 
           // AI Personalization
