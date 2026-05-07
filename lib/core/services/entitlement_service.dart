@@ -346,12 +346,13 @@ class EntitlementService extends ChangeNotifier {
 
   EntitlementState _parseState(String? s) {
     switch (s) {
-      case 'preview':
-        return EntitlementState.preview;
       case 'paid':
         return EntitlementState.paid;
-      default:
+      case 'restricted':
         return EntitlementState.restricted;
+      case 'preview':
+      default:
+        return EntitlementState.preview;
     }
   }
 }
