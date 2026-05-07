@@ -446,6 +446,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           : 'All features unlocked forever · 1,200 AI reflections/year',
                       style: TextStyle(color: Colors.white70, fontSize: 12),
                     ),
+                    const SizedBox(height: 8),
+                    OutlinedButton.icon(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const ByokSetupScreen()),
+                        );
+                      },
+                      icon: const Icon(Icons.vpn_key, size: 14),
+                      label: Text(isZh ? '使用自己的 API Key' : 'Bring your own key'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.white70,
+                        side: const BorderSide(color: Colors.white30),
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                      ),
+                    ),
                   ],
                 ),
               ),
