@@ -27,7 +27,7 @@ void main() async {
   if (_autoRestorePath.isNotEmpty) {
     final file = File(_autoRestorePath);
     if (await file.exists()) {
-      // Reset entitlement state so restored data shows in preview mode
+      // Reset entitlement + onboarding state so restored data shows fresh
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove('entitlement_state');
       await prefs.remove('entitlement_jwt');
@@ -37,7 +37,10 @@ void main() async {
       await prefs.remove('entitlement_preview_started');
       await prefs.remove('entitlement_was_preview');
       await prefs.remove('onboarding_completed');
-
+      // Clear old trial data too
+      await prefs.remove('trial_token');
+      await prefs.remove('trial_started_at');
+      await prefs.remove('trial_device_id');
       await storageService.restoreFromBackup(file);
     }
   }
