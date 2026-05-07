@@ -8,13 +8,16 @@ Personal memory/habit-tracking Flutter app (记忆闪烁). Path: `/Users/justinz
 - **macOS:** 26.2 (Tahoe beta) — requires Xcode 26, managed in `ClaudeDev/system-upgrade`
 - **Current version:** `1.1.0-beta.8+23` (pubspec.yaml)
 - **DB version:** 12 (`kSchemaVersion = 12` in `DatabaseService`)
-- **Build AAB:** `flutter build appbundle --release`
-- **Build APK:** `flutter build apk --release`
+- **Build AAB:** `flutter build appbundle --release --dart-define=TRIAL_API_KEY=... --dart-define=PRO_API_KEY=...`
+- **Build APK:** `flutter build apk --release --dart-define=TRIAL_API_KEY=... --dart-define=PRO_API_KEY=...`
 - **Build iOS IPA:** Follow `docs/ios-testflight-build-push-guide.md`
 - **Lint:** `flutter analyze --no-pub` (target: 0 errors)
 - **Tests:** `flutter test` (135 tests, all passing)
-- **RevenueCat:** Test Store verified. Purchase flow working. Key in `lib/main.dart`.
+- **RevenueCat:** Test Store verified. Purchase flow working end-to-end. iOS Sandbox verified. Android pending.
+- **IAP Price:** $19.99 (non-consumable `blinking_pro`, entitlement `pro_access`)
+- **AI Keys:** Trial `--dart-define=TRIAL_API_KEY`, Pro `--dart-define=PRO_API_KEY` (OpenRouter, qwen/qwen3.5-flash)
 - **Feedback email:** `blinkingfeedback@gmail.com`
+- **Debug toggle:** Settings → About → tap version 5x to cycle preview/restricted
 
 ---
 
@@ -277,13 +280,33 @@ Use `try { await launchUrl(uri); } catch (_) { ... }` pattern. Do NOT use `canLa
 | Heatmap colors — solid teal shades, legend, tighter date range | ✅ Done |
 | Seed data — entries + routines with completions across 30 days | ✅ Done |
 | Language toggle on onboarding screen 1 | ✅ Done |
+| RevenueCat Test Store verified — purchase flow end-to-end | ✅ Done |
+| iOS App Store Sandbox purchase verified | ✅ Done |
+| Routine month rate fix — unique days, future-date filtering | ✅ Done |
+| Routine done count deduplication (8/6 bug) | ✅ Done |
+| Insights chart y-axis labels — all 4 charts | ✅ Done |
+| AI Insights — replaced LLM with rule-based stats | ✅ Done |
+| Streak fix — filter future-dated completions | ✅ Done |
+| Trial AI key auto-applied during preview | ✅ Done |
+| Pro AI key auto-applied after purchase | ✅ Done |
+| Entitlement state machine — preview default on fresh install | ✅ Done |
+| PAID banner (green) in Settings | ✅ Done |
+| BYOK in preview + paid banners | ✅ Done |
+| BYOK duplication fix — single entry point | ✅ Done |
+| Insights refresh — once per day limit | ✅ Done |
+| Price updated — $9.99 → $19.99 | ✅ Done |
+| AUTO_RESTORE debug flag for test data loading | ✅ Done |
+| iOS build command — `rcApiProductionKey` darwin-define | ✅ Documented |
 
 ### Pending
 | Priority | Item | Effort | Status |
 |----------|------|--------|--------|
-| P1 | Setup IAP — connect platform stores (App Store Connect + Play Console) for `appl_`/`goog_` keys | ~2h | ⬜ Pending — Test Store verified ✅ |
-| P1 | Set server secrets + deploy — JWT_SECRET, ENTITLEMENT_ENABLED, D1 migrations | ~10min | Deploy-ready |
-| P1 | PROP-3 — Promote Android to Production on Google Play | ~1.5h | Ready |
+| P1 | IAP — Google Play Console (product + service credentials) for `goog_` key | ~1h | ⬜ Tomorrow |
+| P1 | IAP — App Store Connect (fix IAP metadata for submission) | ~30min | ⬜ Tomorrow |
+| P1 | Set server secrets + deploy — JWT_SECRET, ENTITLEMENT_ENABLED, D1 | ~10min | Deploy-ready |
+| P3 | M4 Top-ups — denial sheet, consumable IAP | ~3h | Post-launch |
+| P3 | Restore streaming refactor — OOM on large backups | ~2h | Known limitation |
+| P3 | Routine displayNameFor used consistently | ~1h | Low priority |
 | P3 | M4 Top-ups (denial sheet, consumable IAP) | ~3h | Post-launch |
 | P3 | Restore streaming refactor (OOM on large backups) | ~2h | Known limitation |
 | P3 | Firebase / Cloud Sync | Large | All deps commented out |

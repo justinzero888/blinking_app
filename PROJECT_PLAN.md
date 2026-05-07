@@ -5,7 +5,7 @@
 - **Type**: Personal memory capture app
 - **Framework**: Flutter
 - **Platforms**: Android + iOS (both live)
-- **Current Version**: 1.1.0-beta.8+23
+- **Current Version**: 1.1.0-beta.8+23 (launch-ready after IAP store connection)
 
 ## Goals
 - Capture memories: text, audio, video, image
@@ -76,9 +76,9 @@
 ### Remaining / Blocked
 | # | Item | Status |
 |---|------|--------|
-| 1 | **Setup IAP (human)** — RevenueCat Test Store ✅ verified. Remaining: connect App Store Connect + Play Console for production keys | ⬜ Pending — see `docs/plans/revenuecat-setup-actual.md` |
-| 2 | **Set server secrets + deploy** — JWT_SECRET, ENTITLEMENT_ENABLED, D1 migrations | ~10min — deploy-ready |
-| 3 | **PROP-3: Promote Android to Production on Google Play** | ~1.5h — launch-ready |
+| 1 | **IAP — Google Play Console** (product + service credentials for `goog_`) | ~1h — tomorrow |
+| 2 | **IAP — App Store Connect** (fix IAP metadata for submission) | ~30min — tomorrow |
+| 3 | **Server deploy** (JWT_SECRET, ENTITLEMENT_ENABLED, D1) | ~10min — deploy-ready |
 | 4 | M4 Top-ups (denial sheet, consumable IAP) | ~3h — post-launch |
 | 5 | Firebase / Cloud Sync | Not started — deps commented out |
 
