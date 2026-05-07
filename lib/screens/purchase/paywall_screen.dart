@@ -66,7 +66,7 @@ class PaywallScreen extends StatelessWidget {
 
                 // Price
                 Text(
-                  '\$9.99',
+                  '\$19.99',
                   textAlign: TextAlign.center,
                   style: theme.textTheme.displaySmall?.copyWith(
                     fontWeight: FontWeight.bold,
@@ -91,7 +91,7 @@ class PaywallScreen extends StatelessWidget {
                       ),
                     ),
                     child: Text(
-                      isZh ? '获取 Pro — \$9.99' : 'Get Pro — \$9.99',
+                      isZh ? '获取 Pro — \$19.99' : 'Get Pro — \$19.99',
                       style: const TextStyle(
                         fontSize: 17,
                         fontWeight: FontWeight.bold,

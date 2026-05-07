@@ -89,8 +89,8 @@ class SoftPromptService {
             : 'The preview has 3 days left. Want to keep going?';
       case 19:
         return isZh
-            ? 'Pro 只需 \$9.99，一次购买，终身使用。'
-            : 'Pro is \$9.99 once, and your reflections keep coming.';
+            ? 'Pro 只需 \$19.99，一次购买，终身使用。'
+            : 'Pro is \$19.99 once, and your reflections keep coming.';
       case 20:
         return isZh
             ? '明天预览结束后，新建习惯、AI 和备份将暂停。笔记和已有习惯永久保留。'
@@ -171,7 +171,7 @@ class SoftPromptService {
             onPressed: () {
               Navigator.pop(ctx, true);
             },
-            child: Text(cta ?? (isZh ? '获取 Pro — \$9.99' : 'Get Pro — \$9.99')),
+            child: Text(cta ?? (isZh ? '获取 Pro — \$19.99' : 'Get Pro — \$19.99')),
           ),
         ],
       ),

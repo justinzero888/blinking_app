@@ -124,7 +124,7 @@ class TransitionScreen extends StatelessWidget {
                     ),
                   ),
                   child: Text(
-                    isZh ? '获取 Pro — \$9.99' : 'Get Pro — \$9.99',
+                    isZh ? '获取 Pro — \$19.99' : 'Get Pro — \$19.99',
                     style: const TextStyle(
                       fontSize: 17,
                       fontWeight: FontWeight.bold,

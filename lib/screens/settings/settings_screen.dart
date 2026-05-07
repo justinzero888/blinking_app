@@ -378,7 +378,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   },
                   icon: const Icon(Icons.workspace_premium, size: 16),
                   label: Text(
-                    isZh ? '获取 Blinking Pro — \$9.99' : 'Get Blinking Pro — \$9.99',
+                    isZh ? '获取 Blinking Pro — \$19.99' : 'Get Blinking Pro — \$19.99',
                     style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
                   ),
                   style: FilledButton.styleFrom(
@@ -515,8 +515,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 icon: const Icon(Icons.workspace_premium, size: 18),
                 label: Text(
                   isZh
-                      ? '获取 Blinking Pro — \$9.99 一次购买，终身使用'
-                      : 'Get Blinking Pro — \$9.99 once, lifetime access',
+                      ? '获取 Blinking Pro — \$19.99 一次购买，终身使用'
+                      : 'Get Blinking Pro — \$19.99 once, lifetime access',
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
                 style: FilledButton.styleFrom(

@@ -494,8 +494,8 @@ class _ScreenThree extends StatelessWidget {
               padding: const EdgeInsets.all(12),
               child: Text(
                 isZh
-                    ? 'Pro 一次购买 \$9.99，终身解锁全部功能。\n无订阅，永不续费。'
-                    : 'Pro is \$9.99 once — unlock everything for life.\nNo subscription, ever.',
+                    ? 'Pro 一次购买 \$19.99，终身解锁全部功能。\n无订阅，永不续费。'
+                    : 'Pro is \$19.99 once — unlock everything for life.\nNo subscription, ever.',
                 textAlign: TextAlign.center,
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: theme.colorScheme.primary,
