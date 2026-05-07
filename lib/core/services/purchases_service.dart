@@ -46,7 +46,17 @@ class PurchasesService extends ChangeNotifier {
     try {
       _customerInfo = await Purchases.getCustomerInfo();
       _offerings = await Purchases.getOfferings();
+      if (_offerings != null) {
+        debugPrint('RevenueCat offerings: ${_offerings!.all.length} total');
+        for (final o in _offerings!.all.values) {
+          debugPrint('  Offering: ${o.identifier}, packages: ${o.availablePackages.length}');
+          for (final p in o.availablePackages) {
+            debugPrint('    Package: ${p.identifier} → ${p.storeProduct.identifier}');
+          }
+        }
+      }
     } catch (e) {
+      debugPrint('RevenueCat init error: $e');
       _lastError = e.toString();
     }
     _initialized = true;
@@ -91,7 +101,16 @@ class PurchasesService extends ChangeNotifier {
       }
 
       if (pkg == null) {
-        _lastError = 'Product $productId not found. Check RevenueCat dashboard: offering must be set as "Current" and contain this product.';
+        // Diagnostic: show what offerings are available
+        if (_offerings != null && _offerings!.all.isNotEmpty) {
+          final ids = _offerings!.all.values
+              .expand((o) => o.availablePackages)
+              .map((p) => p.storeProduct.identifier)
+              .toList();
+          _lastError = 'Product $productId not found. Available: ${ids.join(', ')}';
+        } else {
+          _lastError = 'Product $productId not found. No offerings — RevenueCat credentials may be incomplete.';
+        }
         _purchasing = false;
         notifyListeners();
         return null;
