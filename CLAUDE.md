@@ -6,7 +6,7 @@ Personal memory/habit-tracking Flutter app (记忆闪烁). Path: `/Users/justinz
 
 - **Flutter SDK:** `^3.11.0` (currently 3.41.8 stable, Apr 24 2026)
 - **macOS:** 26.2 (Tahoe beta) — requires Xcode 26, managed in `ClaudeDev/system-upgrade`
-- **Current version:** `1.1.0-beta.8+23` (pubspec.yaml)
+- **Current version:** `1.1.0-beta.8+25` (pubspec.yaml)
 - **DB version:** 12 (`kSchemaVersion = 12` in `DatabaseService`)
 - **Build AAB:** `flutter build appbundle --release --dart-define=TRIAL_API_KEY=... --dart-define=PRO_API_KEY=...`
 - **Build APK:** `flutter build apk --release --dart-define=TRIAL_API_KEY=... --dart-define=PRO_API_KEY=...`

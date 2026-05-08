@@ -5,7 +5,7 @@
 - **Type**: Personal memory capture app
 - **Framework**: Flutter
 - **Platforms**: Android + iOS (both live)
-- **Current Version**: 1.1.0-beta.8+23 (launch-ready after IAP store connection)
+- **Current Version**: 1.1.0-beta.8+25
 
 ## Goals
 - Capture memories: text, audio, video, image
@@ -76,11 +76,11 @@
 ### Remaining / Blocked
 | # | Item | Status |
 |---|------|--------|
-| 1 | **IAP — Google Play Console** (product + service credentials for `goog_`) | ~1h — tomorrow |
-| 2 | **IAP — App Store Connect** (fix IAP metadata for submission) | ~30min — tomorrow |
+| 1 | **iOS IAP** — RevenueCat App Store credentials not saving (blue button). Build ready, menu test pending | ⬜ Blocked |
+| 2 | **Google Play IAP** — product created, RevenueCat connected, `goog_` key active, AAB v25 built. Pending upload + license test | ⬜ Ready |
 | 3 | **Server deploy** (JWT_SECRET, ENTITLEMENT_ENABLED, D1) | ~10min — deploy-ready |
 | 4 | M4 Top-ups (denial sheet, consumable IAP) | ~3h — post-launch |
-| 5 | Firebase / Cloud Sync | Not started — deps commented out |
+| 5 | Firebase / Cloud Sync | Not started |
 
 ## Technical Architecture
 
