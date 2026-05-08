@@ -288,6 +288,9 @@ class PaywallScreen extends StatelessWidget {
   }
 
   void _handlePurchase(BuildContext context, bool isZh) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Starting purchase...'), duration: const Duration(seconds: 1)),
+    );
     final service = context.read<PurchasesService>();
     if (!service.isInitialized) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -295,8 +298,15 @@ class PaywallScreen extends StatelessWidget {
       );
       return;
     }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Fetching product...'), duration: const Duration(seconds: 1)),
+    );
     service.purchaseProduct('blinking_pro').then((info) async {
       if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Purchase returned: info=${info != null}, isPro=${service.isPro}, error=${service.lastError ?? "none"}'),
+            duration: const Duration(seconds: 5)),
+      );
 
       // Refresh customer info to sync latest entitlements
       await service.refreshCustomerInfo();
