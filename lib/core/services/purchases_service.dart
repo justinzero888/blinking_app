@@ -101,6 +101,17 @@ class PurchasesService extends ChangeNotifier {
       }
 
       if (pkg == null) {
+        // Final fallback: use the first available package if any exist
+        // (useful for Test Store where product IDs may differ)
+        final allPackages = _offerings?.all.values
+            .expand((o) => o.availablePackages)
+            .toList() ?? [];
+        if (allPackages.isNotEmpty) {
+          pkg = allPackages.first;
+        }
+      }
+
+      if (pkg == null) {
         // Diagnostic: show what offerings are available
         if (_offerings != null && _offerings!.all.isNotEmpty) {
           final ids = _offerings!.all.values

@@ -1,0 +1,31 @@
+{
+  "identifier" : "com.blinking.blinking",
+  "nonRenewingSubscriptions" : [],
+  "products" : [
+    {
+      "displayName" : "Blinking Pro",
+      "familyShareable" : false,
+      "internalID" : "blinking_pro",
+      "subscriptionGroupID" : "",
+      "type" : "Non-Consumable",
+      "productID" : "blinking_pro",
+      "price" : "19.99",
+      "displayPrice" : "$19.99",
+      "description" : "Full access for life. AI, habits, backup.",
+      "referenceName" : "Blinking Pro",
+      "locale" : "en_US"
+    }
+  ],
+  "settings" : {
+    "_failTransactionsEnabled" : false,
+    "_locale" : "en_US",
+    "_storefront" : "USA",
+    "_timeRate" : 1
+  },
+  "subscriptionGroups" : [],
+  "version" : {
+    "major" : 1,
+    "minor" : 0,
+    "patch" : 0
+  }
+}
