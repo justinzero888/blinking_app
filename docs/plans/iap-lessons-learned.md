@@ -74,6 +74,12 @@
 - **Play Console permissions:** View financial data + Manage orders
 - **JSON key:** Download once, store securely
 
+### Re-testing After Purchase
+- **Non-consumables can only be purchased once per Google account**
+- **"You already own this item"** = purchase went through, just not synced to RevenueCat
+- **Refund to retest:** Play Console → Orders → find transaction → Refund
+- **Alternative:** Add a different Google email to license testers for clean slate
+
 ---
 
 ## RevenueCat — Key Issues

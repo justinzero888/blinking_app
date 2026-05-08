@@ -1,6 +1,6 @@
 # Google Play IAP Setup — Checklist & Verification
 
-**Date:** 2026-05-08 | **Version:** 1.1.0-beta.8+26
+**Date:** 2026-05-08 | **Version:** 1.1.0-beta.8+28 | **Status:** ✅ Verified (Google Play purchase tested + refund + re-purchase)
 
 ---
 
@@ -82,18 +82,19 @@
 
 | # | Check | Status | ✅ |
 |---|-------|--------|----|
-| 6.1 | Upload AAB to Internal Testing | ⬜ | |
-| 6.2 | Create new release (v26) | ⬜ | |
-| 6.3 | Assign `blinking_pro` to release | ⬜ | |
-| 6.4 | Rollout to Internal Testing | ⬜ | |
-| 6.5 | Setup → License testing → add tester Google account | ⬜ | |
-| 6.6 | Install from Play Store internal link | ⬜ | |
-| 6.7 | Open app → complete onboarding | ⬜ | |
-| 6.8 | Settings → tap version 5x → forced restricted | ⬜ | |
-| 6.9 | Tap robot → paywall → Get Pro | ⬜ | |
-| 6.10 | Google Play purchase dialog appears | ⬜ | |
-| 6.11 | Complete test purchase → "Welcome to Pro!" | ⬜ | |
-| 6.12 | RevenueCat → Customers → verify transaction | ⬜ | |
+| 6.1 | Upload AAB to Internal Testing | ✅ | |
+| 6.2 | Create new release (v27) | ✅ | |
+| 6.3 | Assign `blinking_pro` to release | ✅ | |
+| 6.4 | Rollout to Internal Testing | ✅ | |
+| 6.5 | Setup → License testing → add tester Google account | ✅ | |
+| 6.6 | Install from Play Store internal link | ✅ | |
+| 6.7 | Open app → complete onboarding | ✅ | |
+| 6.8 | Settings → tap version 5x → forced restricted | ✅ | |
+| 6.9 | Tap robot → paywall → Get Pro | ✅ | |
+| 6.10 | Google Play purchase dialog appears | ✅ | |
+| 6.11 | Complete test purchase → "Welcome to Pro!" | ✅ | |
+| 6.12 | Refund test purchase → re-purchase verified | ✅ | |
+| 6.13 | RevenueCat → Customers → verify transaction | ✅ | |
 
 ---
 

@@ -55,15 +55,12 @@
 - Sandbox Tester: blinking.tester@gmail.com / BlinkTest123!
 - Debug toggle: Settings → About → tap version 5x → force restricted → tap robot → paywall
 
-### Android — Waiting on Google Play Propagation
-**Blocker:** New IAP products take 2-24 hours to propagate globally after activation. Also: sideloaded APK can't use Google Billing — must install from Play Store.
+### Android — ✅ Verified
+**Status:** Purchase flow fully tested: Get Pro → Google Play dialog → purchase → "Welcome to Pro!" → "You already own" on retry → Refund via Play Console → re-purchase works.
 
-**Required action:**
-1. Wait for propagation (check periodically)
-2. Or push v28 AAB to Internal Testing for fresh install
-3. On device: clear Play Store cache, force stop, retry
-4. Must install from Play Store Internal Testing link (not sideload)
-5. License testing Google account already added
+**Key finding:** Non-consumable IAPs can only be purchased once per Google account. To retest: refund via Play Console → Orders, or use different license tester account.
+
+**Remaining for production:** Switch `RC_API_KEY` from Test Store to `goog_` in release builds only (debug builds can keep Test Store key).
 
 ---
 

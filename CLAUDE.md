@@ -13,7 +13,7 @@ Personal memory/habit-tracking Flutter app (记忆闪烁). Path: `/Users/justinz
 - **Build iOS IPA:** Follow `docs/ios-testflight-build-push-guide.md`
 - **Lint:** `flutter analyze --no-pub` (target: 0 errors)
 - **Tests:** `flutter test` (135 tests, all passing)
-- **RevenueCat:** Test Store verified. Purchase flow working end-to-end. iOS Sandbox verified. Android pending.
+- **RevenueCat:** Test Store verified. Google Play purchase verified (refund + re-purchase tested). iOS pending App Review.
 - **IAP Price:** $19.99 (non-consumable `blinking_pro`, entitlement `pro_access`)
 - **AI Keys:** Trial `--dart-define=TRIAL_API_KEY`, Pro `--dart-define=PRO_API_KEY` (OpenRouter, qwen/qwen3.5-flash)
 - **Feedback email:** `blinkingfeedback@gmail.com`
