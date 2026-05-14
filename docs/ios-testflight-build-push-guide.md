@@ -83,14 +83,14 @@ cd /Users/justinzero/ClaudeDev/blink/blinking_app
 xcrun altool --upload-app \
   -f build/ios/ipa/blinking.ipa \
   -t ios \
-  --apiKey 6S889FNN6R \
+  --apiKey 4UK6U499RC \
   --apiIssuer 8525f01e-0925-49f8-9862-739031df8d50
 ```
 
 **Expect:** `UPLOAD SUCCEEDED with no errors`
 
 **Credentials:**
-- API Key: `6S889FNN6R` (App Manager role, stored in App Store Connect → Users and Access → Keys)
+- API Key: `4UK6U499RC` (App Manager role, stored in App Store Connect → Users and Access → Keys)
 - Issuer ID: `8525f01e-0925-49f8-9862-739031df8d50`
 
 ---
@@ -148,7 +148,7 @@ xcodebuild -exportArchive \
 xcrun altool --upload-app \
   -f build/ios/ipa/blinking.ipa \
   -t ios \
-  --apiKey 6S889FNN6R \
+  --apiKey 4UK6U499RC \
   --apiIssuer 8525f01e-0925-49f8-9862-739031df8d50
 ```
 
@@ -162,5 +162,5 @@ xcrun altool --upload-app \
 | Export compliance warning | Answer "No" to encryption question in App Store Connect |
 | Signing errors during export | Ensure ExportOptions.plist has correct Team ID (`4Q4LMBRDM3`); run with `-allowProvisioningUpdates` |
 | Wrong version number on iPhone | Check that build was added to Internal Testing group (Step 5c); pull down to refresh in TestFlight app |
-| `altool` auth failure | Verify API Key `6S889FNN6R` is active in App Store Connect → Users and Access → Keys |
+| `altool` auth failure | Verify API Key `4UK6U499RC` is active in App Store Connect → Users and Access → Keys |
 | Landscape crash on older iPhones | Known issue with Xcode 26/Metal shader validation; use `--no-codesign` build path |

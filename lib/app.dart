@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'core/config/theme.dart';
 import 'core/services/storage_service.dart';
-import 'core/services/trial_service.dart';
 import 'core/services/entitlement_service.dart';
 import 'core/services/purchases_service.dart';
 import 'repositories/repositories.dart';
@@ -24,8 +23,10 @@ import 'screens/settings/settings_screen.dart';
 import 'screens/onboarding/transition_screen.dart';
 import 'screens/onboarding/onboarding_screen.dart';
 import 'screens/add_entry_screen.dart';
+import 'screens/purchase/paywall_screen.dart';
 import 'widgets/floating_robot.dart';
 import 'l10n/app_localizations.dart';
+import 'models/entry.dart';
 
 import 'core/services/export_service.dart';
 
@@ -167,8 +168,41 @@ class _MainScreenState extends State<MainScreen> {
         context,
         MaterialPageRoute(builder: (_) => const OnboardingScreen()),
       );
+      await _seedWelcomeEntry();
     }
     _checkTransitionScreen();
+  }
+
+  Future<void> _seedWelcomeEntry() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (prefs.getBool('welcome_entry_seeded') == true) return;
+
+    if (!mounted) return;
+    final isZh = context.read<LocaleProvider>().locale.languageCode == 'zh';
+    final entryProvider = context.read<EntryProvider>();
+
+    await entryProvider.addEntry(
+      type: EntryType.freeform,
+      content: isZh
+          ? '欢迎使用 Blinking 记忆闪烁 ✨\n\n'
+            '这是一个帮助你记录日常、追踪习惯、反思成长的空间。\n\n'
+            '📝 记录：点击 + 按钮写日记，可以添加情绪和标签。\n'
+            '📋 习惯：在"执行"页面管理日常习惯，打卡追踪。\n'
+            '💡 洞察：查看你的情绪变化、习惯完成率和年度回顾。\n'
+            '🤖 AI 助手：点击浮动机器人，与 AI 对话并保存反思。\n\n'
+            '开始你的记忆之旅吧！'
+          : 'Welcome to Blinking Notes ✨\n\n'
+            'A space to record daily moments, track habits, and reflect on your growth.\n\n'
+            '📝 Jot: Tap the + button to write entries with emotions and tags.\n'
+            '📋 Habits: Manage daily habits on the Do tab and track your streaks.\n'
+            '💡 Insights: Explore mood trends, habit completion, and annual reflections.\n'
+            '🤖 AI Companion: Tap the floating robot to chat and save reflections.\n\n'
+            'Start your memory journey!',
+      tagIds: ['tag_welcome'],
+      emotion: '😊',
+    );
+
+    await prefs.setBool('welcome_entry_seeded', true);
   }
 
   Future<void> _checkTransitionScreen() async {
@@ -244,7 +278,17 @@ class _MainScreenState extends State<MainScreen> {
     if (_currentIndex == 2) {
       return FloatingActionButton(
         heroTag: 'main_add_routine_fab',
-        onPressed: () => _routineKey.currentState?.showAddRoutineDialog(context),
+        onPressed: () {
+          final entitlement = context.read<EntitlementService>();
+          if (!entitlement.canAddHabit) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const PaywallScreen()),
+            );
+            return;
+          }
+          _routineKey.currentState?.showAddRoutineDialog(context);
+        },
         child: const Icon(Icons.playlist_add),
       );
     }

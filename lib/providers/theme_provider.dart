@@ -18,10 +18,8 @@ class ThemeProvider extends ChangeNotifier {
 
   Future<void> loadSettings() async {
     final lang = await _storage.getLanguage();
-    if (lang != null) {
-      _language = lang;
-    }
-    notifyListeners();
+    _language = lang;
+      notifyListeners();
   }
 
   Future<void> setLanguage(String lang) async {

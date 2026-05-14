@@ -90,7 +90,7 @@ class _AssistantScreenState extends State<AssistantScreen> {
         .where((e) =>
             !e.createdAt.isBefore(start) &&
             !e.createdAt.isAfter(endOfDay) &&
-            !e.tagIds.contains('tag_secrets'))
+            !e.tagIds.contains('tag_private'))
         .toList()
       ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
   }
@@ -102,7 +102,7 @@ class _AssistantScreenState extends State<AssistantScreen> {
         .where((e) =>
             !e.createdAt.isBefore(start) &&
             !e.createdAt.isAfter(endOfDay) &&
-            e.tagIds.contains('tag_secrets'))
+            e.tagIds.contains('tag_private'))
         .length;
   }
 
@@ -380,7 +380,7 @@ class _AssistantScreenState extends State<AssistantScreen> {
         type: EntryType.freeform,
         content:
             '【AI 总结 ${_fmtDate(_notesStartDate)}–${_fmtDate(_notesEndDate)}】\n\n$summary',
-        tagIds: ['tag_reflection'],
+        tagIds: ['tag_synthesis'],
       );
 
       if (mounted) {
@@ -450,7 +450,7 @@ class _AssistantScreenState extends State<AssistantScreen> {
     await context.read<EntryProvider>().addEntry(
       type: EntryType.freeform,
       content: summary,
-      tagIds: ['tag_reflection'],
+      tagIds: ['tag_synthesis'],
     );
     if (mounted) {
       final isZhSnack = context.read<LocaleProvider>().locale.languageCode == 'zh';
@@ -465,7 +465,7 @@ class _AssistantScreenState extends State<AssistantScreen> {
     await context.read<EntryProvider>().addEntry(
       type: EntryType.freeform,
       content: message.text,
-      tagIds: ['tag_reflection'],
+      tagIds: ['tag_synthesis'],
     );
     if (mounted) {
       final isZh = context.read<LocaleProvider>().locale.languageCode == 'zh';
@@ -483,19 +483,28 @@ class _AssistantScreenState extends State<AssistantScreen> {
     final persona = context.watch<AiPersonaProvider>();
     final avatarFile =
         persona.avatarPath != null ? File(persona.avatarPath!) : null;
-    final hasAvatar = avatarFile != null && avatarFile.existsSync();
+    final hasCustomAvatar = avatarFile != null && avatarFile.existsSync();
+    final styleAsset = persona.styleAvatarAssetFor(isZh);
     final hasRealMessages = _messages.any((m) => !m.isSystem);
 
     return Scaffold(
       appBar: AppBar(
         title: Row(
           children: [
-            if (hasAvatar)
+            if (hasCustomAvatar)
               Padding(
                 padding: const EdgeInsets.only(right: 8),
                 child: CircleAvatar(
                   radius: 14,
-                  backgroundImage: FileImage(avatarFile!),
+                  backgroundImage: FileImage(avatarFile),
+                ),
+              )
+            else if (styleAsset != null)
+              Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: CircleAvatar(
+                  radius: 14,
+                  backgroundImage: AssetImage(styleAsset),
                 ),
               ),
             Text(persona.displayNameFor(isZh)),
@@ -518,7 +527,7 @@ class _AssistantScreenState extends State<AssistantScreen> {
           const Divider(height: 1),
           Expanded(
             child: _messages.isEmpty
-                ? _buildEmptyState(hasAvatar, avatarFile, persona.displayNameFor(isZh), isZh)
+                ? _buildEmptyState(hasCustomAvatar, avatarFile, styleAsset, persona.displayNameFor(isZh), isZh)
                 : ListView.builder(
                     controller: _scrollController,
                     padding: const EdgeInsets.all(16),
@@ -536,7 +545,7 @@ class _AssistantScreenState extends State<AssistantScreen> {
   Widget _buildQuickActions(bool isZh) {
     final label = _customRangeActive
         ? '📖 ${_fmtDate(_notesStartDate).substring(5)}–${_fmtDate(_notesEndDate).substring(5)}'
-        : (isZh ? '📖 最近${_defaultDays}天' : '📖 Last $_defaultDays days');
+        : (isZh ? '📖 最近$_defaultDays天' : '📖 Last $_defaultDays days');
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
@@ -662,15 +671,20 @@ class _AssistantScreenState extends State<AssistantScreen> {
   }
 
   Widget _buildEmptyState(
-      bool hasAvatar, File? avatarFile, String name, bool isZh) {
+      bool hasCustomAvatar, File? avatarFile, String? styleAsset, String name, bool isZh) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          if (hasAvatar)
+          if (hasCustomAvatar)
             CircleAvatar(
               radius: 36,
               backgroundImage: FileImage(avatarFile!),
+            )
+          else if (styleAsset != null)
+            CircleAvatar(
+              radius: 36,
+              backgroundImage: AssetImage(styleAsset),
             )
           else
             const Text('🤖', style: TextStyle(fontSize: 56)),

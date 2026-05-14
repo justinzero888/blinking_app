@@ -1,19 +1,14 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'app.dart';
 import 'core/services/storage_service.dart';
 import 'core/services/device_service.dart';
 import 'core/services/purchases_service.dart';
+import 'core/services/config_service.dart';
+import 'core/services/notification_service.dart';
 
-// RevenueCat Test Store API key — use for development/testing.
-// Replace with platform-specific keys (appl_ / goog_) for production.
-const _rcTestApiKey = String.fromEnvironment(
-  'RC_API_KEY',
-  defaultValue: 'test_FFZAekOZQXGwwReuLkrvQLTjyOP',
-);
-
-const _autoRestorePath = String.fromEnvironment('AUTO_RESTORE');
+const _rcApiKey = String.fromEnvironment('RC_API_KEY');
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -23,30 +18,27 @@ void main() async {
   final storageService = StorageService();
   await storageService.init();
 
-  // Debug: auto-restore from backup path if provided
-  if (_autoRestorePath.isNotEmpty) {
-    final file = File(_autoRestorePath);
-    if (await file.exists()) {
-      // Reset entitlement + onboarding state so restored data shows fresh
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove('entitlement_state');
-      await prefs.remove('entitlement_jwt');
-      await prefs.remove('entitlement_quota');
-      await prefs.remove('entitlement_quota_date');
-      await prefs.remove('entitlement_preview_days');
-      await prefs.remove('entitlement_preview_started');
-      await prefs.remove('entitlement_was_preview');
-      await prefs.remove('onboarding_completed');
-      // Clear old trial data too
-      await prefs.remove('trial_token');
-      await prefs.remove('trial_started_at');
-      await prefs.remove('trial_device_id');
-      await storageService.restoreFromBackup(file);
-    }
+  // Reset previous trial state on fresh install
+  final prefs = await SharedPreferences.getInstance();
+  final wasPreview = prefs.getBool('entitlement_was_preview');
+  if (wasPreview == null) {
+    // First launch — clean any stale state
+    await prefs.remove('trial_token');
+    await prefs.remove('trial_started_at');
+    await prefs.remove('trial_device_id');
   }
 
   final purchasesService = PurchasesService();
-  await purchasesService.init(unifiedKey: _rcTestApiKey);
+  await purchasesService.init(
+    unifiedKey: _rcApiKey.isNotEmpty
+        ? _rcApiKey
+        : kDebugMode
+            ? 'test_FFZAekOZQXGwwReuLkrvQLTjyOP'
+            : null,
+  );
+
+  ConfigService.fetch();
+  await NotificationService.init();
 
   runApp(BlinkingApp(
     storageService: storageService,

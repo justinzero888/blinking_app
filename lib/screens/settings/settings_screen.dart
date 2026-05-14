@@ -14,16 +14,18 @@ import '../../providers/tag_provider.dart';
 import '../../providers/locale_provider.dart';
 import '../legal_doc_screen.dart';
 import '../../core/constants/legal_content.dart';
+import '../../core/config/constants.dart';
 import '../../providers/entry_provider.dart';
 import '../../providers/routine_provider.dart';
 import '../../models/tag.dart';
 import '../../core/config/theme.dart';
 import '../../core/services/storage_service.dart';
 import '../../core/services/export_service.dart';
-import '../../core/services/trial_service.dart';
 import '../../core/services/entitlement_service.dart';
 import '../../core/services/soft_prompt_service.dart';
-import 'byok_setup_screen.dart';
+import '../../core/services/file_service.dart';
+import '../../models/reflection_style.dart';
+
 import '../purchase/paywall_screen.dart';
 
 enum _BackupRange { all, lastMonth, last3Months, last6Months, custom }
@@ -35,7 +37,9 @@ class SettingsScreen extends StatefulWidget {
   State<SettingsScreen> createState() => _SettingsScreenState();
 }
 
-class _SettingsScreenState extends State<SettingsScreen> {
+class _SettingsScreenState extends State<SettingsScreen>
+    with SingleTickerProviderStateMixin {
+  late final TabController _tabController;
   // LLM Provider settings (persisted via SharedPreferences)
   // OpenRouter is first — lowest friction for new users (free trial key)
   final List<Map<String, String>> _llmProviders = [
@@ -70,22 +74,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String _aiName = 'AI 助手';
   String _aiPersonality = '';
 
-  TrialService? _trialService;
-  bool _isStartingTrial = false;
+  Map<String, dynamic>? _customStyle;
+  bool _hasCustomStyle = false;
+
+  int _debugTapCount = 0;
+  DateTime _lastDebugTap = DateTime.now();
 
   @override
   void initState() {
     super.initState();
-    SharedPreferences.getInstance().then((prefs) {
-      _trialService = TrialService(prefs);
-      if (mounted) setState(() {});
-    });
+    _tabController = TabController(length: 3, vsync: this);
     _loadLlmSettings();
     _loadAiSettings();
   }
 
-  int _debugTapCount = 0;
-  DateTime _lastDebugTap = DateTime.now();
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
 
   void _debugToggleEntitlement() {
     final now = DateTime.now();
@@ -105,8 +112,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (currentState == EntitlementState.restricted) {
       // Reset to preview for testing
       await prefs.remove('entitlement_state');
-      await prefs.remove('entitlement_quota');
-      await prefs.remove('entitlement_quota_date');
+
       await prefs.remove('entitlement_preview_started');
       await prefs.remove('entitlement_preview_days');
       await prefs.remove('entitlement_jwt');
@@ -117,7 +123,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       // Force restricted to test paywall
       await prefs.remove('entitlement_jwt');
       await prefs.setString('entitlement_state', 'restricted');
-      await prefs.setInt('entitlement_quota', 0);
       await prefs.setBool('entitlement_was_preview', true);
       await prefs.setInt('entitlement_preview_days', 0);
       // Set preview_started to an old date so _applyLocalPreview skips
@@ -142,9 +147,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _loadAiSettings() async {
     final prefs = await SharedPreferences.getInstance();
     if (mounted) {
+      final jsonStr = prefs.getString('ai_custom_style');
       setState(() {
         _aiName = prefs.getString('ai_assistant_name') ?? 'AI 助手';
         _aiPersonality = prefs.getString('ai_assistant_personality') ?? '';
+        _hasCustomStyle = prefs.getString('ai_style_id') == 'custom' && jsonStr != null;
+        if (jsonStr != null) {
+          _customStyle = jsonDecode(jsonStr) as Map<String, dynamic>;
+        }
       });
     }
   }
@@ -227,99 +237,666 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   List<Map<String, String>> get _displayProviders => _llmProviders;
 
-  Future<void> _startTrial() async {
-    final isZh = context.read<LocaleProvider>().locale.languageCode == 'zh';
-    if (_trialService == null) return;
-    setState(() => _isStartingTrial = true);
-    try {
-      await _trialService!.startTrial();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(isZh
-                ? '试用已开始！享受 7 天免费 AI 助手。'
-                : 'Trial started! Enjoy 7 days of free AI.'),
+
+  Widget _buildAITab(bool isZh) {
+    final entitlement = context.watch<EntitlementService>();
+
+    if (entitlement.isRestricted) {
+      return ListView(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              children: [
+                const Icon(Icons.lock_outline, size: 48, color: Colors.grey),
+                const SizedBox(height: 16),
+                Text(
+                  isZh ? 'AI 功能需要 Pro' : 'AI features require Pro',
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  isZh
+                      ? '包含 AI 反思、年度回顾、自定义 AI 风格等功能。'
+                      : 'Includes AI reflections, annual review, custom AI styles, and more.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                ),
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const PaywallScreen()),
+                      );
+                    },
+                    child: Text(isZh ? '获取 Pro — \$19.99' : 'Get Pro — \$19.99'),
+                  ),
+                ),
+              ],
+            ),
           ),
-        );
-        context.read<LlmConfigNotifier>().notify();
-        setState(() {});
-      }
-    } on TrialException catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(e.code == 'trial_already_used'
-                ? (isZh ? '此设备已使用过免费试用。' : 'This device has already used its free trial.')
-                : (isZh ? '启动试用失败，请重试。' : 'Failed to start trial. Please try again.')),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(isZh ? '启动失败，请检查网络连接。' : 'Failed to start trial. Check your network.'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isStartingTrial = false);
+        ],
+      );
     }
+
+    // Active style preview
+    return ListView(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: Consumer<AiPersonaProvider>(
+            builder: (context, persona, _) {
+              final styleId = persona.styleId;
+              final isCustom = styleId == 'custom' && _customStyle != null;
+              final style = isCustom
+                  ? ReflectionStyle.fromJson(_customStyle!)
+                  : ReflectionStyle.byId(styleId);
+              final color = _colorFromHex(style.colorHex);
+              final avatarPath = isCustom ? _customStyle!['avatarPath'] as String? : null;
+              return Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [color, color.withValues(alpha: 0.7)],
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          width: 44, height: 44,
+                          decoration: const BoxDecoration(
+                            color: Colors.white24, shape: BoxShape.circle,
+                          ),
+                          child: ClipOval(
+                            child: avatarPath != null && File(avatarPath).existsSync()
+                                ? Image.file(File(avatarPath), fit: BoxFit.cover)
+                                : style.avatarAssetFor(isZh) != null
+                                    ? Image.asset(style.avatarAssetFor(isZh)!, fit: BoxFit.cover,
+                                        errorBuilder: (_, _, _) => Center(
+                                            child: Text(style.emoji, style: const TextStyle(fontSize: 24))))
+                                    : Center(
+                                        child: Text(style.emoji, style: const TextStyle(fontSize: 24))),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(style.displayName(isZh),
+                                  style: const TextStyle(
+                                      color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
+                              Text(style.vibe(isZh),
+                                  style: TextStyle(color: Colors.white70, fontSize: 13)),
+                            ],
+                          ),
+                        ),
+                        if (persona.hasCustomAvatar)
+                          IconButton(
+                            icon: const Icon(Icons.close, size: 18, color: Colors.white70),
+                            onPressed: _clearAiAvatar,
+                            tooltip: isZh ? '移除头像' : 'Remove avatar',
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    ...style.lenses(isZh).take(3).map((l) => Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(l, style: TextStyle(color: Colors.white70, fontSize: 12)),
+                    )),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+        // Style selection
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Text(
+            isZh ? '选择反思风格' : 'Choose reflection style',
+            style: TextStyle(color: Colors.grey[600], fontWeight: FontWeight.w600, fontSize: 14),
+          ),
+        ),
+        const SizedBox(height: 8),
+        ...ReflectionStyle.presets.map((style) {
+          final isActive = context.watch<AiPersonaProvider>().styleId == style.id;
+          final color = _colorFromHex(style.colorHex);
+          return Card(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: isActive ? BorderSide(color: color, width: 1.5) : BorderSide.none,
+            ),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(12),
+              onTap: () => _activateStyle(style),
+              child: Padding(
+                padding: const EdgeInsets.all(14),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 44, height: 44,
+                      decoration: BoxDecoration(
+                        color: color.withValues(alpha: 0.12), shape: BoxShape.circle,
+                      ),
+                      child: Center(
+                        child: Text(style.emoji, style: const TextStyle(fontSize: 22)),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(style.displayName(isZh), style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+                          Text(style.vibe(isZh), style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+                        ],
+                      ),
+                    ),
+                    if (isActive)
+                      Icon(Icons.check_circle, color: color, size: 22),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }),
+        if (_hasCustomStyle && _customStyle != null) ...[
+          const SizedBox(height: 4),
+          _buildCustomStyleCard(context, isZh),
+        ],
+        const SizedBox(height: 4),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () => _showCustomStyleDialog(context, isZh),
+              icon: const Icon(Icons.add, size: 18),
+              label: Text(isZh ? '自定义风格' : 'Create Custom Style'),
+              style: OutlinedButton.styleFrom(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 32),
+      ],
+    );
+  }
+
+  void _activateStyle(ReflectionStyle style) async {
+    final persona = context.read<AiPersonaProvider>();
+    persona.setStyle(style);
+    final storage = context.read<StorageService>();
+    await storage.setActiveLensSet('lens_style_${style.id}');
+    if (mounted) setState(() {});
+  }
+
+  Widget _buildCustomStyleCard(BuildContext context, bool isZh) {
+    final styleId = context.watch<AiPersonaProvider>().styleId;
+    final isActive = styleId == 'custom';
+    final name = _customStyle?['name'] as String? ?? 'Custom';
+    final emoji = _customStyle?['emoji'] as String? ?? '✨';
+    final avatarPath = _customStyle?['avatarPath'] as String?;
+    final color = _colorFromHex(_customStyle?['colorHex'] as String? ?? '#FF9500');
+
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: isActive ? BorderSide(color: color, width: 1.5) : BorderSide.none,
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: isActive ? null : () => _activateCustomStyle(),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            children: [
+              Container(
+                width: 44, height: 44,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.12), shape: BoxShape.circle,
+                ),
+                child: ClipOval(
+                  child: avatarPath != null && File(avatarPath).existsSync()
+                      ? Image.file(File(avatarPath), fit: BoxFit.cover)
+                      : Center(
+                          child: Text(emoji, style: const TextStyle(fontSize: 22)),
+                        ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+                    Text(
+                      _customStyle?['vibe'] as String? ?? (isZh ? '自定义风格' : 'Custom Style'),
+                      style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+              if (isActive)
+                Icon(Icons.check_circle, color: color, size: 22),
+              IconButton(
+                icon: const Icon(Icons.edit, size: 18),
+                onPressed: () => _showCustomStyleDialog(context, isZh, isEdit: true),
+                tooltip: isZh ? '编辑' : 'Edit',
+              ),
+              IconButton(
+                icon: const Icon(Icons.delete_outline, size: 18),
+                onPressed: () => _deleteCustomStyle(context, isZh),
+                tooltip: isZh ? '删除' : 'Delete',
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _activateCustomStyle() async {
+    if (_customStyle == null) return;
+    await context.read<AiPersonaProvider>().setCustomStyle(_customStyle!);
+    final storage = context.read<StorageService>();
+    await storage.setActiveLensSet('lens_style_custom');
+    if (mounted) setState(() {});
+  }
+
+  void _deleteCustomStyle(BuildContext context, bool isZh) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(isZh ? '删除自定义风格？' : 'Delete custom style?'),
+        content: Text(isZh
+            ? '删除后将恢复为默认风格 Elara。'
+            : 'This will revert to the default style Elara.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(isZh ? '取消' : 'Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(isZh ? '删除' : 'Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    await context.read<AiPersonaProvider>().clearCustomStyle();
+    if (mounted) {
+      setState(() {
+        _customStyle = null;
+        _hasCustomStyle = false;
+      });
+    }
+  }
+
+  void _showCustomStyleDialog(BuildContext context, bool isZh, {bool isEdit = false}) {
+    final style = (!isEdit || _customStyle == null) ? null : _customStyle!;
+    final nameCtrl = TextEditingController(text: style?['name'] as String? ?? '');
+    final emojiCtrl = TextEditingController(text: style?['emoji'] as String? ?? '✨');
+    final vibeCtrl = TextEditingController(text: style?['vibe'] as String? ?? '');
+    final personaCtrl = TextEditingController(text: style?['persona'] as String? ?? '');
+    final lens1Ctrl = TextEditingController(text: style?['lens1'] as String? ?? '');
+    final lens2Ctrl = TextEditingController(text: style?['lens2'] as String? ?? '');
+    final lens3Ctrl = TextEditingController(text: style?['lens3'] as String? ?? '');
+    String? pickedImagePath = style?['avatarPath'] as String?;
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (ctx) => _CustomStyleFormPage(
+          isZh: isZh,
+          nameCtrl: nameCtrl,
+          emojiCtrl: emojiCtrl,
+          vibeCtrl: vibeCtrl,
+          personaCtrl: personaCtrl,
+          lens1Ctrl: lens1Ctrl,
+          lens2Ctrl: lens2Ctrl,
+          lens3Ctrl: lens3Ctrl,
+          pickedImagePath: pickedImagePath,
+          onSave: (name, emoji, vibe, persona, l1, l2, l3, path) {
+            _saveCustomStyle(name, emoji, vibe, persona, l1, l2, l3, isZh, imagePath: path);
+          },
+        ),
+      ),
+    );
+  }
+
+  void _saveCustomStyle(
+    String name,
+    String emoji,
+    String vibe,
+    String persona,
+    String lens1,
+    String lens2,
+    String lens3,
+    bool isZh, {
+    String? imagePath,
+  }) async {
+    // Save custom avatar image if picked
+    String? savedAvatarPath;
+    if (imagePath != null) {
+      try {
+        final relative = await FileService().saveFile(imagePath);
+        savedAvatarPath = await FileService().getFullPath(relative);
+      } catch (_) {
+        // Image save failed — continue without avatar
+      }
+    }
+
+    final json = {
+      'name': name,
+      'emoji': emoji,
+      'vibe': vibe,
+      'colorHex': '#FF9500',
+      'persona': persona,
+      'lens1': lens1,
+      'lens2': lens2,
+      'lens3': lens3,
+      'avatarPath': ?savedAvatarPath,
+    };
+
+    await context.read<AiPersonaProvider>().setCustomStyle(json);
+    final storage = context.read<StorageService>();
+    await storage.setActiveLensSet('lens_style_custom');
+
+    if (mounted) {
+      setState(() {
+        _customStyle = json;
+        _hasCustomStyle = true;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(isZh ? '自定义风格已保存' : 'Custom style saved'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    }
+  }
+
+  Color _colorFromHex(String hex) {
+    final h = hex.replaceFirst('#', '');
+    return Color(int.parse('FF$h', radix: 16));
+  }
+
+   Widget _buildTagsTab(bool isZh) {
+    return Consumer<TagProvider>(
+      builder: (context, tagProvider, _) {
+        final entitlement = context.watch<EntitlementService>();
+        final isRestricted = entitlement.isRestricted;
+        return ListView(
+          children: [
+            ...tagProvider.tags.map(
+              (tag) => _buildTagTile(context, tag, tagProvider, isZh),
+            ),
+            ListTile(
+              leading: Icon(
+                isRestricted ? Icons.lock : Icons.add,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+              title: Text(
+                isRestricted
+                    ? (isZh ? '升级至 Pro 以管理标签' : 'Upgrade to Pro to manage tags')
+                    : (isZh ? '添加标签' : 'Add Tag'),
+                style: TextStyle(color: Theme.of(context).colorScheme.primary),
+              ),
+              onTap: () {
+                if (isRestricted) {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const PaywallScreen()),
+                  );
+                  return;
+                }
+                _showAddTagDialog(context, tagProvider, isZh);
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildGeneralTab(bool isZh) {
+    return ListView(
+      children: [
+        _buildSectionHeader(isZh ? '语言' : 'Language'),
+        Consumer<LocaleProvider>(
+          builder: (context, localeProvider, _) {
+            return ListTile(
+              leading: const Icon(Icons.language),
+              title: Text(isZh ? '语言' : 'Language'),
+              subtitle: Text(isZh ? '中文' : 'English'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => _showLanguageDialog(context, localeProvider),
+            );
+          },
+        ),
+        const Divider(),
+        _buildSectionHeader(isZh ? '数据备份与迁移' : 'Data Portability'),
+        ListTile(
+          leading: const Icon(Icons.archive_outlined),
+          title: Text(isZh ? '完整备份 (ZIP)' : 'Full Backup (ZIP)'),
+          subtitle: Text(isZh ? '包含所有数据和多媒体文件' : 'All data and media files'),
+          onTap: () async {
+            final entitlement = context.read<EntitlementService>();
+            if (!entitlement.canBackup && entitlement.isRestricted) {
+              if (await SoftPromptService.canShowReengage('backup')) {
+              await SoftPromptService.showReengage(
+                context,
+                triggerKey: 'backup',
+                title: isZh ? '备份功能需要 Pro' : 'Backup requires Pro',
+                body: isZh
+                    ? '跨设备备份与恢复是 Pro 功能。你的笔记仍然安全地保存在本地。'
+                    : 'Backup & restore across devices is part of Pro. Your notes are still safe locally.',
+              );
+              } else {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const PaywallScreen()));
+              }
+              return;
+            }
+            _handleBackup(context, isZh);
+          },
+        ),
+        ListTile(
+          leading: const Icon(Icons.table_chart_outlined),
+          title: Text(isZh ? '导出为 CSV' : 'Export to CSV'),
+          subtitle: Text(isZh ? '适用于 Excel 统计' : 'Compatible with Excel'),
+          onTap: () async {
+            final entitlement = context.read<EntitlementService>();
+            if (!entitlement.canExport && entitlement.isRestricted) {
+              if (await SoftPromptService.canShowReengage('export_csv')) {
+              await SoftPromptService.showReengage(
+                context,
+                triggerKey: 'export_csv',
+                title: isZh ? '导出功能需要 Pro' : 'Export requires Pro',
+                body: isZh
+                    ? '数据导出是 Pro 功能。升级后可以导出 CSV 和 JSON。'
+                    : 'Data export is part of Pro. Upgrade to export CSV and JSON.',
+              );
+              } else {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const PaywallScreen()));
+              }
+              return;
+            }
+            _handleExportCsv(context, isZh);
+          },
+        ),
+        ListTile(
+          leading: const Icon(Icons.code),
+          title: Text(isZh ? '导出为 JSON' : 'Export to JSON'),
+          subtitle: Text(isZh ? '仅导出结构化数据' : 'Structured data only'),
+          onTap: () async {
+            final entitlement = context.read<EntitlementService>();
+            if (!entitlement.canExport && entitlement.isRestricted) {
+              if (await SoftPromptService.canShowReengage('export_json')) {
+              await SoftPromptService.showReengage(
+                context,
+                triggerKey: 'export_json',
+                title: isZh ? '导出功能需要 Pro' : 'Export requires Pro',
+                body: isZh
+                    ? '数据导出是 Pro 功能。升级后可以导出 JSON。'
+                    : 'Data export is part of Pro. Upgrade to export JSON.',
+              );
+              } else {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const PaywallScreen()));
+              }
+              return;
+            }
+            _handleExportJson(context, isZh);
+          },
+        ),
+        ListTile(
+          leading: const Icon(Icons.restore_outlined),
+          title: Text(isZh ? '恢复数据' : 'Restore Data'),
+          subtitle: Text(isZh ? '从备份文件导入' : 'Import from backup file'),
+          onTap: () async {
+            final entitlement = context.read<EntitlementService>();
+            if (!entitlement.canBackup && entitlement.isRestricted) {
+              if (await SoftPromptService.canShowReengage('restore')) {
+              await SoftPromptService.showReengage(
+                context,
+                triggerKey: 'restore',
+                title: isZh ? '恢复功能需要 Pro' : 'Restore requires Pro',
+                body: isZh
+                    ? '数据恢复是 Pro 功能。升级后可以恢复备份数据。'
+                    : 'Data restore is part of Pro. Upgrade to restore from backup.',
+              );
+              } else {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const PaywallScreen()));
+              }
+              return;
+            }
+            _handleRestore(context, isZh);
+          },
+        ),
+        ListTile(
+          leading: const Icon(Icons.fitness_center_outlined),
+          title: Text(isZh ? '导出习惯数据' : 'Export Habits'),
+          subtitle: Text(isZh ? '导出所有习惯为 JSON 文件' : 'Export all habits as JSON'),
+          onTap: () async {
+            final entitlement = context.read<EntitlementService>();
+            if (!entitlement.canExport && entitlement.isRestricted) {
+              if (await SoftPromptService.canShowReengage('export_habits')) {
+              await SoftPromptService.showReengage(
+                context,
+                triggerKey: 'export_habits',
+                title: isZh ? '导出功能需要 Pro' : 'Export requires Pro',
+                body: isZh
+                    ? '习惯数据导出是 Pro 功能。'
+                    : 'Habit export is part of Pro.',
+              );
+              } else {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const PaywallScreen()));
+              }
+              return;
+            }
+            _handleExportHabits(context, isZh);
+          },
+        ),
+        ListTile(
+          leading: const Icon(Icons.upload_outlined),
+          title: Text(isZh ? '导入习惯数据' : 'Import Habits'),
+          subtitle: Text(isZh ? '从 JSON 文件导入习惯' : 'Import habits from JSON file'),
+          onTap: () async {
+            final entitlement = context.read<EntitlementService>();
+            if (!entitlement.canExport && entitlement.isRestricted) {
+              if (await SoftPromptService.canShowReengage('import_habits')) {
+              await SoftPromptService.showReengage(
+                context,
+                triggerKey: 'import_habits',
+                title: isZh ? '导入功能需要 Pro' : 'Import requires Pro',
+                body: isZh
+                    ? '习惯数据导入是 Pro 功能。'
+                    : 'Habit import is part of Pro.',
+              );
+              } else {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const PaywallScreen()));
+              }
+              return;
+            }
+            _handleImportHabits(context, isZh);
+          },
+        ),
+        const Divider(),
+        _buildSectionHeader(isZh ? '关于' : 'About'),
+        ListTile(
+          leading: const Icon(Icons.feedback_outlined),
+          title: Text(isZh ? '发送反馈' : 'Send Feedback'),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => _sendFeedback(context, isZh),
+        ),
+        ListTile(
+          leading: const Icon(Icons.privacy_tip_outlined),
+          title: Text(isZh ? '隐私政策' : 'Privacy Policy'),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => LegalDocScreen(
+                title: isZh ? '隐私政策' : 'Privacy Policy',
+                content: isZh ? kPrivacyPolicyContentZh : kPrivacyPolicyContent,
+              ),
+            ),
+          ),
+        ),
+        ListTile(
+          leading: const Icon(Icons.description_outlined),
+          title: Text(isZh ? '服务条款' : 'Terms of Service'),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => LegalDocScreen(
+                title: isZh ? '服务条款' : 'Terms of Service',
+                content: isZh ? kTermsOfServiceContentZh : kTermsOfServiceContent,
+              ),
+            ),
+          ),
+        ),
+        ListTile(
+          leading: const Icon(Icons.info),
+          title: const Text('Blinking (记忆闪烁)'),
+          subtitle: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => _debugToggleEntitlement(),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Text(isZh ? '版本 ${AppConstants.appVersion}' : 'Version ${AppConstants.appVersion}'),
+            ),
+          ),
+        ),
+        const SizedBox(height: 32),
+      ],
+    );
   }
 
   Widget _buildEntitlementBanner(bool isZh) {
     final entitlement = context.watch<EntitlementService>();
     final state = entitlement.currentState;
-    final remaining = entitlement.remainingAI;
-    final daysLeft = entitlement.previewDaysRemaining;
-    final hasKey = entitlement.hasActiveBYOK;
 
-    // BYOK active — show clean status
-    if (hasKey) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        child: Container(
-          decoration: BoxDecoration(
-            color: Colors.green.shade50,
-            border: Border.all(color: Colors.green.shade300),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              const Text('🔑', style: TextStyle(fontSize: 22)),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      isZh ? '使用自己的 Key' : 'Using your own key',
-                      style: TextStyle(
-                        color: Colors.green.shade800,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                    ),
-                    Text(
-                      isZh ? 'AI 请求无限，由你的 Key 计费' : 'Unlimited AI requests, billed to your key',
-                      style: TextStyle(color: Colors.green.shade700, fontSize: 12),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    // PREVIEW — auto-activated, 21 days, 3 AI/day, full access
+    // PREVIEW — full access trial active
     if (state == EntitlementState.preview) {
-      final quota = entitlement.previewDailyQuota;
-      final totalQuota = quota * entitlement.previewDaysTotal;
+      final daysLeft = entitlement.previewDaysRemaining;
       return Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         child: Container(
@@ -354,8 +931,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: 6),
               Text(
                 isZh
-                    ? '$quota 次 AI/天 · 全部功能解锁 · ${entitlement.previewDaysTotal} 天共 $totalQuota 次'
-                    : '$quota AI/day · Full access · $totalQuota total over ${entitlement.previewDaysTotal} days',
+                    ? '试用期间享全部功能。'
+                    : 'Enjoy all features during your trial.',
                 style: TextStyle(color: Colors.white70, fontSize: 12),
               ),
               const SizedBox(height: 6),
@@ -366,7 +943,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 style: TextStyle(color: Colors.white60, fontSize: 11),
               ),
               const SizedBox(height: 8),
-              // Get Pro button
               SizedBox(
                 width: double.infinity,
                 child: FilledButton.icon(
@@ -386,23 +962,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 10),
                   ),
-                ),
-              ),
-              const SizedBox(height: 6),
-              // BYOK link
-              OutlinedButton.icon(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const ByokSetupScreen()),
-                  );
-                },
-                icon: const Icon(Icons.vpn_key, size: 14),
-                label: Text(isZh ? '使用自己的 API Key' : 'Bring your own key'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.white70,
-                  side: const BorderSide(color: Colors.white30),
-                  padding: const EdgeInsets.symmetric(vertical: 8),
                 ),
               ),
             ],
@@ -432,7 +991,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      isZh ? 'Blinking Pro — 终身会员' : 'Blinking Pro — Lifetime',
+                      isZh ? 'Pro — 全部功能解锁' : 'Pro — All features unlocked',
                       style: const TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
@@ -442,25 +1001,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     const SizedBox(height: 4),
                     Text(
                       isZh
-                          ? '全部功能永久解锁 · 一年 1,200 次 AI 对话'
-                          : 'All features unlocked forever · 1,200 AI reflections/year',
+                          ? '全部功能永久解锁'
+                          : 'All features unlocked forever',
                       style: TextStyle(color: Colors.white70, fontSize: 12),
-                    ),
-                    const SizedBox(height: 8),
-                    OutlinedButton.icon(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => const ByokSetupScreen()),
-                        );
-                      },
-                      icon: const Icon(Icons.vpn_key, size: 14),
-                      label: Text(isZh ? '使用自己的 API Key' : 'Bring your own key'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.white70,
-                        side: const BorderSide(color: Colors.white30),
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                      ),
                     ),
                   ],
                 ),
@@ -489,24 +1032,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const Text('⚡', style: TextStyle(fontSize: 22)),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        isZh ? '免费模式' : 'Free Mode',
-                        style: TextStyle(
-                          color: Colors.orange.shade800,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                        ),
-                      ),
-                      Text(
-                        isZh
-                            ? 'AI: $remaining/3 次每月 · 编辑习惯、备份、新建习惯已暂停'
-                            : 'AI: $remaining/3 per month · Edit habits, backup, new habits paused',
-                        style: TextStyle(color: Colors.orange.shade700, fontSize: 12),
-                      ),
-                    ],
+                  child: Text(
+                    isZh ? '升级至 Pro' : 'Upgrade to Pro',
+                    style: TextStyle(
+                      color: Colors.orange.shade800,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
                   ),
                 ),
               ],
@@ -541,28 +1073,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: 8),
-            Text(
-              isZh
-                  ? 'Pro 包含：全部功能 + 1,200 AI/年。用完可购买 \$4.99/500 次补充包。'
-                  : 'Pro includes: all features + 1,200 AI/year. Top-up \$4.99/500 when needed.',
-              style: TextStyle(color: Colors.orange.shade600, fontSize: 11),
-            ),
-            const SizedBox(height: 8),
-            OutlinedButton.icon(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const ByokSetupScreen()),
-                );
-              },
-              icon: const Icon(Icons.vpn_key, size: 16),
-              label: Text(isZh ? '或使用自己的 API Key（免费，无限次）' : 'Or BYOK — free, unlimited (own key)'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.orange.shade800,
-                padding: const EdgeInsets.symmetric(vertical: 10),
-              ),
-            ),
           ],
         ),
       ),
@@ -581,253 +1091,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
       ),
-      body: ListView(
+      body: Column(
         children: [
-          // AI Section
-          _buildSectionHeader(isZh ? 'AI' : 'AI'),
+          // Entitlement banner — always visible
           _buildEntitlementBanner(isZh),
-          const Divider(),
-
-          // AI Personalization
-          _buildSectionHeader(isZh ? 'AI 个性化' : 'AI Personalization'),
-          Card(
-            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Avatar picker
-                  Consumer<AiPersonaProvider>(
-                    builder: (context, persona, _) {
-                      final avatarPath = persona.avatarPath;
-                      final hasAvatar = avatarPath != null &&
-                          File(avatarPath).existsSync();
-                      return Row(
-                        children: [
-                          GestureDetector(
-                            onTap: _pickAiAvatar,
-                            child: CircleAvatar(
-                              radius: 32,
-                              backgroundImage: hasAvatar
-                                  ? FileImage(File(avatarPath))
-                                  : null,
-                              child: !hasAvatar
-                                  ? const Text('🤖',
-                                      style: TextStyle(fontSize: 28))
-                                  : null,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              TextButton.icon(
-                                icon: const Icon(Icons.image, size: 16),
-                                label: Text(
-                                    isZh ? '更换头像' : 'Change Avatar',
-                                    style: const TextStyle(fontSize: 13)),
-                                onPressed: _pickAiAvatar,
-                                style: TextButton.styleFrom(
-                                  padding: EdgeInsets.zero,
-                                  minimumSize: Size.zero,
-                                  tapTargetSize:
-                                      MaterialTapTargetSize.shrinkWrap,
-                                ),
-                              ),
-                              if (hasAvatar)
-                                TextButton.icon(
-                                  icon: const Icon(Icons.delete_outline,
-                                      size: 16, color: Colors.red),
-                                  label: Text(
-                                      isZh ? '移除头像' : 'Remove',
-                                      style: const TextStyle(
-                                          fontSize: 13, color: Colors.red)),
-                                  onPressed: _clearAiAvatar,
-                                  style: TextButton.styleFrom(
-                                    padding: EdgeInsets.zero,
-                                    minimumSize: Size.zero,
-                                    tapTargetSize:
-                                        MaterialTapTargetSize.shrinkWrap,
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ],
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    decoration: InputDecoration(
-                      labelText: isZh ? '助手名称' : 'Assistant Name',
-                      hintText: 'AI 助手',
-                    ),
-                    controller: TextEditingController(text: _aiName),
-                    onChanged: (v) => _aiName = v,
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    decoration: InputDecoration(
-                      labelText: isZh ? '性格描述' : 'Personality',
-                      hintText: isZh
-                          ? '例如: 温柔、幽默、鼓励型'
-                          : 'e.g. warm, funny, motivating',
-                    ),
-                    controller: TextEditingController(text: _aiPersonality),
-                    onChanged: (v) => _aiPersonality = v,
-                    maxLines: 2,
-                  ),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: _saveAiSettings,
-                      child: Text(isZh ? '保存 AI 设置' : 'Save AI Settings'),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+          // Tab bar
+          TabBar(
+            controller: _tabController,
+            tabs: [
+              Tab(text: isZh ? 'AI 个性化' : 'AI Personalization'),
+              Tab(text: isZh ? '标签管理' : 'Tags'),
+              Tab(text: isZh ? '通用' : 'General'),
+            ],
           ),
-          const Divider(),
-
-          // Tags Management
-          _buildSectionHeader(isZh ? '标签管理' : 'Tag Management'),
-          Consumer<TagProvider>(
-            builder: (context, tagProvider, _) {
-              return Column(
-                children: [
-                  ...tagProvider.tags.map(
-                    (tag) => _buildTagTile(context, tag, tagProvider, isZh),
-                  ),
-                  ListTile(
-                    leading: Icon(Icons.add,
-                        color: Theme.of(context).colorScheme.primary),
-                    title: Text(
-                      isZh ? '添加标签' : 'Add Tag',
-                      style: TextStyle(
-                          color: Theme.of(context).colorScheme.primary),
-                    ),
-                    onTap: () => _showAddTagDialog(context, tagProvider, isZh),
-                  ),
-                ],
-              );
-            },
-          ),
-          const Divider(),
-
-          // Language & General Settings
-          _buildSectionHeader(isZh ? '通用设置' : 'General'),
-          Consumer<LocaleProvider>(
-            builder: (context, localeProvider, _) {
-              return ListTile(
-                leading: const Icon(Icons.language),
-                title: Text(isZh ? '语言' : 'Language'),
-                subtitle: Text(isZh ? '中文' : 'English'),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () => _showLanguageDialog(context, localeProvider),
-              );
-            },
-          ),
-          const Divider(),
-
-          // Data Portability
-          _buildSectionHeader(isZh ? '数据备份与迁移' : 'Data Portability'),
-          ListTile(
-            leading: const Icon(Icons.archive_outlined),
-            title: Text(isZh ? '完整备份 (ZIP)' : 'Full Backup (ZIP)'),
-            subtitle: Text(isZh ? '包含所有数据和多媒体文件' : 'All data and media files'),
-            onTap: () async {
-              final entitlement = context.read<EntitlementService>();
-              if (!entitlement.canBackup && entitlement.isRestricted) {
-                final wentToPaywall = await SoftPromptService.showReengage(
-                  context,
-                  triggerKey: 'backup',
-                  title: isZh ? '备份功能需要 Pro' : 'Backup requires Pro',
-                  body: isZh
-                      ? '跨设备备份与恢复是 Pro 功能。你的笔记仍然安全地保存在本地。'
-                      : 'Backup & restore across devices is part of Pro. Your notes are still safe locally.',
-                );
-                if (wentToPaywall) return;
-              }
-              _handleBackup(context, isZh);
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.table_chart_outlined),
-            title: Text(isZh ? '导出为 CSV' : 'Export to CSV'),
-            subtitle: Text(isZh ? '适用于 Excel 统计' : 'Compatible with Excel'),
-            onTap: () => _handleExportCsv(context, isZh),
-          ),
-          ListTile(
-            leading: const Icon(Icons.code),
-            title: Text(isZh ? '导出为 JSON' : 'Export to JSON'),
-            subtitle: Text(isZh ? '仅导出结构化数据' : 'Structured data only'),
-            onTap: () => _handleExportJson(context, isZh),
-          ),
-          ListTile(
-            leading: const Icon(Icons.restore_outlined),
-            title: Text(isZh ? '恢复数据' : 'Restore Data'),
-            subtitle: Text(isZh ? '从备份文件导入' : 'Import from backup file'),
-            onTap: () => _handleRestore(context, isZh),
-          ),
-          ListTile(
-            leading: const Icon(Icons.fitness_center_outlined),
-            title: Text(isZh ? '导出习惯数据' : 'Export Habits'),
-            subtitle: Text(isZh ? '导出所有习惯为 JSON 文件' : 'Export all habits as JSON'),
-            onTap: () => _handleExportHabits(context, isZh),
-          ),
-          ListTile(
-            leading: const Icon(Icons.upload_outlined),
-            title: Text(isZh ? '导入习惯数据' : 'Import Habits'),
-            subtitle: Text(isZh ? '从 JSON 文件导入习惯' : 'Import habits from JSON file'),
-            onTap: () => _handleImportHabits(context, isZh),
-          ),
-          const Divider(),
-
-          // About
-          _buildSectionHeader(isZh ? '关于' : 'About'),
-          ListTile(
-            leading: const Icon(Icons.feedback_outlined),
-            title: Text(isZh ? '发送反馈' : 'Send Feedback'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => _sendFeedback(context, isZh),
-          ),
-          ListTile(
-            leading: const Icon(Icons.privacy_tip_outlined),
-            title: Text(isZh ? '隐私政策' : 'Privacy Policy'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => LegalDocScreen(
-                  title: isZh ? '隐私政策' : 'Privacy Policy',
-                  content: isZh ? kPrivacyPolicyContentZh : kPrivacyPolicyContent,
-                ),
-              ),
-            ),
-          ),
-          ListTile(
-            leading: const Icon(Icons.gavel_outlined),
-            title: Text(isZh ? '服务条款' : 'Terms of Service'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => LegalDocScreen(
-                  title: isZh ? '服务条款' : 'Terms of Service',
-                  content: isZh ? kTermsOfServiceContentZh : kTermsOfServiceContent,
-                ),
-              ),
-            ),
-          ),
-          ListTile(
-            leading: const Icon(Icons.info),
-            title: const Text('Blinking (记忆闪烁)'),
-            subtitle: GestureDetector(
-              onTap: () => _debugToggleEntitlement(),
-              child: Text(isZh ? '版本 1.1.0-beta.8' : 'Version 1.1.0-beta.8'),
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                _buildAITab(isZh),
+                _buildTagsTab(isZh),
+                _buildGeneralTab(isZh),
+              ],
             ),
           ),
         ],
@@ -851,12 +1135,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   // ============ TAG MANAGEMENT ============
 
-  static const _systemTagIds = {'tag_reflection', 'tag_secrets'};
+  static const _systemTagIds = {'tag_synthesis', 'tag_private', 'tag_welcome'};
+  // Tags hidden from the add-entry tag picker
+  static const _hiddenTagIds = {'tag_synthesis', 'tag_welcome'};
 
   Widget _buildTagTile(
     BuildContext context, Tag tag, TagProvider provider, bool isZh,
   ) {
     final isSystem = _systemTagIds.contains(tag.id);
+    final entitlement = context.watch<EntitlementService>();
+    final isRestricted = entitlement.isRestricted;
     return ListTile(
       leading: CircleAvatar(
         backgroundColor: AppTheme.hexColor(tag.color),
@@ -866,12 +1154,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (!isSystem)
+          if (!isSystem && !isRestricted)
             IconButton(
               icon: const Icon(Icons.edit, size: 20),
               onPressed: () => _showEditTagDialog(context, tag, provider, isZh),
             ),
-          if (!isSystem)
+          if (!isSystem && !isRestricted)
             IconButton(
               icon: const Icon(Icons.delete, size: 20, color: Colors.red),
               onPressed: () => _confirmDeleteTag(context, tag, provider, isZh),
@@ -1374,7 +1662,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ],
                     ),
                     if (range == _BackupRange.custom) ...[
-                      const SizedBox(height: 16),
                       Row(
                         children: [
                           Expanded(
@@ -1515,11 +1802,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                     ],
                   ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          );
-        },
+            );
+          },
       ),
     );
   }
@@ -1729,7 +2016,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _sendFeedback(BuildContext context, bool isZh) async {
     const email = 'blinkingfeedback@gmail.com';
-    const version = '1.1.0-beta.7'; // TODO: keep in sync with pubspec.yaml
+    const version = AppConstants.appVersion;
     final subject = Uri.encodeComponent('Blinking App Feedback - v$version');
     final body = Uri.encodeComponent(
       'What happened:\n\n\nSteps to reproduce:\n\n\nExpected behavior:\n\n\nDevice & OS:\n\n',
@@ -1737,20 +2024,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final uri = Uri.parse('mailto:$email?subject=$subject&body=$body');
 
     try {
-      await launchUrl(uri);
+      final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!launched && context.mounted) {
+        _showMailFallback(context, isZh, email);
+      }
     } catch (_) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            isZh
-                ? '无法打开邮件应用，请发送邮件至 $email'
-                : 'No mail app found. Please email $email',
-          ),
-          duration: const Duration(seconds: 5),
-        ),
-      );
+      if (context.mounted) _showMailFallback(context, isZh, email);
     }
+  }
+
+  void _showMailFallback(BuildContext context, bool isZh, String email) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          isZh
+              ? '无法打开邮件应用，请发送邮件至 $email'
+              : 'No mail app found. Please email $email',
+        ),
+        duration: const Duration(seconds: 5),
+      ),
+    );
   }
 
   void _showError(BuildContext context, bool isZh, String error) {
@@ -1793,5 +2086,280 @@ class _BackupEstimator {
       final mins = (remainingSec / 60).ceil();
       return isZh ? '约$mins分钟' : 'About $mins minute${mins > 1 ? 's' : ''}';
     }
+  }
+}
+
+// ─── Custom Style Form Page ──────────────────────────────────────
+
+class _CustomStyleFormPage extends StatefulWidget {
+  final bool isZh;
+  final TextEditingController nameCtrl;
+  final TextEditingController emojiCtrl;
+  final TextEditingController vibeCtrl;
+  final TextEditingController personaCtrl;
+  final TextEditingController lens1Ctrl;
+  final TextEditingController lens2Ctrl;
+  final TextEditingController lens3Ctrl;
+  final String? pickedImagePath;
+  final void Function(String name, String emoji, String vibe, String persona,
+      String l1, String l2, String l3, String? path) onSave;
+
+  const _CustomStyleFormPage({
+    required this.isZh,
+    required this.nameCtrl,
+    required this.emojiCtrl,
+    required this.vibeCtrl,
+    required this.personaCtrl,
+    required this.lens1Ctrl,
+    required this.lens2Ctrl,
+    required this.lens3Ctrl,
+    required this.pickedImagePath,
+    required this.onSave,
+  });
+
+  @override
+  State<_CustomStyleFormPage> createState() => _CustomStyleFormPageState();
+}
+
+class _CustomStyleFormPageState extends State<_CustomStyleFormPage> {
+  final _emojiOptions = const [
+    '✨', '🌟', '💫', '⭐', '🔥', '💡', '🎯', '🧠',
+    '💪', '🌱', '🌸', '🌿', '🍀', '🌙', '☀️', '🌈',
+    '🦋', '🐣', '🕊️', '🐚', '💎', '🎨', '🎵', '📚',
+    '✏️', '📝', '🗂️', '🔑', '💭', '🗣️', '🎭', '🪞',
+  ];
+
+  late String? _pickedImagePath = widget.pickedImagePath;
+
+  @override
+  Widget build(BuildContext context) {
+    final isZh = widget.isZh;
+    final currentEmoji = widget.emojiCtrl.text.isEmpty ? '✨' : widget.emojiCtrl.text;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(isZh ? '自定义风格' : 'Custom Style'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(isZh ? '取消' : 'Cancel'),
+          ),
+        ],
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TextField(
+              controller: widget.nameCtrl,
+              decoration: InputDecoration(
+                labelText: isZh ? '名称 *' : 'Name *',
+                border: const OutlineInputBorder(),
+                hintText: isZh ? '给你的风格起个名字' : 'Name your style',
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: widget.vibeCtrl,
+              decoration: InputDecoration(
+                labelText: isZh ? '风格标签' : 'Style (vibe)',
+                border: const OutlineInputBorder(),
+                hintText: isZh ? '例如：沉稳冥想' : 'e.g. Slow & Meditative',
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              isZh ? '选择头像' : 'Choose Avatar',
+              style: TextStyle(color: Colors.grey[600], fontSize: 13, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () async {
+                  final picker = ImagePicker();
+                  final picked = await picker.pickImage(
+                    source: ImageSource.gallery,
+                    maxWidth: 256,
+                    maxHeight: 256,
+                    imageQuality: 85,
+                  );
+                  if (picked != null) {
+                    setState(() {
+                      _pickedImagePath = picked.path;
+                      widget.emojiCtrl.clear();
+                    });
+                  }
+                },
+                icon: const Icon(Icons.image, size: 18),
+                label: Text(isZh ? '上传图片' : 'Upload Image'),
+                style: OutlinedButton.styleFrom(
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                ),
+              ),
+            ),
+            if (_pickedImagePath != null) ...[
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  ClipOval(
+                    child: Image.file(
+                      File(_pickedImagePath!),
+                      width: 56, height: 56, fit: BoxFit.cover,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  TextButton(
+                    onPressed: () {
+                      setState(() {
+                        _pickedImagePath = null;
+                        widget.emojiCtrl.text = '✨';
+                      });
+                    },
+                    child: Text(isZh ? '清除' : 'Clear', style: const TextStyle(fontSize: 13)),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+            ],
+            Container(
+              padding: const EdgeInsets.only(top: 8),
+              decoration: BoxDecoration(
+                border: Border(top: BorderSide(color: Colors.grey[200]!)),
+              ),
+              child: Column(
+                children: [
+                  if (_pickedImagePath == null)
+                    Center(
+                      child: Container(
+                        width: 56, height: 56,
+                        margin: const EdgeInsets.only(bottom: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.orange.withValues(alpha: 0.12),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Center(
+                          child: Text(currentEmoji, style: const TextStyle(fontSize: 28)),
+                        ),
+                      ),
+                    ),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: _emojiOptions.map((emoji) {
+                      final selected = currentEmoji == emoji;
+                      return GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            _pickedImagePath = null;
+                            widget.emojiCtrl.text = emoji;
+                          });
+                        },
+                        child: Container(
+                          width: 44, height: 44,
+                          decoration: BoxDecoration(
+                            color: selected
+                                ? Colors.orange.withValues(alpha: 0.15)
+                                : Colors.grey[100],
+                            shape: BoxShape.circle,
+                            border: selected
+                                ? Border.all(color: Colors.orange, width: 2)
+                                : null,
+                          ),
+                          child: Center(
+                            child: Text(emoji, style: const TextStyle(fontSize: 22)),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: widget.personaCtrl,
+              maxLines: 3,
+              maxLength: 150,
+              decoration: InputDecoration(
+                labelText: isZh ? '人格描述 (最多 150 字)' : 'Personality (max 150 chars)',
+                border: const OutlineInputBorder(),
+                hintText: isZh
+                    ? '描述 AI 助手应该如何说话...'
+                    : 'Describe how the AI should speak...',
+                alignLabelWithHint: true,
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              isZh ? '反思镜头 (3 个问题)' : 'Reflection Lenses (3 questions)',
+              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: widget.lens1Ctrl,
+              decoration: InputDecoration(
+                labelText: isZh ? '镜头 1 *' : 'Lens 1 *',
+                border: const OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: widget.lens2Ctrl,
+              decoration: InputDecoration(
+                labelText: isZh ? '镜头 2 *' : 'Lens 2 *',
+                border: const OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: widget.lens3Ctrl,
+              decoration: InputDecoration(
+                labelText: isZh ? '镜头 3 *' : 'Lens 3 *',
+                border: const OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: () {
+                  final name = widget.nameCtrl.text.trim();
+                  final emoji = widget.emojiCtrl.text.trim().isEmpty
+                      ? '✨'
+                      : widget.emojiCtrl.text.trim();
+                  final vibe = widget.vibeCtrl.text.trim();
+                  final persona = widget.personaCtrl.text.trim();
+                  final l1 = widget.lens1Ctrl.text.trim();
+                  final l2 = widget.lens2Ctrl.text.trim();
+                  final l3 = widget.lens3Ctrl.text.trim();
+
+                  if (name.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(isZh ? '请输入名称' : 'Name is required')),
+                    );
+                    return;
+                  }
+                  if (l1.isEmpty || l2.isEmpty || l3.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(isZh ? '请填写所有 3 个镜头问题' : 'All 3 lenses are required')),
+                    );
+                    return;
+                  }
+
+                  Navigator.pop(context);
+                  widget.onSave(name, emoji, vibe, persona, l1, l2, l3, _pickedImagePath);
+                },
+                child: Text(isZh ? '保存' : 'Save'),
+              ),
+            ),
+            const SizedBox(height: 32),
+          ],
+        ),
+      ),
+    );
   }
 }

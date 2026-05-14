@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:purchases_flutter/purchases_flutter.dart';
@@ -38,10 +39,17 @@ class PurchasesService extends ChangeNotifier {
 
     if (platformKey == null || platformKey.isEmpty) return;
 
-    await Purchases.configure(
-      PurchasesConfiguration(platformKey)
-        ..appUserID = await DeviceService.getDeviceId(),
-    );
+    try {
+      await Purchases.configure(
+        PurchasesConfiguration(platformKey)
+          ..appUserID = await DeviceService.getDeviceId(),
+      );
+    } catch (e) {
+      debugPrint('RevenueCat configure error: $e');
+      _lastError = e.toString();
+      notifyListeners();
+      return;
+    }
 
     try {
       _customerInfo = await Purchases.getCustomerInfo();
@@ -56,7 +64,7 @@ class PurchasesService extends ChangeNotifier {
         }
       }
     } catch (e) {
-      debugPrint('RevenueCat init error: $e');
+      debugPrint('RevenueCat fetch error: $e');
       _lastError = e.toString();
     }
     _initialized = true;
@@ -68,6 +76,9 @@ class PurchasesService extends ChangeNotifier {
       _lastError = 'Store not initialized';
       return null;
     }
+
+    // Re-entry guard: prevent concurrent purchases
+    if (_purchasing) return null;
 
     _lastError = null;
     _purchasing = true;
@@ -101,8 +112,8 @@ class PurchasesService extends ChangeNotifier {
       }
 
       if (pkg == null) {
-        // Final fallback: use the first available package if any exist
-        // (useful for Test Store where product IDs may differ)
+        // Fallback: use the first available package if any exist
+        // (covers Test Store where product IDs may differ)
         final allPackages = _offerings?.all.values
             .expand((o) => o.availablePackages)
             .toList() ?? [];
@@ -112,15 +123,14 @@ class PurchasesService extends ChangeNotifier {
       }
 
       if (pkg == null) {
-        // Diagnostic: show what offerings are available
         if (_offerings != null && _offerings!.all.isNotEmpty) {
           final ids = _offerings!.all.values
               .expand((o) => o.availablePackages)
               .map((p) => p.storeProduct.identifier)
               .toList();
-          _lastError = 'Product $productId not found. Available: ${ids.join(', ')}';
+          _lastError = 'Product "$productId" not in offerings. Found: ${ids.join(", ")}';
         } else {
-          _lastError = 'Product $productId not found. No offerings — RevenueCat credentials may be incomplete.';
+          _lastError = 'No offerings from store. Check: Paid Apps Agreement accepted? IAP approved?';
         }
         _purchasing = false;
         notifyListeners();
@@ -138,16 +148,22 @@ class PurchasesService extends ChangeNotifier {
       _purchasing = false;
       notifyListeners();
       return customerInfo;
-    } on Exception catch (e) {
-      final msg = e.toString();
-      if (!msg.contains('cancelled') && !msg.contains('Cancel')) {
-        _lastError = msg;
+    } on PlatformException catch (e) {
+      // RevenueCat wraps store errors in PlatformException.
+      // Purchase cancelled by user is not an error — clear it.
+      if (e.code == 'PURCHASE_CANCELLED' || e.code == 'PURCHASE_NOT_ALLOWED') {
+        _lastError = null;
+      } else {
+        _lastError = e.message ?? e.toString();
       }
       _purchasing = false;
       notifyListeners();
       return null;
     } catch (e) {
-      _lastError = e.toString();
+      final msg = e.toString();
+      if (!msg.contains('cancelled') && !msg.contains('Cancel')) {
+        _lastError = msg;
+      }
       _purchasing = false;
       notifyListeners();
       return null;

@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'device_service.dart';
+import 'device_fingerprint_service.dart';
 
 enum EntitlementState {
   preview,
@@ -28,21 +29,14 @@ class EntitlementService extends ChangeNotifier {
   static const _baseUrl = 'https://blinkingchorus.com/api/entitlement';
   static const _jwtKey = 'entitlement_jwt';
   static const _stateKey = 'entitlement_state';
-  static const _quotaKey = 'entitlement_quota';
-  static const _quotaDateKey = 'entitlement_quota_date';
   static const _previewStartedKey = 'entitlement_preview_started';
   static const _previewDaysKey = 'entitlement_preview_days';
 
   static const _previewTotalDays = 21;
-  static const _previewDailyQuota = 3;
-  static const _restrictedMonthlyQuota = 3;
 
   SharedPreferences? _prefs;
   String? _jwt;
   EntitlementState _state = EntitlementState.restricted;
-  int _quotaRemaining = 0;
-  String _quotaSource = 'none';
-  String _quotaRefill = '';
   int _previewDaysRemaining = 0;
   bool _initialized = false;
   bool _initInProgress = false;
@@ -52,38 +46,32 @@ class EntitlementService extends ChangeNotifier {
 
     _jwt = prefs.getString(_jwtKey);
     _state = _parseState(prefs.getString(_stateKey));
-    _quotaRemaining = prefs.getInt(_quotaKey) ?? 0;
     _previewDaysRemaining = prefs.getInt(_previewDaysKey) ?? 0;
 
-    if (_jwt != null && _jwt!.isNotEmpty) {
-      await _refreshStatus();
-    } else {
-      await _callInit();
-    }
+    // Apply local logic immediately for all states.
+    // Server calls are async and defer notifyListeners() — we want the UI
+    // to show the correct state right away.
+    _applyLocalPreview();
 
-    // Offline fallback: if no JWT, ensure local preview is active
-    if (_jwt == null || _jwt!.isEmpty) {
-      _applyLocalPreview();
+    // Then try server in background (non-blocking for UI purposes)
+    if (_state == EntitlementState.preview && _jwt == null) {
+      _callInit(); // fire-and-forget, don't await
+    } else if (_jwt != null && _jwt!.isNotEmpty) {
+      await _refreshStatus();
     }
 
     _initialized = true;
     notifyListeners();
   }
 
-  // ── Local / Offline Preview ─────────────────────────────────────────
-
   void _applyLocalPreview() {
-    // Don't override an explicit restricted or paid state
     if (_state == EntitlementState.restricted || _state == EntitlementState.paid) {
       return;
     }
     final now = DateTime.now();
-    final today = _dateKey(now);
 
     final startedStr = _prefs?.getString(_previewStartedKey);
     if (startedStr == null) {
-      // First time: start local preview. If we already have a saved
-      // days-remaining that is less than total, backfill the start date.
       final savedDays = _prefs?.getInt(_previewDaysKey) ?? 0;
       if (savedDays > 0 && savedDays < _previewTotalDays) {
         final estimatedStart = now.subtract(Duration(days: _previewTotalDays - savedDays));
@@ -95,14 +83,6 @@ class EntitlementService extends ChangeNotifier {
           ? savedDays
           : _previewTotalDays;
       _state = EntitlementState.preview;
-      _quotaRemaining = _previewDailyQuota;
-      _quotaSource = 'preview_daily';
-      _quotaRefill = 'Tomorrow';
-      _prefs?.setString(_quotaDateKey, today);
-      _prefs?.setString('trial_token', 'preview_local');
-      if (_prefs?.getString('trial_started_at') == null) {
-        _prefs?.setString('trial_started_at', now.toIso8601String());
-      }
       _saveState();
       return;
     }
@@ -115,8 +95,6 @@ class EntitlementService extends ChangeNotifier {
 
     if (_previewDaysRemaining <= 0) {
       _state = EntitlementState.restricted;
-      _quotaSource = 'restricted_monthly';
-      _quotaRefill = 'Monthly';
       _previewDaysRemaining = 0;
       _prefs?.setBool('entitlement_was_preview', true);
       _saveState();
@@ -125,23 +103,8 @@ class EntitlementService extends ChangeNotifier {
 
     _state = EntitlementState.preview;
     _prefs?.setBool('entitlement_was_preview', true);
-
-    // Reset daily quota if it's a new day
-    final lastQuotaDate = _prefs?.getString(_quotaDateKey);
-    if (lastQuotaDate != today) {
-      _quotaRemaining = _previewDailyQuota;
-      _prefs?.setString(_quotaDateKey, today);
-    }
-
-    _quotaSource = 'preview_daily';
-    _quotaRefill = 'Tomorrow';
     _saveState();
   }
-
-  static String _dateKey(DateTime d) =>
-      '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
-
-  // ── Server Calls ────────────────────────────────────────────────────
 
   Future<void> _callInit() async {
     if (_initInProgress) return;
@@ -149,25 +112,25 @@ class EntitlementService extends ChangeNotifier {
 
     try {
       final deviceId = await DeviceService.getDeviceId();
+      final fingerprint = await DeviceFingerprintService.getFingerprint();
+      final body = {'device_id': deviceId};
+      if (fingerprint != null) {
+        body['device_fingerprint'] = fingerprint;
+      }
       final response = await http.post(
         Uri.parse('$_baseUrl/init'),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'device_id': deviceId}),
+        body: jsonEncode(body),
       ).timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         _jwt = data['token'] as String;
         _state = _parseState(data['state'] as String?);
-        _quotaRemaining = data['max_requests_per_day'] ?? _previewDailyQuota;
-        _quotaSource = 'preview_daily';
-        _quotaRefill = 'Tomorrow';
         _previewDaysRemaining = data['preview_duration_days'] ?? _previewTotalDays;
         await _saveState();
       }
-    } catch (_) {
-      // Offline: use cached state
-    }
+    } catch (_) {}
 
     _initInProgress = false;
     notifyListeners();
@@ -187,14 +150,6 @@ class EntitlementService extends ChangeNotifier {
         final prevState = _state;
         _state = _parseState(data['state'] as String?);
         _jwt = data['token'] as String? ?? _jwt;
-
-        final quota = data['quota'] as Map<String, dynamic>?;
-        if (quota != null) {
-          _quotaRemaining = quota['remaining'] as int? ?? 0;
-          _quotaSource = quota['source'] as String? ?? 'none';
-          _quotaRefill = quota['refillLabel'] as String? ?? '';
-        }
-
         _previewDaysRemaining = data['preview_days_remaining'] as int? ?? 0;
 
         if (data['preview_started_at'] != null) {
@@ -202,7 +157,6 @@ class EntitlementService extends ChangeNotifier {
               _previewStartedKey, data['preview_started_at'] as String);
         }
 
-        // Track if user was ever in PREVIEW (for transition screen trigger)
         if (prevState == EntitlementState.preview && _state == EntitlementState.restricted) {
           await _prefs?.setBool('entitlement_was_preview', true);
         }
@@ -223,8 +177,6 @@ class EntitlementService extends ChangeNotifier {
   bool get wasPreview => _prefs?.getBool('entitlement_was_preview') ?? false;
 
   Future<void> refresh() => _refreshStatus();
-
-  // ── State ──────────────────────────────────────────────────────────
 
   EntitlementState get currentState => _state;
 
@@ -250,66 +202,31 @@ class EntitlementService extends ChangeNotifier {
   bool get hasActiveBYOK => hasOwnKey;
 
   AISource get aiSource {
-    if (hasActiveBYOK) return AISource.byok;
+    // BYOK hidden — always return managed
     if (_state == EntitlementState.preview) return AISource.managed;
     if (_state == EntitlementState.paid) return AISource.managed;
     return AISource.none;
   }
 
-  // ── AI Access ──────────────────────────────────────────────────────
-
   bool get canUseAI {
-    if (hasActiveBYOK) return true;
-    if (_state == EntitlementState.preview && _quotaRemaining > 0) return true;
-    if (_state == EntitlementState.restricted && _quotaRemaining > 0) return true;
-    if (_state == EntitlementState.paid && _quotaRemaining > 0) return true;
+    // BYOK hidden — only state-based
+    if (_state == EntitlementState.preview) return true;
+    if (_state == EntitlementState.paid) return true;
     return false;
-  }
-
-  int get remainingAI {
-    if (hasActiveBYOK) return -1;
-    return _quotaRemaining;
   }
 
   String? get entitlementJwt => _jwt;
 
-  // ── Quota display ──────────────────────────────────────────────────
-
-  String get quotaRefillLabel {
-    if (hasActiveBYOK) return '';
-    if (_quotaRefill.isNotEmpty) return _quotaRefill;
-    return '';
-  }
-
-  String get aiSourceLabel {
-    switch (aiSource) {
-      case AISource.managed:
-        if (_state == EntitlementState.preview) return 'Preview';
-        if (_state == EntitlementState.restricted) return 'Taste';
-        return 'Quota';
-      case AISource.byok:
-        return 'Your key';
-      case AISource.none:
-        return 'None';
-    }
-  }
-
-  // ── AI Button State Machine ────────────────────────────────────────
-
   AIButtonVisual get buttonVisual {
-    if (_state == EntitlementState.preview && _quotaRemaining > 0) {
+    if (_state == EntitlementState.preview) {
       return AIButtonVisual.active;
     }
-    if (_state == EntitlementState.restricted && _quotaRemaining > 0) {
+    if (_state == EntitlementState.restricted) {
+      return AIButtonVisual.dormant;
+    }
+    if (_state == EntitlementState.paid) {
       return AIButtonVisual.active;
     }
-    if (_state == EntitlementState.paid && _quotaRemaining > 0) {
-      return AIButtonVisual.active;
-    }
-    if (hasActiveBYOK && !_isBYOKKeyValid()) {
-      return AIButtonVisual.dormantWarn;
-    }
-    if (hasActiveBYOK) return AIButtonVisual.active;
     return AIButtonVisual.dormant;
   }
 
@@ -320,27 +237,20 @@ class EntitlementService extends ChangeNotifier {
 
   int get previewDaysRemaining => _previewDaysRemaining;
   int get previewDaysTotal => _previewTotalDays;
-  int get previewDailyQuota => _previewDailyQuota;
-  int get restrictedMonthlyQuota => _restrictedMonthlyQuota;
 
   bool get isPreviewActive => _state == EntitlementState.preview;
   bool get isRestricted => _state == EntitlementState.restricted;
   bool get isPaid => _state == EntitlementState.paid;
 
-  // ── Feature Gates ──────────────────────────────────────────────────
-
   bool get canAddHabit => _state != EntitlementState.restricted;
   bool get canEditNote => _state != EntitlementState.restricted;
   bool get canBackup => _state != EntitlementState.restricted;
-  bool get canExport => true;
-
-  // ── Persistence ────────────────────────────────────────────────────
+  bool get canExport => _state != EntitlementState.restricted;
 
   Future<void> _saveState() async {
     if (_prefs == null) return;
     if (_jwt != null) await _prefs!.setString(_jwtKey, _jwt!);
     await _prefs!.setString(_stateKey, _state.name);
-    await _prefs!.setInt(_quotaKey, _quotaRemaining);
     await _prefs!.setInt(_previewDaysKey, _previewDaysRemaining);
   }
 

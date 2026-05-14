@@ -6,16 +6,18 @@ Personal memory/habit-tracking Flutter app (记忆闪烁). Path: `/Users/justinz
 
 - **Flutter SDK:** `^3.11.0` (currently 3.41.8 stable, Apr 24 2026)
 - **macOS:** 26.2 (Tahoe beta) — requires Xcode 26, managed in `ClaudeDev/system-upgrade`
-- **Current version:** `1.1.0-beta.8+25` (pubspec.yaml)
-- **DB version:** 12 (`kSchemaVersion = 12` in `DatabaseService`)
-- **Build AAB:** `flutter build appbundle --release --dart-define=TRIAL_API_KEY=... --dart-define=PRO_API_KEY=...`
-- **Build APK:** `flutter build apk --release --dart-define=TRIAL_API_KEY=... --dart-define=PRO_API_KEY=...`
-- **Build iOS IPA:** Follow `docs/ios-testflight-build-push-guide.md`
+- **Current version:** `1.1.0+36` (pubspec.yaml)
+- **iOS App Store:** ✅ Approved — Ready for Distribution
+- **Google Play:** Submitted for review
+- **macOS:** 26.2 (Tahoe beta) — Xcode 26.4.1 GM for production builds
+- **DB version:** 13 (`kSchemaVersion = 13` in `DatabaseService`)
 - **Lint:** `flutter analyze --no-pub` (target: 0 errors)
-- **Tests:** `flutter test` (135 tests, all passing)
-- **RevenueCat:** Test Store verified. Google Play purchase verified (refund + re-purchase tested). iOS pending App Review.
+- **Tests:** `flutter test` (164 tests, all passing)
+- **Server config:** `https://blinkingchorus.com/api/config` — AI keys + model selection, updatable without app deploy
+- **AI Model:** DeepSeek `deepseek-chat-v3-0324` primary, Gemini `gemini-2.0-flash-001` failover
 - **IAP Price:** $19.99 (non-consumable `blinking_pro`, entitlement `pro_access`)
-- **AI Keys:** Trial `--dart-define=TRIAL_API_KEY`, Pro `--dart-define=PRO_API_KEY` (OpenRouter, qwen/qwen3.5-flash)
+- **Personas:** Kael (📝 Factual, default), Elara (🌿 Warm), Rush (⚡ Unfiltered), Marcus (⚔️ Stoic)
+- **AI Keys:** Server-configurable via OpenRouter. Streaming enabled for perceived speed (0.6s first token)
 - **Feedback email:** `blinkingfeedback@gmail.com`
 - **Debug toggle:** Settings → About → tap version 5x to cycle preview/restricted
 
@@ -102,7 +104,7 @@ Calendar | Moment | Routine | Insights | Settings
 | `lib/screens/settings/settings_screen.dart` | LLM config, tags, language, export, AI 个性化, Send Feedback. Contains debug toggle: 5-tap version text to cycle preview/restricted for IAP testing. |
 | `lib/screens/onboarding/onboarding_screen.dart` | 3-screen first-launch flow — philosophy, features, the deal; language toggle on screen 1 |
 | `lib/screens/onboarding/transition_screen.dart` | Day 21 transition — "Your 21 days are complete" |
-| `lib/screens/purchase/paywall_screen.dart` | Pro purchase — $9.99 one-time, feature checklist |
+| `lib/screens/purchase/paywall_screen.dart` | Pro purchase — $19.99 one-time, feature checklist |
 | `lib/screens/settings/byok_setup_screen.dart` | 6-provider BYOK setup with ping validation |
 | `lib/widgets/emoji_jar.dart` | `EmojiJarWidget` CustomPainter + AI bottom sheet |
 | `lib/widgets/card_renderer.dart` | Off-screen PNG render; `_autoFontSize()` 96px→9px; text area = height×0.8/width×0.88; custom bg image with rounded clip (may be deprecated) |
@@ -159,7 +161,7 @@ Stored as JSON list in SharedPreferences key `llm_providers`. Use **merge-on-loa
 Stored in SharedPreferences: `ai_assistant_name` (default `'AI 助手'`) and `ai_assistant_personality` (default `''`). `AssistantScreen` reads these in `initState` and builds a dynamic `_systemPrompt` getter. Settings screen writes them on save.
 
 ### Stable IDs
-`tag_reflection` is hardcoded in `AssistantScreen._saveReflection()`. Do not rename or delete this tag ID.
+`tag_synthesis` is hardcoded in `AssistantScreen._saveReflection()`. Do not rename or delete this tag ID.
 
 ### Emotion Encoding
 For `SummaryProvider` emotion trend chart: 😊=5, 😌=4, 😐=3, 😢=2, 😡=1. Missing emotion defaults to 3 (neutral baseline).
@@ -219,6 +221,15 @@ Use `try { await launchUrl(uri); } catch (_) { ... }` pattern. Do NOT use `canLa
 ### Completed
 | Feature | Status |
 |---------|--------|
+| AI surfaces — Single-turn lens-based reflections (Surface B) | ✅ Done |
+| AI surfaces — Mood Moment postures (Surface A) | ✅ Done |
+| Lens system — Built-in 4 sets + custom, Settings UI | ✅ Done |
+| No numeric quota language — All AI copy cleaned | ✅ Done |
+| BYOK hidden — Config screens + menu removed | ✅ Done |
+| Server-configurable AI keys — Cloudflare Worker endpoint | ✅ Done |
+| Multi-key failover — Automatic rotation on rate-limit/auth failure | ✅ Done |
+| Settings tab reorganization — AI/Tags/General tabs | ✅ Done |
+| Insights AI branding removed — "💡 Insights · Based on your data" | ✅ Done |
 | AI assistant (multi-turn LLM chat + Save Reflection) | ✅ Done |
 | AI Secrets tag (exclude private notes from AI context) | ✅ Done |
 | AI Secrets lock icon on entries (PROP-7) | ✅ Done |
@@ -236,79 +247,28 @@ Use `try { await launchUrl(uri); } catch (_) { ... }` pattern. Do NOT use `canLa
 | Calendar future date lock (Issue #1) | ✅ Done |
 | Keepsakes → Insights restructure (PROP-8) | ✅ Done |
 | Insights tab — emoji jar carousel + summary charts | ✅ Done |
-| Insights tab Phase 1 — hero cards, heatmap, mood donut, visual polish (Issue #15) | ✅ Done |
-| Insights tab Phase 2 — CT1: Writing Stats (avg words, active day, peak hour) | ✅ Done |
-| Insights tab Phase 2 — CT3: Tag-Mood Correlation (tag → mood score, min 3 entries) | ✅ Done |
-| Insights tab Phase 2 — CT2: Checklist Analytics (lists, completion, carry-forward, top item) | ✅ Done |
-| Insights tab hero row overflow fix (4th card clipped on iPhone) | ✅ Done |
-| CT4: AI-Generated Insights (LLM + rule-based fallback, Refresh button) | ✅ Done |
+| Insights tab Phase 1 — hero cards, heatmap, mood donut, visual polish | ✅ Done |
+| Insights tab Phase 2 — CT1/CT2/CT3 | ✅ Done |
+| CT4: AI-Generated Insights (LLM + rule-based fallback) | ✅ Done |
 | EntitlementService (server-authoritative state machine, quotas) | ✅ Done |
-| Floating robot entitlement-aware rewrite (state matrix, long-press overlay) | ✅ Done |
-| BYOK setup screen (6 providers, dropdown, ping validation) | ✅ Done |
+| Floating robot entitlement-aware rewrite | ✅ Done |
+| BYOK setup screen (6 providers, dropdown, ping validation) | ✅ Done (hidden) |
 | Settings → AI entitlement banner (PREVIEW/RESTRICTED/BYOK states) | ✅ Done |
-| Paywall screen ($9.99 Pro, feature checklist, in-app legal docs) | ✅ Done |
-| Day 21 Transition screen (what stays vs pauses, one-time guard) | ✅ Done |
-| HomeScreen title "Calendar" → "My Day" (Issue #14) | ✅ Done |
-| Contextual FAB — per-tab icon + action (Issue #7) | ✅ Done |
-| Collapsible calendar — week strip default, landscape safe (Issue #13) | ✅ Done |
-| EntryDetailScreen title overflow fix | ✅ Done |
-| Carry-forward redesign — user-prompted dialog + "Yesterday" flag | ✅ Done |
-| Past-date entries view-only lock | ✅ Done |
-| Insights tab crash fix (empty tags guard) | ✅ Done |
-| Moment tab icon differentiation (note/checklist/routine) | ✅ Done |
-| One-list-per-day transition UX (snackbar + fade) | ✅ Done |
-| List edit screen helper text + drag handle size | ✅ Done |
-| Carry-forward banner removal (dead code cleanup) | ✅ Done |
-| iOS App Store submission | ✅ Done |
-| Image compression — pick time, save time, export time (1920px, q85) | ✅ Done |
-| Media-exclude toggle — text-only backup (~200 KB) | ✅ Done |
-| Persona backup/restore fix — reload before pop, malformed JSON guard | ✅ Done |
-| Local offline preview — 21 days, 3 AI/day, no server required | ✅ Done |
-| Quota change — 9 → 3 AI/day for preview | ✅ Done |
-| M3 Onboarding — 3-screen first-launch flow (philosophy, features, the deal) | ✅ Done |
-| M3 Soft purchase prompts — days 18/19/20 with 1-per-24h guard | ✅ Done |
-| M3 Re-engagement triggers — backup/habit gates with 1-per-7d guard | ✅ Done |
-| Locale detection — system language as default, toggle on onboarding screen 1 | ✅ Done |
-| Onboarding screen 3 — Pro $9.99 tappable link to paywall | ✅ Done |
-| Routine redesign — Build/Do/Reflect tabs (P0–P3 complete) | ✅ Done |
-| Streak grace period — 1-day auto, note-earned extension (+2 days) | ✅ Done |
-| Per-habit summary cards on Reflect tab | ✅ Done |
-| Periodic summary at top of Reflect tab | ✅ Done |
-| Settings AI section cleanup — provider config moved to BYOK screen | ✅ Done |
-| Preview days bug fix — persist + always recalculate on launch | ✅ Done |
-| Local preview trial token bridge — LlmService recognizes preview | ✅ Done |
-| Heatmap colors — solid teal shades, legend, tighter date range | ✅ Done |
-| Seed data — entries + routines with completions across 30 days | ✅ Done |
-| Language toggle on onboarding screen 1 | ✅ Done |
-| RevenueCat Test Store verified — purchase flow end-to-end | ✅ Done |
+| Paywall screen ($19.99 Pro, feature checklist, in-app legal docs) | ✅ Done |
+| Day 21 Transition screen | ✅ Done |
+| M3 Onboarding — 3-screen first-launch flow | ✅ Done |
+| Routine redesign — Build/Do/Reflect tabs | ✅ Done |
+| RevenueCat Test Store verified | ✅ Done |
 | iOS App Store Sandbox purchase verified | ✅ Done |
-| Routine month rate fix — unique days, future-date filtering | ✅ Done |
-| Routine done count deduplication (8/6 bug) | ✅ Done |
-| Insights chart y-axis labels — all 4 charts | ✅ Done |
-| AI Insights — replaced LLM with rule-based stats | ✅ Done |
-| Streak fix — filter future-dated completions | ✅ Done |
-| Trial AI key auto-applied during preview | ✅ Done |
-| Pro AI key auto-applied after purchase | ✅ Done |
-| Entitlement state machine — preview default on fresh install | ✅ Done |
-| PAID banner (green) in Settings | ✅ Done |
-| BYOK in preview + paid banners | ✅ Done |
-| BYOK duplication fix — single entry point | ✅ Done |
-| Insights refresh — once per day limit | ✅ Done |
-| Price updated — $9.99 → $19.99 | ✅ Done |
-| AUTO_RESTORE debug flag for test data loading | ✅ Done |
-| iOS build command — `rcApiProductionKey` darwin-define | ✅ Documented |
+| Google Play purchase verified (refund + re-purchase tested) | ✅ Done |
+| ALL previous features | ✅ Done |
 
 ### Pending
 | Priority | Item | Effort | Status |
 |----------|------|--------|--------|
-| P1 | IAP — Google Play Console (product + service credentials) for `goog_` key | ~1h | ⬜ Tomorrow |
-| P1 | IAP — App Store Connect (fix IAP metadata for submission) | ~30min | ⬜ Tomorrow |
-| P1 | Set server secrets + deploy — JWT_SECRET, ENTITLEMENT_ENABLED, D1 | ~10min | Deploy-ready |
-| P3 | M4 Top-ups — denial sheet, consumable IAP | ~3h | Post-launch |
+| P1 | IAP — Google Play Console (final production review) | ~30min | v30 AAB uploaded |
+| P1 | IAP — App Store Connect (upload IPA + submit for review) | ~1h | IPA ready, API key needed |
 | P3 | Restore streaming refactor — OOM on large backups | ~2h | Known limitation |
-| P3 | Routine displayNameFor used consistently | ~1h | Low priority |
-| P3 | M4 Top-ups (denial sheet, consumable IAP) | ~3h | Post-launch |
-| P3 | Restore streaming refactor (OOM on large backups) | ~2h | Known limitation |
 | P3 | Firebase / Cloud Sync | Large | All deps commented out |
 
 ---
@@ -338,3 +298,5 @@ Use `try { await launchUrl(uri); } catch (_) { ... }` pattern. Do NOT use `canLa
 | v1.1.0-beta.6+21 | 2026-05-04 | Insights Phase 2 — CT1: Writing Stats (avg words, active day, peak hour); CT3: Tag-Mood Correlation (tag→mood score, min 3 entries); Hero card overflow fix (4th card clipped on iPhone); 5 new i18n keys; UAT 12/12 passed; 96/96 tests |
 | v1.1.0-beta.7+22 | 2026-05-04 | Insights Phase 2: CT1 Writing Stats + CT3 Tag-Mood + CT2 Checklist + CT4 AI Insights. M1 Foundation: EntitlementService + floating robot rewrite + Settings AI banner + BYOK (6 providers). M2 Purchase: Paywall + Day 21 Transition screen. Server: entitlement endpoints (init/status/chat) + receipt validation (purchase/restore) + JWT + D1 tables. IAP: RevenueCat SDK + PurchasesService. ~20 i18n keys. 96/96 client tests, 352/352 server tests. Full session summary at `docs/session-summary-2026-05-04.md` |
 | v1.1.0-beta.7+22 | 2026-05-05 | Image compression (pick/save/export, 1920px q85). Media-exclude toggle (text-only ~200 KB). Persona backup/restore fix (reload before pop + error handling). Offline local preview (21d, 3 AI/day). M3 Onboarding: 3-screen first-launch flow + soft prompts + re-engagement. Routine redesign: Build/Do/Reflect tabs (P0–P3), streak grace period, habit summary cards, periodic summary. Settings AI cleanup. System locale detection. Seed data (entries + routines with streaks). 106/106 tests. Session summary at `docs/session-summary-2026-05-05.md` |
+| v1.1.0+29 | 2026-05-09 | iOS TestFlight push build 29. 147/147 tests. Updated App Store Connect API key (4UK6U499RC). |
+| v1.1.0+30 | 2026-05-09 | iOS TestFlight push build 30. 147/147 tests. New App Store Connect API key (4UK6U499RC) replacing expired 6S889FNN6R. Session summary at `docs/session-summary-2026-05-09.md`. |

@@ -6,7 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../models/models.dart';
 
 class DatabaseService {
-  static const int kSchemaVersion = 12;
+  static const int kSchemaVersion = 13;
   static final DatabaseService _instance = DatabaseService._internal();
   factory DatabaseService() => _instance;
   DatabaseService._internal();
@@ -18,7 +18,7 @@ class DatabaseService {
   /// Returns the raw Database so tests can inspect indexes.
   @visibleForTesting
   static Future<Database> createTestDatabase(String path, {int? version}) async {
-    final targetVersion = version ?? 12;
+    final targetVersion = version ?? 13;
     final db = await openDatabase(
       path,
       version: targetVersion,
@@ -34,7 +34,7 @@ class DatabaseService {
   @visibleForTesting
   static Future<void> runMigration(Database db, int oldVersion) async {
     final svc = DatabaseService._internal();
-    await svc._onUpgrade(db, oldVersion, 12);
+    await svc._onUpgrade(db, oldVersion, 13);
   }
 
   Future<Database> get database async {
@@ -159,6 +159,53 @@ class DatabaseService {
           'ALTER TABLE entries ADD COLUMN list_carried_forward INTEGER NOT NULL DEFAULT 0',
         );
       }
+    }
+    if (oldVersion < 13) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS ai_identity (
+          id INTEGER PRIMARY KEY DEFAULT 1,
+          avatar_emoji TEXT NOT NULL DEFAULT '\u2726',
+          avatar_image_path TEXT,
+          assistant_name TEXT NOT NULL DEFAULT 'Companion',
+          personality_string TEXT NOT NULL DEFAULT 'Warm and grounded.',
+          updated_at TEXT NOT NULL
+        )
+      ''');
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS lens_sets (
+          id TEXT PRIMARY KEY,
+          label TEXT NOT NULL,
+          lens_1 TEXT NOT NULL,
+          lens_2 TEXT NOT NULL,
+          lens_3 TEXT NOT NULL,
+          is_builtin INTEGER NOT NULL DEFAULT 0,
+          sort_order INTEGER NOT NULL DEFAULT 0,
+          created_at TEXT NOT NULL
+        )
+      ''');
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS active_lens_set (
+          id INTEGER PRIMARY KEY DEFAULT 1,
+          lens_set_id TEXT NOT NULL,
+          activated_at TEXT NOT NULL,
+          FOREIGN KEY (lens_set_id) REFERENCES lens_sets(id)
+        )
+      ''');
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS ai_call_log (
+          id TEXT PRIMARY KEY,
+          surface TEXT NOT NULL,
+          called_at TEXT NOT NULL,
+          mood_log_id TEXT,
+          kept INTEGER NOT NULL DEFAULT 0
+        )
+      ''');
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS trial_milestones (
+          milestone TEXT PRIMARY KEY,
+          shown_at TEXT
+        )
+      ''');
     }
   }
 
@@ -305,6 +352,52 @@ class DatabaseService {
     await db.execute(
       'CREATE INDEX IF NOT EXISTS idx_note_card_entries_card_id ON note_card_entries(card_id)',
     );
+
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS ai_identity (
+        id INTEGER PRIMARY KEY DEFAULT 1,
+        avatar_emoji TEXT NOT NULL DEFAULT '\u2726',
+        avatar_image_path TEXT,
+        assistant_name TEXT NOT NULL DEFAULT 'Companion',
+        personality_string TEXT NOT NULL DEFAULT 'Warm and grounded.',
+        updated_at TEXT NOT NULL
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS lens_sets (
+        id TEXT PRIMARY KEY,
+        label TEXT NOT NULL,
+        lens_1 TEXT NOT NULL,
+        lens_2 TEXT NOT NULL,
+        lens_3 TEXT NOT NULL,
+        is_builtin INTEGER NOT NULL DEFAULT 0,
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS active_lens_set (
+        id INTEGER PRIMARY KEY DEFAULT 1,
+        lens_set_id TEXT NOT NULL,
+        activated_at TEXT NOT NULL,
+        FOREIGN KEY (lens_set_id) REFERENCES lens_sets(id)
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS ai_call_log (
+        id TEXT PRIMARY KEY,
+        surface TEXT NOT NULL,
+        called_at TEXT NOT NULL,
+        mood_log_id TEXT,
+        kept INTEGER NOT NULL DEFAULT 0
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS trial_milestones (
+        milestone TEXT PRIMARY KEY,
+        shown_at TEXT
+      )
+    ''');
   }
 
   /// Perform data migration from SharedPreferences to SQLite if needed

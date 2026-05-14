@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../models/routine.dart';
 import '../models/schedule.dart';
 import '../repositories/routine_repository.dart';
+import '../core/services/notification_service.dart';
 /// Provider for managing routines (daily habits)
 /// Uses RoutineRepository for data access
 class RoutineProvider extends ChangeNotifier {
@@ -73,6 +74,8 @@ class RoutineProvider extends ChangeNotifier {
 
     try {
       _routines = await _repository.getAll();
+      // Reschedule notifications for all active routines
+      NotificationService.rescheduleAll(_routines, false);
     } catch (e) {
       _error = e.toString();
     }
@@ -82,7 +85,7 @@ class RoutineProvider extends ChangeNotifier {
   }
 
   /// Add a new routine
-  Future<void> addRoutine({
+  Future<Routine?> addRoutine({
     required String name,
     required String nameEn,
     required RoutineFrequency frequency,
@@ -113,9 +116,11 @@ class RoutineProvider extends ChangeNotifier {
       );
       _routines.add(routine);
       notifyListeners();
+      return routine;
     } catch (e) {
       _error = e.toString();
       notifyListeners();
+      return null;
     }
   }
 

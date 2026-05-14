@@ -15,7 +15,7 @@ import 'package:open_filex/open_filex.dart';
 
 class AddEntryScreen extends StatefulWidget {
   final Entry? existingEntry;
-  const AddEntryScreen({Key? key, this.existingEntry}) : super(key: key);
+  const AddEntryScreen({super.key, this.existingEntry});
 
   @override
   State<AddEntryScreen> createState() => _AddEntryScreenState();
@@ -180,9 +180,9 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
           if (mounted) {
             Navigator.of(context).pushReplacement(
               PageRouteBuilder(
-                pageBuilder: (_, __, ___) => AddEntryScreen(existingEntry: existingList),
+                pageBuilder: (_, _, _) => AddEntryScreen(existingEntry: existingList),
                 transitionDuration: const Duration(milliseconds: 300),
-                transitionsBuilder: (_, animation, __, child) {
+                transitionsBuilder: (_, animation, _, child) {
                   return FadeTransition(opacity: animation, child: child);
                 },
               ),
@@ -722,7 +722,8 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
       const SizedBox(height: 8),
       Consumer<TagProvider>(
         builder: (context, tagProvider, child) {
-          final tags = tagProvider.tags;
+          final hiddenIds = const {'tag_synthesis', 'tag_welcome'};
+          final tags = tagProvider.tags.where((t) => !hiddenIds.contains(t.id));
           return Wrap(
             spacing: 8,
             runSpacing: 8,

@@ -63,13 +63,14 @@ class Tag {
 /// Default tags for new users
 class DefaultTags {
   static List<Tag> get defaults => [
-    Tag(id: 'tag_health', name: '健康', nameEn: 'Health', color: '#4CAF50', category: 'health', createdAt: DateTime.now()),
-    Tag(id: 'tag_work', name: '工作', nameEn: 'Work', color: '#2196F3', category: 'work', createdAt: DateTime.now()),
-    Tag(id: 'tag_learning', name: '学习', nameEn: 'Learning', color: '#9C27B0', category: 'learning', createdAt: DateTime.now()),
-    Tag(id: 'tag_family', name: '家庭', nameEn: 'Family', color: '#FF9800', category: 'family', createdAt: DateTime.now()),
-    Tag(id: 'tag_life', name: '生活', nameEn: 'Life', color: '#E91E63', category: 'life', createdAt: DateTime.now()),
-    Tag(id: 'tag_finance', name: '财务', nameEn: 'Finance', color: '#607D8B', category: 'finance', createdAt: DateTime.now()),
-    Tag(id: 'tag_social', name: '社交', nameEn: 'Social', color: '#00BCD4', category: 'social', createdAt: DateTime.now()),
-    Tag(id: 'tag_hobby', name: '爱好', nameEn: 'Hobby', color: '#795548', category: 'hobby', createdAt: DateTime.now()),
+    Tag(id: 'tag_family', name: '家人', nameEn: 'Family', color: '#FF9500', category: 'custom', createdAt: DateTime.now()),
+    Tag(id: 'tag_insight', name: '领悟', nameEn: 'Insight', color: '#5856D6', category: 'custom', createdAt: DateTime.now()),
+    Tag(id: 'tag_gratitude', name: '感恩', nameEn: 'Gratitude', color: '#FF2D55', category: 'custom', createdAt: DateTime.now()),
+    Tag(id: 'tag_daily', name: '日常', nameEn: 'Daily', color: '#007AFF', category: 'custom', createdAt: DateTime.now()),
+    Tag(id: 'tag_wellness', name: '养生', nameEn: 'Wellness', color: '#34C759', category: 'custom', createdAt: DateTime.now()),
+    Tag(id: 'tag_learning', name: '学习', nameEn: 'Learning', color: '#AF52DE', category: 'custom', createdAt: DateTime.now()),
+    Tag(id: 'tag_synthesis', name: 'AI综整', nameEn: 'AI Synthesis', color: '#AF52DE', category: 'system', createdAt: DateTime.now()),
+    Tag(id: 'tag_private', name: '私密', nameEn: 'Private', color: '#9E9E9E', category: 'system', createdAt: DateTime.now()),
+    Tag(id: 'tag_welcome', name: '欢迎', nameEn: 'Welcome', color: '#34C759', category: 'system', createdAt: DateTime.now()),
   ];
 }

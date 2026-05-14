@@ -1,4 +1,3 @@
-import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -8,13 +7,23 @@ import '../../core/services/entitlement_service.dart';
 import '../legal_doc_screen.dart';
 import '../../core/constants/legal_content.dart';
 
-class PaywallScreen extends StatelessWidget {
+class PaywallScreen extends StatefulWidget {
   const PaywallScreen({super.key});
+
+  @override
+  State<PaywallScreen> createState() => _PaywallScreenState();
+}
+
+class _PaywallScreenState extends State<PaywallScreen> {
+  bool _isPurchasing = false;
+  bool _isRestoring = false;
 
   @override
   Widget build(BuildContext context) {
     final isZh = context.watch<LocaleProvider>().locale.languageCode == 'zh';
     final theme = Theme.of(context);
+    final purchases = context.watch<PurchasesService>();
+    final storeReady = purchases.isInitialized;
 
     return Scaffold(
       backgroundColor: theme.colorScheme.surface,
@@ -30,12 +39,12 @@ class PaywallScreen extends StatelessWidget {
                   children: [
                     IconButton(
                       icon: const Icon(Icons.arrow_back),
-                      onPressed: () => Navigator.pop(context),
+                      onPressed: _isPurchasing || _isRestoring ? null : () => Navigator.pop(context),
                       tooltip: isZh ? '返回' : 'Back',
                     ),
                     IconButton(
                       icon: const Icon(Icons.close),
-                      onPressed: () => Navigator.pop(context),
+                      onPressed: _isPurchasing || _isRestoring ? null : () => Navigator.pop(context),
                       tooltip: isZh ? '关闭' : 'Close',
                     ),
                   ],
@@ -82,40 +91,66 @@ class PaywallScreen extends StatelessWidget {
                   width: double.infinity,
                   height: 52,
                   child: FilledButton(
-                    onPressed: () {
-                      _handlePurchase(context, isZh);
-                    },
+                    onPressed: (!storeReady) || _isPurchasing || _isRestoring
+                        ? null
+                        : () => _handlePurchase(context, isZh),
                     style: FilledButton.styleFrom(
                       backgroundColor: theme.colorScheme.primary,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14),
                       ),
                     ),
-                    child: Text(
-                      isZh ? '获取 Pro — \$19.99' : 'Get Pro — \$19.99',
-                      style: const TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                    child: _isPurchasing
+                        ? const SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : Text(
+                            isZh ? '获取 Pro — \$19.99' : 'Get Pro — \$19.99',
+                            style: const TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                   ),
                 ),
+                if (!storeReady)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(
+                      isZh
+                          ? '商店当前不可用，请稍后重试'
+                          : 'Store unavailable, please try again later',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.orange[700], fontSize: 13),
+                    ),
+                  ),
                 const SizedBox(height: 12),
 
                 // Restore Purchases
                 SizedBox(
                   width: double.infinity,
                   child: TextButton(
-                    onPressed: () {
-                      _handleRestore(context, isZh);
-                    },
-                    child: Text(
-                      isZh ? '恢复购买' : 'Restore Purchases',
-                      style: TextStyle(
-                        color: theme.colorScheme.primary,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
+                    onPressed: (!storeReady) || _isPurchasing || _isRestoring
+                        ? null
+                        : () => _handleRestore(context, isZh),
+                    child: _isRestoring
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : Text(
+                            isZh ? '恢复购买' : 'Restore Purchases',
+                            style: TextStyle(
+                              color: theme.colorScheme.primary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                   ),
                 ),
                 const SizedBox(height: 32),
@@ -151,8 +186,8 @@ class PaywallScreen extends StatelessWidget {
                 _FeatureRow(
                   icon: Icons.auto_awesome,
                   title: isZh
-                      ? 'AI 助手：每年 1,200 次对话'
-                      : 'AI assistant: 1,200 reflections per year',
+                      ? 'AI 助手：AI 反思'
+                      : 'AI assistant: AI reflections',
                 ),
                 _FeatureRow(
                   icon: Icons.backup,
@@ -212,14 +247,6 @@ class PaywallScreen extends StatelessWidget {
                     fontSize: 13,
                     fontStyle: FontStyle.italic,
                   ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  isZh
-                      ? '如果 AI 配额用完：使用自己的 API Key（免费），或购买 \$4.99/500 次补充包。'
-                      : 'If you outgrow the included AI: bring your own API key, free; or top up at \$4.99 / 500.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.grey[500], fontSize: 12),
                 ),
                 const SizedBox(height: 8),
                 Text(
@@ -287,7 +314,7 @@ class PaywallScreen extends StatelessWidget {
     );
   }
 
-  void _handlePurchase(BuildContext context, bool isZh) {
+  Future<void> _handlePurchase(BuildContext context, bool isZh) async {
     final service = context.read<PurchasesService>();
     if (!service.isInitialized) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -295,45 +322,43 @@ class PaywallScreen extends StatelessWidget {
       );
       return;
     }
-    service.purchaseProduct('blinking_pro').then((info) async {
-      if (!context.mounted) return;
+
+    setState(() => _isPurchasing = true);
+
+    final info = await service.purchaseProduct('blinking_pro');
+    if (!mounted) return;
+    setState(() => _isPurchasing = false);
+
+    if (info == null && service.lastError == null) {
+      // Purchase cancelled by user — no message needed
+      return;
+    }
+
+    // Refresh customer info to sync latest entitlements
+    await service.refreshCustomerInfo();
+    if (!mounted) return;
+
+    if (service.isPro || info != null) {
+      // Update local entitlement state to paid
+      final entitlement = context.read<EntitlementService>();
+      await _markEntitlementPaid(entitlement);
+
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Purchase returned: info=${info != null}, isPro=${service.isPro}, error=${service.lastError ?? "none"}'),
-            duration: const Duration(seconds: 5)),
+        SnackBar(
+          content: Text(isZh ? '欢迎加入 Pro！' : 'Welcome to Pro!'),
+          backgroundColor: Colors.green,
+        ),
       );
-
-      // Refresh customer info to sync latest entitlements
-      await service.refreshCustomerInfo();
-
-      if (service.isPro) {
-        // Update local entitlement state to paid
-        final entitlement = context.read<EntitlementService>();
-        await _markEntitlementPaid(entitlement);
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(isZh ? '欢迎加入 Pro！' : 'Welcome to Pro!'),
-            backgroundColor: Colors.green,
-          ),
-        );
-        Navigator.pop(context);
-      } else if (info != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(isZh
-                ? '购买已提交，正在验证... 请稍后点击"恢复购买"'
-                : 'Purchase submitted, verifying... Tap "Restore Purchases" in a moment'),
-          ),
-        );
-      } else if (service.lastError != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(service.lastError!)),
-        );
-      }
-    });
+      Navigator.pop(context);
+    } else if (service.lastError != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(service.lastError!)),
+      );
+    }
   }
 
-  void _handleRestore(BuildContext context, bool isZh) {
+  Future<void> _handleRestore(BuildContext context, bool isZh) async {
     final service = context.read<PurchasesService>();
     if (!service.isInitialized) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -341,43 +366,52 @@ class PaywallScreen extends StatelessWidget {
       );
       return;
     }
-    service.restorePurchases().then((info) async {
-      if (!context.mounted) return;
-      await service.refreshCustomerInfo();
-      if (service.isPro) {
-        final entitlement = context.read<EntitlementService>();
-        await _markEntitlementPaid(entitlement);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(isZh ? '已恢复 Pro。' : 'Pro restored.'),
-            backgroundColor: Colors.green,
-          ),
-        );
-        Navigator.pop(context);
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(isZh
-                ? '未找到之前的 Pro 购买记录。'
-                : 'No previous Pro purchase found.'),
-          ),
-        );
-      }
-    });
+
+    setState(() => _isRestoring = true);
+
+    final info = await service.restorePurchases();
+    if (!mounted) return;
+    setState(() => _isRestoring = false);
+
+    if (info == null && service.lastError == null) {
+      return;
+    }
+
+    await service.refreshCustomerInfo();
+    if (!mounted) return;
+
+    if (service.isPro) {
+      final entitlement = context.read<EntitlementService>();
+      await _markEntitlementPaid(entitlement);
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(isZh ? '已恢复 Pro。' : 'Pro restored.'),
+          backgroundColor: Colors.green,
+        ),
+      );
+      Navigator.pop(context);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(isZh
+              ? '未找到之前的 Pro 购买记录。'
+              : 'No previous Pro purchase found.'),
+        ),
+      );
+    }
   }
 
   Future<void> _markEntitlementPaid(EntitlementService entitlement) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('entitlement_jwt');
     await prefs.setString('entitlement_state', 'paid');
-    await prefs.setInt('entitlement_quota', 1200);
     await prefs.remove('entitlement_preview_started');
     await prefs.setInt('entitlement_preview_days', -1);
     await prefs.remove('entitlement_was_preview');
-    // Re-init to pick up new state
     await entitlement.init(prefs);
   }
-
 }
 
 class _TesseraArt extends StatelessWidget {

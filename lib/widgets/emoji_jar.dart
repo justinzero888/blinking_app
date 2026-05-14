@@ -3,28 +3,35 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/jar_provider.dart';
 import '../providers/locale_provider.dart';
+import '../providers/entry_provider.dart';
+import '../providers/routine_provider.dart';
 import '../core/services/llm_service.dart';
+import '../screens/reflection/mood_moment_sheet.dart';
 
 /// A stylised glass jar widget showing emotions as emoji.
 ///
 /// By default loads today's emotions from [JarProvider] via [date].
-/// Pass [emotionsOverride] to supply an explicit list instead (e.g. yearly
-/// aggregates in the shelf view). Set [showAskAi] to false to suppress the
-/// "Ask AI" button when used as a decorative mini-jar.
+/// Pass [emotionsOverride] to supply an explicit list instead.
 class EmojiJarWidget extends StatelessWidget {
   final DateTime date;
   final double size;
-  /// If non-null, used in place of the provider lookup.
   final List<String>? emotionsOverride;
-  /// Whether to show the "Ask AI" button below the jar. Defaults to true.
-  final bool showAskAi;
+  final bool canUseAI;
+  final bool isToday;
+  final List<Map<String, String>> existingReflections;
+  final int maxPerDay;
+  final VoidCallback? onReflectionSaved;
 
   const EmojiJarWidget({
     super.key,
     required this.date,
     this.size = 160,
     this.emotionsOverride,
-    this.showAskAi = true,
+    this.canUseAI = false,
+    this.isToday = false,
+    this.existingReflections = const [],
+    this.maxPerDay = 3,
+    this.onReflectionSaved,
   });
 
   static const int _maxVisible = 30;
@@ -104,28 +111,90 @@ class EmojiJarWidget extends StatelessWidget {
               ),
           ],
         ),
-        if (showAskAi) ...[
+        if (_shouldShowAiButton(emotions)) ...[
           const SizedBox(height: 4),
           TextButton.icon(
-            icon: const Text('✨', style: TextStyle(fontSize: 14)),
-            label: Text(isZh ? '问问 AI' : 'Ask AI',
-                style: const TextStyle(fontSize: 13)),
-            onPressed: () => _openAIBottomSheet(context, emotions),
+            icon: Text(
+              existingReflections.isEmpty ? '✨' : '📝',
+              style: const TextStyle(fontSize: 14),
+            ),
+            label: Text(
+              existingReflections.isEmpty
+                  ? (isZh ? '问问 AI' : 'Ask AI')
+                  : (isZh ? '心情反思' : 'Mood Reflection'),
+              style: const TextStyle(fontSize: 13),
+            ),
+            onPressed: () => _openAIBottomSheet(context, emotions, isZh),
           ),
         ],
       ],
     );
   }
 
-  void _openAIBottomSheet(BuildContext context, List<String> emotions) {
+  bool _shouldShowAiButton(List<String> emotions) {
+    if (!isToday) return existingReflections.isNotEmpty;
+    if (!canUseAI) return false;
+    if (emotions.isEmpty) return false;
+    return true;
+  }
+
+  void _openAIBottomSheet(BuildContext context, List<String> emotions, bool isZh) {
+    final entryProvider = context.read<EntryProvider>();
+    final today = DateTime.now();
+    final todayStart = DateTime(today.year, today.month, today.day);
+    final dateStart = DateTime(date.year, date.month, date.day);
+    final dateEnd = dateStart.add(const Duration(days: 1));
+    final dayEntries = entryProvider.entries
+        .where((e) =>
+            e.createdAt.isAfter(dateStart) &&
+            e.createdAt.isBefore(dateEnd))
+        .toList();
+
+    final todayHabits = <String>[];
+    try {
+      final routineProvider = context.read<RoutineProvider>();
+      todayHabits.addAll(
+        routineProvider.routines
+            .where((r) => r.completionLog
+                .any((c) => c.completedAt.isAfter(todayStart)))
+            .map((r) => r.name),
+      );
+    } catch (_) {}
+
+    final moodEmoji = emotions.isNotEmpty ? emotions.first : '😊';
+    final moodLabel = _moodLabelForEmoji(moodEmoji, isZh);
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      backgroundColor: Colors.transparent,
+      builder: (_) => MoodMomentSheet(
+        moodEmoji: moodEmoji,
+        moodLabel: moodLabel,
+        todayEntries: dayEntries,
+        todayHabits: todayHabits,
+        existingReflections: existingReflections,
+        maxPerDay: maxPerDay,
+        selectedDate: date,
+        onSaved: onReflectionSaved,
       ),
-      builder: (ctx) => _AiBottomSheet(emotions: emotions),
     );
+  }
+
+  String _moodLabelForEmoji(String emoji, bool isZh) {
+    switch (emoji) {
+      case '😊': return isZh ? '开心' : 'Joyful';
+      case '😢': return isZh ? '难过' : 'Sad';
+      case '😡': return isZh ? '生气' : 'Angry';
+      case '😰': return isZh ? '焦虑' : 'Anxious';
+      case '😴': return isZh ? '疲惫' : 'Tired';
+      case '🤩': return isZh ? '兴奋' : 'Excited';
+      case '😌': return isZh ? '平静' : 'Calm';
+      case '😤': return isZh ? '沮丧' : 'Frustrated';
+      case '🥰': return isZh ? '爱意' : 'Loving';
+      case '😐': return isZh ? '平淡' : 'Neutral';
+      default: return emoji;
+    }
   }
 }
 

@@ -34,28 +34,76 @@ class SummaryProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Returns date range for current scope ending now
+  /// Returns date range for current scope ending now,
+  /// anchored to the earliest actual data date.
   _DateRange get _currentRange {
     final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day, 23, 59, 59);
+    final earliestData = _earliestDataDate();
+
     switch (_scope) {
       case SummaryScope.daily:
+        final defaultStart = DateTime(now.year, now.month, now.day)
+            .subtract(const Duration(days: 6));
         return _DateRange(
-          start: DateTime(now.year, now.month, now.day)
-              .subtract(const Duration(days: 6)),
-          end: DateTime(now.year, now.month, now.day, 23, 59, 59),
+          start: earliestData != null && earliestData.isAfter(defaultStart)
+              ? earliestData
+              : defaultStart,
+          end: today,
         );
       case SummaryScope.weekly:
+        final defaultStart = DateTime(now.year, now.month, now.day)
+            .subtract(const Duration(days: 7 * 7));
         return _DateRange(
-          start: DateTime(now.year, now.month, now.day)
-              .subtract(const Duration(days: 7 * 7)),
-          end: DateTime(now.year, now.month, now.day, 23, 59, 59),
+          start: earliestData != null && earliestData.isAfter(defaultStart)
+              ? earliestData
+              : defaultStart,
+          end: today,
         );
       case SummaryScope.monthly:
+        final defaultStart = DateTime(now.year, now.month - 5, 1);
         return _DateRange(
-          start: DateTime(now.year, now.month - 5, 1),
-          end: DateTime(now.year, now.month, now.day, 23, 59, 59),
+          start: earliestData != null && earliestData.isAfter(defaultStart)
+              ? earliestData
+              : defaultStart,
+          end: today,
         );
     }
+  }
+
+  /// Returns the earliest date the user has any entry or routine completion.
+  DateTime? _earliestDataDate() {
+    final entries = _entryProvider.allEntries;
+    final routines = _routineProvider.routines;
+
+    DateTime? earliest;
+
+    // Check entries
+    for (final e in entries) {
+      if (earliest == null || e.createdAt.isBefore(earliest)) {
+        earliest = e.createdAt;
+      }
+    }
+
+    // Check routine creation dates
+    for (final r in routines) {
+      final date = DateTime(r.createdAt.year, r.createdAt.month, r.createdAt.day);
+      if (earliest == null || date.isBefore(earliest)) {
+        earliest = date;
+      }
+    }
+
+    // Check routine completion dates
+    for (final r in routines) {
+      for (final c in r.completionLog) {
+        final date = DateTime(c.completedAt.year, c.completedAt.month, c.completedAt.day);
+        if (earliest == null || date.isBefore(earliest)) {
+          earliest = date;
+        }
+      }
+    }
+
+    return earliest;
   }
 
   /// Note counts per period
@@ -562,7 +610,7 @@ class SummaryProvider extends ChangeNotifier {
       'November',
       'December'
     ];
-    final parts = bestMonth!.split('-');
+    final parts = bestMonth.split('-');
     final monthIdx = int.parse(parts[1]);
     final year = parts[0];
 

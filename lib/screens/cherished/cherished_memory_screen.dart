@@ -11,6 +11,12 @@ import '../../providers/summary_provider.dart';
 import '../../providers/tag_provider.dart';
 import '../../providers/jar_provider.dart';
 import '../../widgets/emoji_jar.dart';
+import '../../core/services/llm_service.dart';
+import '../../core/services/entitlement_service.dart';
+import '../../core/services/prompt_assembler.dart';
+import '../../providers/entry_provider.dart';
+import '../../models/entry.dart';
+import '../purchase/paywall_screen.dart';
 
 class InsightsScreen extends StatelessWidget {
   const InsightsScreen({super.key});
@@ -111,6 +117,8 @@ class _InsightsContent extends StatelessWidget {
         _AiInsightsSection(summary: summary, isZh: isZh),
         const SizedBox(height: 24),
         _EmojiJarSection(years: years, isZh: isZh),
+        const SizedBox(height: 24),
+        _AnnualReflectionCard(totalEntries: summary.totalEntries, isZh: isZh),
       ],
     );
   }
@@ -333,7 +341,7 @@ class _SectionCard extends StatelessWidget {
                       .titleMedium
                       ?.copyWith(fontWeight: FontWeight.bold),
                 ),
-                if (trailing != null) trailing!,
+                ?trailing,
               ],
             ),
             const SizedBox(height: 12),
@@ -673,7 +681,8 @@ class _EmojiJarSection extends StatelessWidget {
                     date: DateTime(year),
                     emotionsOverride: emotions,
                     size: 120,
-                    showAskAi: false,
+                    canUseAI: false,
+                    isToday: false,
                   ),
                   const SizedBox(height: 6),
                   Text(
@@ -1228,7 +1237,7 @@ class _WritingStatsSection extends StatelessWidget {
         Expanded(
           child: _MiniStatCard(
             icon: Icons.text_fields,
-            value: '${avgWords.toStringAsFixed(1)}',
+            value: avgWords.toStringAsFixed(1),
             label: isZh ? '平均字数' : 'avg words',
           ),
         ),
@@ -1248,7 +1257,7 @@ class _WritingStatsSection extends StatelessWidget {
         Expanded(
           child: _MiniStatCard(
             icon: Icons.schedule,
-            value: activeHour != null ? '${activeHour}:00' : '---',
+            value: activeHour != null ? '$activeHour:00' : '---',
             label: isZh ? '最活跃时段' : 'peak hour',
           ),
         ),
@@ -1568,8 +1577,8 @@ class _AiInsightsSectionState extends State<_AiInsightsSection> {
         child: Center(
           child: Text(
             widget.isZh
-                ? '开始记录以获取 AI 洞察'
-                : 'Start journaling for AI insights',
+                ? '开始记录以获取个性化洞察'
+                : 'Start journaling for personal insights',
             style: const TextStyle(color: Colors.grey, fontSize: 13),
           ),
         ),
@@ -1577,7 +1586,7 @@ class _AiInsightsSectionState extends State<_AiInsightsSection> {
     }
 
     return _SectionCard(
-      title: widget.isZh ? '🤖 AI 个性化洞察' : '🤖 AI Insights',
+      title: widget.isZh ? '💡 个性化洞察' : '💡 Insights',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1640,7 +1649,7 @@ class _AiInsightsSectionState extends State<_AiInsightsSection> {
               const Icon(Icons.auto_awesome, size: 14, color: Colors.grey),
               const SizedBox(width: 4),
               Text(
-                widget.isZh ? 'AI 生成' : 'AI-generated',
+                widget.isZh ? '基于你的数据' : 'Based on your data',
                 style: const TextStyle(fontSize: 11, color: Colors.grey),
               ),
             ],
@@ -1828,9 +1837,9 @@ class _AiInsightsSectionState extends State<_AiInsightsSection> {
     } else {
       final currentStreak = data['currentStreak'] as int? ?? 0;
       if (currentStreak >= 7) {
-        sb.writeln('🔥 ${currentStreak}-day journaling streak! Great habit forming.');
+        sb.writeln('🔥 $currentStreak-day journaling streak! Great habit forming.');
       } else if (currentStreak >= 3) {
-        sb.writeln('📝 ${currentStreak}-day streak — keep it up!');
+        sb.writeln('📝 $currentStreak-day streak — keep it up!');
       }
 
       final total = data['totalEntries'] as int? ?? 0;
@@ -1976,5 +1985,186 @@ double _niceInterval(num maxY) {
   } else {
     nice = 10;
   }
-  return (nice * p10).ceilToDouble();
+    return (nice * p10).ceilToDouble();
+}
+
+// ── Annual Reflection ────────────────────────────────────────────────
+
+class _AnnualReflectionCard extends StatefulWidget {
+  final int totalEntries;
+  final bool isZh;
+
+  const _AnnualReflectionCard({required this.totalEntries, required this.isZh});
+
+  @override
+  State<_AnnualReflectionCard> createState() => _AnnualReflectionCardState();
+}
+
+class _AnnualReflectionCardState extends State<_AnnualReflectionCard> {
+  final LlmService _llm = LlmService();
+  String? _response;
+  bool _loading = false;
+  String? _error;
+  bool _saved = false;
+
+  Future<void> _generate() async {
+    final entitlement = context.read<EntitlementService>();
+    if (!entitlement.canUseAI) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const PaywallScreen()),
+      );
+      return;
+    }
+
+    setState(() { _loading = true; _error = null; _response = null; _saved = false; });
+
+    try {
+      final entryProvider = context.read<EntryProvider>();
+      final year = DateTime.now().year;
+      final samples = PromptAssembler.selectAnnualSamples(entryProvider.entries, year);
+
+      if (samples.length < 10) {
+        setState(() {
+          _error = widget.isZh ? '需要至少 10 条有代表性的笔记。' : 'Need at least 10 representative entries.';
+          _loading = false;
+        });
+        return;
+      }
+
+      final prefs = await SharedPreferences.getInstance();
+      final personality = prefs.getString('ai_assistant_personality') ?? 'Warm and grounded.';
+
+      final prompt = PromptAssembler.assembleAnnualReflectionPrompt(
+        samples: samples,
+        personalityString: personality,
+        year: year,
+        isZh: widget.isZh,
+      );
+
+      final response = await _llm.complete(
+        widget.isZh ? '请写年度反思。' : 'Write an annual reflection.',
+        systemPrompt: prompt,
+        maxTokens: 500,
+      );
+
+      if (!mounted) return;
+      setState(() { _response = response; _loading = false; });
+    } on LlmException catch (e) {
+      if (!mounted) return;
+      setState(() { _error = e.friendlyMessage(widget.isZh); _loading = false; });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() { _error = widget.isZh ? '出错了，请重试。' : 'Something went wrong.'; _loading = false; });
+    }
+  }
+
+  Future<void> _saveToJournal() async {
+    if (_response == null) return;
+    final entryProvider = context.read<EntryProvider>();
+    try {
+      await entryProvider.addEntry(
+        type: EntryType.freeform,
+        content: '${widget.isZh ? '${DateTime.now().year} 年度反思' : 'Annual Reflection ${DateTime.now().year}'}\n\n$_response',
+        emotion: null,
+        tagIds: ['tag_synthesis'],
+        mediaUrls: [],
+      );
+      if (!mounted) return;
+      setState(() { _saved = true; });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(widget.isZh ? '已保存至日记。' : 'Saved to journal.'), backgroundColor: Colors.green),
+      );
+    } catch (_) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(widget.isZh ? '保存失败。' : 'Failed to save.'), backgroundColor: Colors.red),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final year = DateTime.now().year;
+    final hasMinimal = widget.totalEntries > 30;
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Card(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Text('📊', style: TextStyle(fontSize: 24)),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      widget.isZh ? '$year 年度反思' : 'Annual Reflection $year',
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(
+                widget.isZh
+                    ? '基于 ${widget.totalEntries} 条年度笔记生成综合回顾'
+                    : 'A comprehensive review based on ${widget.totalEntries} entries this year.',
+                style: TextStyle(color: Colors.grey[600], fontSize: 13),
+              ),
+
+              if (_loading) ...[
+                const SizedBox(height: 16),
+                const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+              ],
+
+              if (_response != null) ...[
+                const SizedBox(height: 16),
+                Text(_response!, style: const TextStyle(fontSize: 15, height: 1.6)),
+                const SizedBox(height: 14),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: FilledButton.icon(
+                    onPressed: _saved ? null : _saveToJournal,
+                    icon: Icon(_saved ? Icons.bookmark : Icons.bookmark_add, size: 18),
+                    label: Text(_saved
+                        ? (widget.isZh ? '已保存' : 'Saved')
+                        : (widget.isZh ? '保存至日记' : 'Save to Journal')),
+                  ),
+                ),
+              ],
+
+              if (_error != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 12),
+                  child: Text(_error!, style: TextStyle(color: Colors.orange[700], fontSize: 13)),
+                ),
+
+              if (_response == null && !_loading)
+                Padding(
+                  padding: const EdgeInsets.only(top: 14),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: _generate,
+                      icon: const Icon(Icons.auto_awesome, size: 16),
+                      label: Text(hasMinimal
+                          ? (widget.isZh ? '生成年度反思' : 'Generate Annual Reflection')
+                          : (widget.isZh ? '年度回顾需要更多记录' : 'Need more entries for annual review')),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: hasMinimal ? theme.colorScheme.primary : Colors.grey,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }

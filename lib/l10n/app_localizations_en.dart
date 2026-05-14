@@ -297,41 +297,40 @@ class AppLocalizationsEn extends AppLocalizations {
   String get aiSecretsTagName => 'Secrets';
 
   @override
-  String get trialBannerStartTitle => 'Try AI for Free — 7 Days';
+  String get trialBannerStartTitle => 'AI Trial Available';
 
   @override
-  String get trialBannerStartSubtitle => 'No setup needed. Start chatting now.';
+  String get trialBannerStartSubtitle =>
+      'Full access during your trial period.';
 
   @override
-  String get trialBannerStartButton => 'Start Free Trial →';
+  String get trialBannerStartButton => 'Start Trial →';
 
   @override
   String get trialBannerActiveTitle => 'Trial Active';
 
   @override
   String get trialBannerActiveSubtitle =>
-      'You can add your own key anytime in the provider list.';
+      'AI features are available during your trial.';
 
   @override
-  String get trialBannerExpiredTitle => 'Trial Expired';
+  String get trialBannerExpiredTitle => 'Trial Complete';
 
   @override
   String get trialBannerExpiredSubtitle =>
-      'Add your own API key below to continue using the AI assistant.';
+      'Upgrade to Pro to continue using AI features.';
 
   @override
-  String get trialBannerExpiredButton => 'Get a free key →';
+  String get trialBannerExpiredButton => 'Get Pro →';
 
   @override
-  String get trialProviderName => '7-Day Trial';
+  String get trialProviderName => 'Trial';
 
   @override
-  String trialProviderSubtitleDays(Object daysLeft) {
-    return '$daysLeft days remaining · 20 requests/day';
-  }
+  String get trialProviderSubtitleDays => 'Trial active';
 
   @override
-  String get trialProviderSubtitleDay => '1 day remaining · 20 requests/day';
+  String get trialProviderSubtitleDay => 'Trial active';
 
   @override
   String get trialProviderChip => 'Trial';
@@ -343,8 +342,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get trialStartError => 'Failed to start trial. Please try again.';
 
   @override
-  String get trialAlreadyUsed =>
-      'You have already used your free trial on this device.';
+  String get trialAlreadyUsed => 'Your trial has been used on this device.';
 
   @override
   String get trialInfoDialogTitle => 'Trial Details';
@@ -353,10 +351,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get trialInfoModel => 'Model: qwen/qwen3.5-flash';
 
   @override
-  String get trialInfoUrl => 'Proxied by Blinking trial backend';
+  String get trialInfoUrl => 'Blinking AI service';
 
   @override
-  String get trialInfoCannotEdit => 'Trial provider cannot be edited.';
+  String get trialInfoCannotEdit => 'Trial settings cannot be edited.';
 
   @override
   String get noteFormat => 'Note';

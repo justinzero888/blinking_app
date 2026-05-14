@@ -58,7 +58,7 @@ class TransitionScreen extends StatelessWidget {
 
               // Header
               Text(
-                isZh ? '21 天预览已完成' : 'Your 21 days are complete.',
+                isZh ? '试用已完成。' : 'Your trial is complete.',
                 textAlign: TextAlign.center,
                 style: theme.textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.bold,
@@ -91,8 +91,8 @@ class TransitionScreen extends StatelessWidget {
                       ? '新建和编辑习惯'
                       : 'new habits and edits',
                   isZh
-                      ? 'AI 助手（3 次/月）'
-                      : 'the AI assistant (3 per month)',
+                      ? 'AI 助手'
+                      : 'the AI assistant',
                   isZh
                       ? '跨设备备份与恢复'
                       : 'backup & restore across devices',

@@ -10,38 +10,66 @@ enum RoutineFrequency {
 enum RoutineCategory {
   health,
   fitness,
-  mindfulness,
-  learning,
-  social,
   nutrition,
   sleep,
-  finance,
+  mindfulness,
+  reflection,
+  restraint,
+  connection,
   other,
 }
 
-/// Map category → emoji icon (display-time only)
-const Map<RoutineCategory, String> kCategoryIcon = {
+/// Map category → icon asset path
+const Map<RoutineCategory, String> kCategoryIconPath = {
+  RoutineCategory.health: 'assets/icons/health.png',
+  RoutineCategory.fitness: 'assets/icons/fitness.png',
+  RoutineCategory.nutrition: 'assets/icons/nutrition.png',
+  RoutineCategory.sleep: 'assets/icons/sleep.png',
+  RoutineCategory.mindfulness: 'assets/icons/mind.png',
+  RoutineCategory.reflection: 'assets/icons/reflection.png',
+  RoutineCategory.restraint: 'assets/icons/restraint.png',
+  RoutineCategory.connection: 'assets/icons/connection.png',
+  RoutineCategory.other: 'assets/icons/other.png',
+};
+
+/// Emoji fallback per category (used when icon path is unavailable)
+const Map<RoutineCategory, String> kCategoryEmoji = {
   RoutineCategory.health: '💊',
   RoutineCategory.fitness: '🏃',
-  RoutineCategory.mindfulness: '🧘',
-  RoutineCategory.learning: '📚',
-  RoutineCategory.social: '👥',
   RoutineCategory.nutrition: '🥗',
   RoutineCategory.sleep: '😴',
-  RoutineCategory.finance: '💰',
+  RoutineCategory.mindfulness: '🧘',
+  RoutineCategory.reflection: '💭',
+  RoutineCategory.restraint: '🛡️',
+  RoutineCategory.connection: '👥',
   RoutineCategory.other: '⭐',
 };
 
+/// Localized category names
+String routineCategoryName(RoutineCategory cat, bool isZh) {
+  switch (cat) {
+    case RoutineCategory.health: return isZh ? '养' : 'Health';
+    case RoutineCategory.fitness: return isZh ? '劲' : 'Fitness';
+    case RoutineCategory.nutrition: return isZh ? '食' : 'Nutrition';
+    case RoutineCategory.sleep: return isZh ? '息' : 'Sleep';
+    case RoutineCategory.mindfulness: return isZh ? '心' : 'Mind';
+    case RoutineCategory.reflection: return isZh ? '省' : 'Reflection';
+    case RoutineCategory.restraint: return isZh ? '戒' : 'Restraint';
+    case RoutineCategory.connection: return isZh ? '缘' : 'Connection';
+    case RoutineCategory.other: return isZh ? '杂' : 'Other';
+  }
+}
+
 /// Keyword → category mapping for auto-detection
 const Map<RoutineCategory, List<String>> kCategoryKeywords = {
-  RoutineCategory.health: ['维生素', 'vitamin', '药', 'medicine', '健康', 'health', '医'],
-  RoutineCategory.fitness: ['步', 'steps', '运动', 'exercise', '跑', 'run', '健身', 'gym', '瑜伽', 'yoga', '走路', 'walk'],
-  RoutineCategory.mindfulness: ['冥想', 'meditation', '呼吸', 'breath', '正念', 'mindful'],
-  RoutineCategory.learning: ['学习', 'study', '阅读', 'read', '书', 'book', '课', 'course', '英语', 'english'],
-  RoutineCategory.social: ['朋友', 'friend', '家人', 'family', '聊天', 'chat', '社交', 'social'],
-  RoutineCategory.nutrition: ['喝水', 'water', '饮食', 'diet', '营养', 'nutrition', '蔬菜', 'vegetable', '水果', 'fruit'],
+  RoutineCategory.health: ['维生素', 'vitamin', '药', 'medicine', '健康', 'health', '医', '早起', 'wake'],
+  RoutineCategory.fitness: ['步', 'steps', '运动', 'exercise', '跑', 'run', '健身', 'gym', '瑜伽', 'yoga', '走路', 'walk', '拉伸', 'stretch'],
+  RoutineCategory.nutrition: ['喝水', 'water', '饮食', 'diet', '营养', 'nutrition', '蔬菜', 'vegetable', '水果', 'fruit', '吃菜', 'greens'],
   RoutineCategory.sleep: ['睡眠', 'sleep', '睡觉', '休息', 'rest', '早睡', '起床', 'wake'],
-  RoutineCategory.finance: ['存钱', 'save', '记账', 'budget', '理财', 'finance', '花费', 'spend'],
+  RoutineCategory.mindfulness: ['冥想', 'meditation', '呼吸', 'breath', '正念', 'mindful', '阅读', 'read', '书', 'book'],
+  RoutineCategory.reflection: ['感恩', 'gratitude', '日记', 'journal', '反思', 'reflect', '写作', 'write'],
+  RoutineCategory.restraint: ['戒', 'quit', '戒烟', '戒酒', '戒糖', '克制', 'restrain', '戒除', '不吃'],
+  RoutineCategory.connection: ['朋友', 'friend', '家人', 'family', '聊天', 'chat', '社交', 'social', '电话', 'call', '联络', 'connect'],
 };
 
 /// Auto-detect category from routine name.
@@ -105,10 +133,19 @@ class Routine {
   });
 
   /// Effective icon: explicit icon > category icon > auto-detect > fallback
+  /// Returns the category PNG icon path, or null if no category is set.
+  String? get effectiveIconPath {
+    final cat = category ?? autoDetectCategory(name);
+    if (cat != null && kCategoryIconPath.containsKey(cat)) {
+      return kCategoryIconPath[cat];
+    }
+    return null;
+  }
+
   String get effectiveIcon {
     if (icon != null && icon!.isNotEmpty) return icon!;
     final cat = category ?? autoDetectCategory(name);
-    if (cat != null) return kCategoryIcon[cat]!;
+    if (cat != null) return kCategoryEmoji[cat]!;
     return '⭐';
   }
 

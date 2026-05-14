@@ -76,7 +76,7 @@ class EntryCard extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.only(top: 4),
           child: Text(
-            '${AppLocalizations.of(context)!.itemsDone(doneCount, totalCount)}',
+            AppLocalizations.of(context)!.itemsDone(doneCount, totalCount),
             style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey),
           ),
         ),
@@ -96,9 +96,9 @@ class EntryCard extends StatelessWidget {
         if (entry.emotion != null)
           Text(entry.emotion!, style: const TextStyle(fontSize: 18)),
         const SizedBox(width: 4),
-        if (entry.tagIds.contains('tag_secrets'))
+        if (entry.tagIds.contains('tag_private'))
           const Icon(Icons.lock_outline, size: 14, color: Colors.grey),
-        if (entry.tagIds.contains('tag_secrets'))
+        if (entry.tagIds.contains('tag_private'))
           const SizedBox(width: 4),
         GestureDetector(
           onTap: () {
@@ -182,9 +182,9 @@ class EntryCard extends StatelessWidget {
         if (entry.emotion != null)
           Text(entry.emotion!, style: const TextStyle(fontSize: 18)),
         const SizedBox(width: 4),
-        if (entry.tagIds.contains('tag_secrets'))
+        if (entry.tagIds.contains('tag_private'))
           const Icon(Icons.lock_outline, size: 14, color: Colors.grey),
-        if (entry.tagIds.contains('tag_secrets'))
+        if (entry.tagIds.contains('tag_private'))
           const SizedBox(width: 4),
         GestureDetector(
           onTap: () {

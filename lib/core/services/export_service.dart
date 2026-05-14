@@ -270,7 +270,7 @@ class ExportService {
     final zipData = ZipEncoder().encode(archive);
     final filePath = path_pkg.join(docDir.path, 'blinking_export_csv_$timestamp.zip');
     final file = File(filePath);
-    await file.writeAsBytes(zipData!);
+    await file.writeAsBytes(zipData);
     
     return filePath;
   }
@@ -313,12 +313,18 @@ class ExportService {
 
     // Filter out duplicates if needed, but saveData usually handles conflict replace
     final tags = exportData.tags.map((t) => Tag.fromJson(t)).toList();
-    for (final tag in tags) await _storage.addTag(tag);
+    for (final tag in tags) {
+      await _storage.addTag(tag);
+    }
 
     final routines = exportData.routines.map((r) => Routine.fromJson(r)).toList();
-    for (final routine in routines) await _storage.addRoutine(routine);
+    for (final routine in routines) {
+      await _storage.addRoutine(routine);
+    }
 
     final entries = exportData.entries.map((e) => Entry.fromJson(e)).toList();
-    for (final entry in entries) await _storage.addEntry(entry);
+    for (final entry in entries) {
+      await _storage.addEntry(entry);
+    }
   }
 }

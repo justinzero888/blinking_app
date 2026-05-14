@@ -201,7 +201,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                                   ),
                                 ),
                                 child: Text(
-                                  _isZh ? '开始 21 天试用' : 'Start your 21 days',
+                                  _isZh ? '开始试用' : 'Start your trial',
                                   style: const TextStyle(
                                     fontSize: 17,
                                     fontWeight: FontWeight.bold,
@@ -449,7 +449,7 @@ class _ScreenThree extends StatelessWidget {
                 const Text('✨', style: TextStyle(fontSize: 36)),
                 const SizedBox(height: 12),
                 Text(
-                  isZh ? '21 天全功能预览' : '21-Day Preview',
+                  isZh ? '全功能试用' : 'Full access trial',
                   style: const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
@@ -459,8 +459,8 @@ class _ScreenThree extends StatelessWidget {
                 const SizedBox(height: 8),
                 Text(
                   isZh
-                      ? '每天 3 次 AI 反思 · 全部功能解锁'
-                      : '3 AI reflections/day · Full access',
+                      ? '试用期间全部功能解锁'
+                      : 'All features unlocked during trial',
                   style: TextStyle(
                     color: Colors.white70,
                     fontSize: 14,
@@ -472,8 +472,8 @@ class _ScreenThree extends StatelessWidget {
           const SizedBox(height: 32),
           Text(
             isZh
-                ? '21 天后，笔记和已有习惯永久免费。'
-                : 'After 21 days, notes & habits stay free forever.',
+                ? '你的笔记和习惯永远免费。'
+                : 'Your notes and habits stay free forever.',
             textAlign: TextAlign.center,
             style: theme.textTheme.bodyMedium?.copyWith(
               color: Colors.grey[700],

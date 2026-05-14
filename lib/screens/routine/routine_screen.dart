@@ -5,10 +5,13 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../core/services/file_service.dart';
+import '../../core/services/entitlement_service.dart';
+import '../../core/services/notification_service.dart';
 import '../../providers/routine_provider.dart';
 import '../../providers/locale_provider.dart';
 import '../../providers/entry_provider.dart';
 import '../../models/routine.dart';
+import '../purchase/paywall_screen.dart';
 
 /// Renders a routine's icon: custom image if set, else emoji fallback.
 Widget _buildRoutineIcon(Routine routine, {double size = 20}) {
@@ -88,10 +91,26 @@ class RoutineScreenState extends State<RoutineScreen>
   }
 
   void showAddRoutineDialog(BuildContext context) {
+    final entitlement = context.read<EntitlementService>();
+    if (!entitlement.canAddHabit) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const PaywallScreen()),
+      );
+      return;
+    }
     _RoutineDialog.show(context, existing: null);
   }
 
   void _showEditRoutineDialog(BuildContext context, Routine routine) {
+    final entitlement = context.read<EntitlementService>();
+    if (!entitlement.canEditNote) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const PaywallScreen()),
+      );
+      return;
+    }
     _RoutineDialog.show(context, existing: routine);
   }
 }
@@ -215,6 +234,14 @@ class _BuildTab extends StatelessWidget {
   }
 
   void _toggleActive(BuildContext context, Routine routine) {
+    final entitlement = context.read<EntitlementService>();
+    if (!entitlement.canEditNote) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const PaywallScreen()),
+      );
+      return;
+    }
     context.read<RoutineProvider>().toggleActive(routine.id);
   }
 }
@@ -279,8 +306,8 @@ class _BuildRoutineTile extends StatelessWidget {
                         padding: const EdgeInsets.only(top: 2),
                         child: Text(
                           isZh
-                              ? (routine.descriptionEn ?? routine.description!)
-                              : routine.description!,
+                              ? routine.description!
+                              : (routine.descriptionEn ?? routine.description!),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
@@ -309,7 +336,7 @@ class _BuildRoutineTile extends StatelessWidget {
               Switch(
                 value: active,
                 onChanged: (_) => onToggle(),
-                activeColor: Theme.of(context).colorScheme.primary,
+                activeThumbColor: Theme.of(context).colorScheme.primary,
               ),
               GestureDetector(
                 onTap: onEdit,
@@ -342,7 +369,7 @@ class _DoTab extends StatefulWidget {
 
 class _DoTabState extends State<_DoTab> {
   final Set<String> _recentlyCompleted = {};
-  int _lastBestStreakShown = 0;
+  final int _lastBestStreakShown = 0;
 
   void _onRoutineToggle(BuildContext context, Routine routine, bool wasCompleted) {
     final provider = context.read<RoutineProvider>();
@@ -748,7 +775,17 @@ class _ManualAddButton extends StatelessWidget {
     if (adhoc.isEmpty) return const SizedBox.shrink();
 
     return TextButton.icon(
-      onPressed: () => _showPicker(context, adhoc),
+      onPressed: () {
+        final entitlement = context.read<EntitlementService>();
+        if (!entitlement.canAddHabit) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const PaywallScreen()),
+          );
+          return;
+        }
+        _showPicker(context, adhoc);
+      },
       icon: const Icon(Icons.add),
       label: Text(isZh ? '手动加入' : 'Add'),
     );
@@ -795,7 +832,15 @@ class _ReflectTab extends StatelessWidget {
     final today = DateTime.now();
     final todayNorm = DateTime(today.year, today.month, today.day);
 
-    final days = List.generate(60, (i) {
+    // Start from the earliest routine creation, capped at 60 days max
+    final allRoutines = provider.routines;
+    final earliestCreated = allRoutines.isNotEmpty
+        ? allRoutines.map((r) => r.createdAt).reduce((a, b) => a.isBefore(b) ? a : b)
+        : todayNorm;
+    final earliestNorm = DateTime(earliestCreated.year, earliestCreated.month, earliestCreated.day);
+    final maxLookback = todayNorm.difference(earliestNorm).inDays.clamp(1, 60);
+
+    final days = List.generate(maxLookback, (i) {
       return todayNorm.subtract(Duration(days: i + 1));
     });
 
@@ -890,7 +935,7 @@ class _ReflectTab extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     isZh
-                        ? '${bestRoutine.displayName(isZh)} 连续 ${bestStreak} 天 🔥'
+                        ? '${bestRoutine.displayName(isZh)} 连续 $bestStreak 天 🔥'
                         : '${bestRoutine.displayName(isZh)} — ${bestStreak}d streak 🔥',
                     style: TextStyle(color: Colors.teal[600], fontSize: 12),
                   ),
@@ -1239,10 +1284,11 @@ class _RoutineDialogWidgetState extends State<_RoutineDialogWidget> {
   void initState() {
     super.initState();
     final r = widget.existing;
-    _nameController = TextEditingController(text: r?.name ?? '');
+    final isZh = context.read<LocaleProvider>().locale.languageCode == 'zh';
+    _nameController = TextEditingController(text: r?.displayName(isZh) ?? '');
     _reminderController = TextEditingController(text: r?.reminderTime ?? '');
     _whyController = TextEditingController(
-      text: (r?.descriptionEn ?? r?.description) ?? '');
+      text: isZh ? (r?.description ?? '') : (r?.descriptionEn ?? r?.description ?? ''));
     _frequency = r?.frequency ?? RoutineFrequency.daily;
     _selectedDays = List<int>.from(r?.scheduledDaysOfWeek ?? []);
     _scheduledDate = r?.scheduledDate;
@@ -1343,10 +1389,16 @@ class _RoutineDialogWidgetState extends State<_RoutineDialogWidget> {
             // Reminder
             TextField(
               controller: _reminderController,
+              keyboardType: TextInputType.datetime,
+              maxLength: 5,
+              inputFormatters: [
+                FilteringTextInputFormatter.allow(RegExp(r'[\d:]')),
+              ],
               decoration: InputDecoration(
                 labelText: isZh ? '提醒时间 (可选)' : 'Reminder (optional)',
-                hintText: isZh ? '例如: 09:00' : 'e.g. 09:00',
-                helperText: isZh ? '仅本地提醒，不发送任何数据' : 'Local only — no data is sent anywhere',
+                hintText: '08:00',
+                helperText: isZh ? '24小时格式，仅本地提醒' : '24-hour format, local only',
+                counterText: '',
               ),
             ),
             const SizedBox(height: 12),
@@ -1443,9 +1495,8 @@ class _RoutineDialogWidgetState extends State<_RoutineDialogWidget> {
                     _category = selected ? null : cat;
                   }),
                   child: Chip(
-                    avatar: Text(kCategoryIcon[cat]!,
-                        style: const TextStyle(fontSize: 14)),
-                    label: Text(cat.name, style: const TextStyle(fontSize: 12)),
+                    avatar: Image.asset(kCategoryIconPath[cat]!, width: 24, height: 24),
+                    label: Text(routineCategoryName(cat, isZh), style: const TextStyle(fontSize: 12)),
                     backgroundColor: selected
                         ? Theme.of(context).colorScheme.primaryContainer
                         : null,
@@ -1504,7 +1555,7 @@ class _RoutineDialogWidgetState extends State<_RoutineDialogWidget> {
     if (picked != null) setState(() => _scheduledDate = picked);
   }
 
-  void _save() {
+  Future<void> _save() async {
     final isZh = context.read<LocaleProvider>().locale.languageCode == 'zh';
     final name = _nameController.text.trim();
     if (name.isEmpty) {
@@ -1519,10 +1570,13 @@ class _RoutineDialogWidgetState extends State<_RoutineDialogWidget> {
       );
       return;
     }
-
-    final reminder = _reminderController.text.trim().isEmpty
-        ? null
-        : _reminderController.text.trim();
+    final reminder = _reminderController.text.trim();
+    if (reminder.isNotEmpty && !RegExp(r'^\d{2}:\d{2}$').hasMatch(reminder)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(isZh ? '提醒时间格式应为 HH:MM (如 08:00)' : 'Reminder must be HH:MM (e.g. 08:00)')),
+      );
+      return;
+    }
     final why = _whyController.text.trim().isEmpty
         ? null
         : _whyController.text.trim();
@@ -1535,15 +1589,16 @@ class _RoutineDialogWidgetState extends State<_RoutineDialogWidget> {
     final provider = context.read<RoutineProvider>();
 
     if (widget.existing != null) {
+      // Preserve the other locale's name/description — dialog shows current locale only
       final updated = widget.existing!.copyWith(
-        name: name,
-        nameEn: name,
-        description: why,
-        descriptionEn: why,
+        name: isZh ? name : widget.existing!.name,
+        nameEn: isZh ? widget.existing!.nameEn : name,
+        description: isZh ? (why ?? widget.existing!.description) : widget.existing!.description,
+        descriptionEn: isZh ? widget.existing!.descriptionEn : (why ?? widget.existing!.descriptionEn),
         reminderTime: reminder,
         updatedAt: DateTime.now(),
-        category: _category,
-        clearCategory: _category == null,
+        category: _category ?? RoutineCategory.other,
+        clearCategory: false,
         frequency: _frequency,
         scheduledDaysOfWeek: days,
         scheduledDate: schedDate,
@@ -1553,17 +1608,27 @@ class _RoutineDialogWidgetState extends State<_RoutineDialogWidget> {
         isActive: _isActive,
       );
       provider.updateRoutine(updated);
+      // Reschedule notification
+      if (reminder != null && reminder.isNotEmpty) {
+        NotificationService.scheduleRoutine(updated, isZh);
+      } else {
+        NotificationService.cancelRoutine(updated.id, isZh);
+      }
     } else {
-      provider.addRoutine(
+      final newRoutine = await provider.addRoutine(
         name: name,
         nameEn: name,
         frequency: _frequency,
         reminderTime: reminder,
-        category: _category,
+        category: _category ?? RoutineCategory.other,
         scheduledDaysOfWeek: days,
         scheduledDate: schedDate,
         iconImagePath: _iconImagePath,
       );
+      // Schedule notification
+      if (newRoutine != null && reminder != null && reminder.isNotEmpty) {
+        NotificationService.scheduleRoutine(newRoutine, isZh);
+      }
     }
 
     Navigator.pop(context);

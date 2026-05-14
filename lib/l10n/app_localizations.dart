@@ -677,19 +677,19 @@ abstract class AppLocalizations {
   /// No description provided for @trialBannerStartTitle.
   ///
   /// In en, this message translates to:
-  /// **'Try AI for Free — 7 Days'**
+  /// **'AI Trial Available'**
   String get trialBannerStartTitle;
 
   /// No description provided for @trialBannerStartSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'No setup needed. Start chatting now.'**
+  /// **'Full access during your trial period.'**
   String get trialBannerStartSubtitle;
 
   /// No description provided for @trialBannerStartButton.
   ///
   /// In en, this message translates to:
-  /// **'Start Free Trial →'**
+  /// **'Start Trial →'**
   String get trialBannerStartButton;
 
   /// No description provided for @trialBannerActiveTitle.
@@ -701,43 +701,43 @@ abstract class AppLocalizations {
   /// No description provided for @trialBannerActiveSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'You can add your own key anytime in the provider list.'**
+  /// **'AI features are available during your trial.'**
   String get trialBannerActiveSubtitle;
 
   /// No description provided for @trialBannerExpiredTitle.
   ///
   /// In en, this message translates to:
-  /// **'Trial Expired'**
+  /// **'Trial Complete'**
   String get trialBannerExpiredTitle;
 
   /// No description provided for @trialBannerExpiredSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Add your own API key below to continue using the AI assistant.'**
+  /// **'Upgrade to Pro to continue using AI features.'**
   String get trialBannerExpiredSubtitle;
 
   /// No description provided for @trialBannerExpiredButton.
   ///
   /// In en, this message translates to:
-  /// **'Get a free key →'**
+  /// **'Get Pro →'**
   String get trialBannerExpiredButton;
 
   /// No description provided for @trialProviderName.
   ///
   /// In en, this message translates to:
-  /// **'7-Day Trial'**
+  /// **'Trial'**
   String get trialProviderName;
 
   /// No description provided for @trialProviderSubtitleDays.
   ///
   /// In en, this message translates to:
-  /// **'{daysLeft} days remaining · 20 requests/day'**
-  String trialProviderSubtitleDays(Object daysLeft);
+  /// **'Trial active'**
+  String get trialProviderSubtitleDays;
 
   /// No description provided for @trialProviderSubtitleDay.
   ///
   /// In en, this message translates to:
-  /// **'1 day remaining · 20 requests/day'**
+  /// **'Trial active'**
   String get trialProviderSubtitleDay;
 
   /// No description provided for @trialProviderChip.
@@ -761,7 +761,7 @@ abstract class AppLocalizations {
   /// No description provided for @trialAlreadyUsed.
   ///
   /// In en, this message translates to:
-  /// **'You have already used your free trial on this device.'**
+  /// **'Your trial has been used on this device.'**
   String get trialAlreadyUsed;
 
   /// No description provided for @trialInfoDialogTitle.
@@ -779,13 +779,13 @@ abstract class AppLocalizations {
   /// No description provided for @trialInfoUrl.
   ///
   /// In en, this message translates to:
-  /// **'Proxied by Blinking trial backend'**
+  /// **'Blinking AI service'**
   String get trialInfoUrl;
 
   /// No description provided for @trialInfoCannotEdit.
   ///
   /// In en, this message translates to:
-  /// **'Trial provider cannot be edited.'**
+  /// **'Trial settings cannot be edited.'**
   String get trialInfoCannotEdit;
 
   /// No description provided for @noteFormat.

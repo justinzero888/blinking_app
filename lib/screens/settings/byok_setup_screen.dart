@@ -101,7 +101,7 @@ class _ByokSetupScreenState extends State<ByokSetupScreen> {
       Text(isZh ? '提供商' : 'Provider', style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600)),
       const SizedBox(height: 8),
       DropdownButtonFormField<String>(
-        value: _selectedProvider,
+        initialValue: _selectedProvider,
         items: _providers.map((p) => DropdownMenuItem(value: p['id'], child: Text(p['name'] as String))).toList(),
         onChanged: (v) => setState(() => _selectedProvider = v!),
         decoration: const InputDecoration(border: OutlineInputBorder()),

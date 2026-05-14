@@ -2,9 +2,13 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/ai_persona_provider.dart';
+import '../providers/locale_provider.dart';
 import '../providers/llm_config_notifier.dart';
+import '../providers/entry_provider.dart';
 import '../core/services/entitlement_service.dart';
+import '../core/config/constants.dart';
 import '../screens/assistant/assistant_screen.dart';
+import '../screens/reflection/reflection_session_screen.dart';
 import '../screens/purchase/paywall_screen.dart';
 
 class FloatingRobotWidget extends StatefulWidget {
@@ -103,7 +107,9 @@ class _FloatingRobotWidgetState extends State<FloatingRobotWidget>
           context,
           MaterialPageRoute(
             fullscreenDialog: true,
-            builder: (_) => const AssistantScreen(),
+            builder: (_) => AppConstants.kUseMultiTurnChat
+                ? const AssistantScreen()
+                : const ReflectionSessionScreen(),
           ),
         );
         break;
@@ -115,8 +121,8 @@ class _FloatingRobotWidgetState extends State<FloatingRobotWidget>
           );
         } else {
           final message = isZh
-              ? '今日 AI 配额已用完。明天会刷新。'
-              : "You've used today's AI quota. It refreshes tomorrow.";
+              ? 'AI 功能需升级 Pro。'
+              : 'AI features are available with Pro.';
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(message), duration: const Duration(seconds: 2)),
           );
@@ -161,31 +167,21 @@ class _FloatingRobotWidgetState extends State<FloatingRobotWidget>
             style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
           ),
         ),
-        PopupMenuItem(
-          enabled: false,
-          height: 20,
-          child: Text(
-            '${isZh ? "来源" : "Source"}: ${entitlement.aiSourceLabel}',
-            style: const TextStyle(fontSize: 12, color: Colors.grey),
-          ),
-        ),
-        if (entitlement.remainingAI > 0)
+        if (entitlement.currentState == EntitlementState.preview)
           PopupMenuItem(
             enabled: false,
-            height: 20,
+            height: 24,
             child: Text(
-              '${isZh ? "剩余" : "Remaining"}: ${entitlement.remainingAI}',
+              isZh ? '预览 — 剩余 ${entitlement.previewDaysRemaining} 天' : 'Preview — ${entitlement.previewDaysRemaining} ${entitlement.previewDaysRemaining == 1 ? "day" : "days" } left',
               style: const TextStyle(fontSize: 12, color: Colors.grey),
             ),
           ),
-        if (entitlement.isPreviewActive)
+        if (entitlement.currentState == EntitlementState.paid)
           PopupMenuItem(
             enabled: false,
-            height: 20,
+            height: 24,
             child: Text(
-              isZh
-                  ? '预览剩余 ${entitlement.previewDaysRemaining} 天'
-                  : 'Preview: ${entitlement.previewDaysRemaining} days left',
+              isZh ? 'Pro — 全部功能解锁' : 'Pro — all features unlocked',
               style: const TextStyle(fontSize: 12, color: Colors.grey),
             ),
           ),
@@ -194,21 +190,16 @@ class _FloatingRobotWidgetState extends State<FloatingRobotWidget>
           PopupMenuItem(
             height: 36,
             child: Text(
-              isZh ? '获取 Pro' : 'Get Pro',
+              isZh ? '获取 Pro — \$19.99 一次购买' : 'Get Pro — \$19.99 once',
               style: TextStyle(
                   color: Theme.of(context).colorScheme.primary,
                   fontWeight: FontWeight.w600),
             ),
-          ),
-        if (!entitlement.hasActiveBYOK)
-          PopupMenuItem(
-            height: 36,
-            child: Text(
-              isZh ? '使用自己的 Key' : 'Use my own key',
-              style: TextStyle(color: Theme.of(context).colorScheme.primary),
-            ),
             onTap: () {
-              widget.onSwitchTab?.call(4);
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const PaywallScreen()),
+              );
             },
           ),
       ],
@@ -217,15 +208,36 @@ class _FloatingRobotWidgetState extends State<FloatingRobotWidget>
 
   @override
   Widget build(BuildContext context) {
-    if (widget.currentTabIndex >= 4) return const SizedBox.shrink();
+    if (widget.currentTabIndex >= 4 ||
+        widget.currentTabIndex == 2 ||
+        widget.currentTabIndex == 3) {
+      return const SizedBox.shrink();
+    }
+
+    // Content checks: no robot if nothing to reflect on
+    final entryProvider = context.read<EntryProvider>();
+    if (widget.currentTabIndex == 0) {
+      // My Day: show only if today has entries
+      final today = DateTime.now();
+      final todayStart = DateTime(today.year, today.month, today.day);
+      final hasTodayEntries = entryProvider.entries
+          .any((e) => e.createdAt.isAfter(todayStart));
+      if (!hasTodayEntries) return const SizedBox.shrink();
+    } else if (widget.currentTabIndex == 1) {
+      // Moments: show only if any entries exist
+      if (entryProvider.entries.isEmpty) return const SizedBox.shrink();
+    }
 
     final entitlement = context.watch<EntitlementService>();
     final visual = entitlement.buttonVisual;
     final canUse = entitlement.canUseAI && visual == AIButtonVisual.active;
 
-    final avatarPath = context.read<AiPersonaProvider>().avatarPath;
+    final persona = context.watch<AiPersonaProvider>();
+    final avatarPath = persona.avatarPath;
     final avatarFile = avatarPath != null ? File(avatarPath) : null;
-    final hasAvatar = avatarFile != null && avatarFile.existsSync();
+    final hasCustomAvatar = avatarFile != null && avatarFile.existsSync();
+    final styleAsset = persona.styleAvatarAssetFor(
+        context.read<LocaleProvider>().locale.languageCode == 'zh');
 
     Widget avatar = Container(
       width: 52,
@@ -243,21 +255,21 @@ class _FloatingRobotWidgetState extends State<FloatingRobotWidget>
           ),
         ],
       ),
-      child: hasAvatar
+      child: hasCustomAvatar
           ? ClipOval(child: Image.file(avatarFile, fit: BoxFit.cover))
-          : Center(
-              child: Text(
-                '🤖',
-                style: TextStyle(
-                    fontSize: 28,
-                    color: canUse ? null : Colors.grey[500]),
-              ),
-            ),
+          : styleAsset != null
+              ? ClipOval(child: Image.asset(styleAsset, fit: BoxFit.cover))
+              : Center(
+                  child: Text(
+                    '🤖',
+                    style: TextStyle(
+                        fontSize: 28,
+                        color: canUse ? null : Colors.grey[500]),
+                  ),
+                ),
     );
 
-    final showBadge = !canUse &&
-        visual != AIButtonVisual.hidden &&
-        visual != AIButtonVisual.pulsing;
+    final showBadge = visual == AIButtonVisual.dormantWarn;
 
     final opacity = canUse ? 1.0 : 0.55;
     final animate = canUse;
@@ -276,18 +288,14 @@ class _FloatingRobotWidgetState extends State<FloatingRobotWidget>
               child: Container(
                 width: 18,
                 height: 18,
-                decoration: BoxDecoration(
-                  color: visual == AIButtonVisual.dormantWarn
-                      ? Colors.amber
-                      : entitlement.isPreviewActive
-                          ? Theme.of(context).colorScheme.primary
-                          : Colors.orange,
+                decoration: const BoxDecoration(
+                  color: Colors.amber,
                   shape: BoxShape.circle,
                 ),
-                child: Center(
+                child: const Center(
                   child: Text(
-                    visual == AIButtonVisual.dormantWarn ? '⚠' : '!',
-                    style: const TextStyle(
+                    '⚠',
+                    style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.bold,
                         color: Colors.white),

@@ -40,7 +40,7 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
         ? DateFormat('yyyy年M月d日 HH:mm').format(entry.createdAt)
         : DateFormat('MMM d, y  HH:mm').format(entry.createdAt);
 
-    final isPrivate = entry.tagIds.contains('tag_secrets');
+    final isPrivate = entry.tagIds.contains('tag_private');
 
     return Scaffold(
       appBar: AppBar(
@@ -266,7 +266,7 @@ class _MediaGridState extends State<_MediaGrid> {
                           File(fullPath),
                           fit: BoxFit.contain,
                           width: double.infinity,
-                          errorBuilder: (_, __, ___) => Container(
+                          errorBuilder: (_, _, _) => Container(
                             height: 120,
                             color: Colors.grey[300],
                             child: const Icon(Icons.insert_drive_file, size: 48),

@@ -1,92 +1,61 @@
-# IAP Status Handoff — 2026-05-08
+# IAP Status — 2026-05-09
 
-**Version:** 1.1.0-beta.8+28 | **Tests:** 135/135 | **Lint:** 0 errors
+**Version:** 1.1.0+30 | **Tests:** 147/147 | **Lint:** 0 errors
 
 ---
 
-## What's Done (Both Platforms)
+## Production Builds (All Built)
 
-### RevenueCat — Universal
-- Project configured: entitlement `pro_access`, product `blinking_pro`, offering `ofrng88832e4ac2` (Current)
-- Purchase flow code: paywall → Get Pro → native dialog → "Welcome to Pro!" → state updates
-- BYOK (bring your own key) → single entry point, no duplication
-- Restore Purchases works
-- Price: $19.99 (non-consumable)
-- Debug toggle: Settings → About → tap version 5x → cycle preview/restricted
+| Platform | Artifact | Version | RC Key |
+|----------|----------|---------|--------|
+| Android AAB | `build/app/outputs/bundle/release/app-release.aab` | v30 (55MB) | `goog_ITjNhBQowFMaFwdyZYvaCGqqioi` |
+| Android APK | `build/app/outputs/flutter-apk/app-release.apk` | v30 (68MB) | `goog_...` |
+| iOS IPA | `build/ios/ipa/blinking.ipa` | v30 (34MB) | `appl_vgTGaiNtCARgmdgOzpJcZyITNAT` |
 
-### AI Keys (dart-define)
-- `TRIAL_API_KEY` — auto-applied during 21-day preview
-- `PRO_API_KEY` — auto-applied after purchase or in restricted mode
-- Both route through OpenRouter (`qwen/qwen3.5-flash`)
+---
+
+## Submission Status
+
+| Platform | Status |
+|----------|--------|
+| **Google Play** | ✅ v30 uploaded to Internal Testing |
+| **iOS TestFlight** | ✅ v30 IPA processed, validation passed |
+| **iOS App Review** | ⬜ Ready — submit with IAP `blinking_pro` |
+
+---
+
+## iOS App Review Checklist
+
+1. App Store Connect → Blinking → **1.1.0** version → Prepare for Submission
+2. Add IAP `blinking_pro` ($19.99) to the version
+3. Review notes:
+   - Sandbox Tester: `blinking.tester@gmail.com` / `BlinkTest123!`
+   - Debug toggle: Settings → About → tap version 5x → restricted → robot → paywall
+   - IAP: `blinking_pro` ($19.99, non-consumable, entitlement `pro_access`)
+4. Submit for App Review
+5. Wait 1-2 days for approval
+
+---
+
+## Previous Content (Historical)
+
+### iOS
+- IPA v28 built and waiting for TestFlight upload → ✅ Done (v30 uploaded, validated)
+- App Store connection verified active in RevenueCat
+- `appl_vgTGaiNtCARgmdgOzpJcZyITNAT` production key active
 
 ### Android
-- BILLING permission added to AndroidManifest
-- Product `blinking_pro` ($19.99) created in Google Play Console
-- Service account connected to RevenueCat
-- `goog_ITjNhBQowFMaFwdyZYvaCGqqioi` production key active
-- AAB v27 built and uploaded to Internal Testing
+- AAB v27 built and uploaded to Internal Testing → ✅ v30 uploaded
 - Product imported into RevenueCat, attached to `pro_access` and offering
 - License testing configured
 
-### iOS
-- `blinking_pro` in App Store Connect: "Ready to Submit"
-- Shared Secret: active
-- In-App Purchase API Key: `2Q7R8Q5UPK` (fresh, In-App Purchase access)
-- App Store Connect API Key: `4UK6U499RC` (Admin access)
-- RevenueCat App Store connection fully saved and verified active
-- `appl_vgTGaiNtCARgmdgOzpJcZyITNAT` production key active
-- IPA v28 built and ready for TestFlight upload
-- StoreKit configuration file created for simulator testing
-
----
-
-## What's Blocked / Waiting
-
-### iOS — Waiting on Apple App Review
-**Blocker:** Apple won't serve IAP to any device (even sandbox) until the IAP is submitted and approved.
-
-**Required action:**
-1. Upload IPA v28 to TestFlight via Transporter
-2. App Store Connect → Blinking → select version → add `blinking_pro` →
-3. Submit for App Review with "Manually release this version"
-4. After approval (~1-2 days), IAP becomes available on TestFlight
-
-**Credentials for review notes:**
-- Sandbox Tester: blinking.tester@gmail.com / BlinkTest123!
-- Debug toggle: Settings → About → tap version 5x → force restricted → tap robot → paywall
-
-### Android — ✅ Verified
-**Status:** Purchase flow fully tested: Get Pro → Google Play dialog → purchase → "Welcome to Pro!" → "You already own" on retry → Refund via Play Console → re-purchase works.
-
-**Key finding:** Non-consumable IAPs can only be purchased once per Google account. To retest: refund via Play Console → Orders, or use different license tester account.
-
-**Remaining for production:** Switch `RC_API_KEY` from Test Store to `goog_` in release builds only (debug builds can keep Test Store key).
-
----
-
-## Key Lessons Learned
-
-### App Store Connect
-1. **In-App Purchase Key ≠ App Store Connect API Key** — two separate sections in RevenueCat, each needs its own credentials
-2. **Key access type matters** — "Admin" key produces `AuthKey_` filename; "In-App Purchase" produces `SubscriptionKey_`; RevenueCat's In-App Purchase section expects the latter
+### Key Lessons Learned
+1. **In-App Purchase Key ≠ App Store Connect API Key** — two separate sections in RevenueCat
+2. **Key access type matters** — "Admin" key produces `AuthKey_` filename; "In-App Purchase" produces `SubscriptionKey_`
 3. **.p8 files can only be downloaded once** — if lost, must revoke and recreate
-4. **Issuer ID never changes** — same for all keys: `8525f01e-0925-49f8-9862-739031df8d50`
+4. **Issuer ID never changes**: `8525f01e-0925-49f8-9862-739031df8d50`
 5. **"Ready to Submit" IAPs are invisible** — StoreKit won't serve them until Apple approves
-6. **App Store Connect UI is buggy** — Save buttons grey out, localization status shows "Prepare for Submission" even when done
-7. **Xcode reinstall wipes all signing** — need device registration + certificate regeneration
-
-### Google Play Console
-8. **BILLING permission required** in APK before IAP menu unlocks
-9. **Product IDs accept underscores** — purchase option IDs don't (use hyphens)
-10. **Sideloaded APKs can't use Google Billing** — must install from Play Store
-11. **New IAP products need propagation time** — 2-24 hours globally
-12. **Google Cloud Pub/Sub API must be enabled** for RevenueCat connection
-
-### RevenueCat
-13. **Save button stays blue** — click outside fields, wait, try different browser
-14. **Offerings must be "Current"** — green badge required for `getOfferings().current`
-15. **Test Store product blocks App Store import** — same product ID can't exist in both
-16. **`purchasePackage()` returns `PurchaseResult`** in SDK ≥9.x (not `CustomerInfo`)
+6. **IAP must be submitted with app version** — cannot be approved separately
 
 ---
 

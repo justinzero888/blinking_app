@@ -5,7 +5,7 @@
 - **Type**: Personal memory capture app
 - **Framework**: Flutter
 - **Platforms**: Android + iOS (both live)
-- **Current Version**: 1.1.0-beta.8+25
+- **Current Version**: 1.1.0+30
 
 ## Goals
 - Capture memories: text, audio, video, image

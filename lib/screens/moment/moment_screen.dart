@@ -5,7 +5,6 @@ import '../../providers/entry_provider.dart';
 import '../../providers/tag_provider.dart';
 import '../../providers/locale_provider.dart';
 import '../../models/models.dart';
-import '../add_entry_screen.dart';
 import 'entry_detail_screen.dart';
 
 class MomentScreen extends StatefulWidget {

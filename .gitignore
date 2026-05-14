@@ -31,3 +31,12 @@ ios/Flutter/Generated.xcconfig
 # IDE
 .idea/
 .vscode/
+private_keys/*
+.DS_Store
+test_harness*
+test_compare_personas.dart
+test_styles_compare.dart
+scripts/benchmark_personas.py
+scripts/benchmark_locale.py
+scripts/benchmark_personas.dart
+scripts/benchmark_personas.sh

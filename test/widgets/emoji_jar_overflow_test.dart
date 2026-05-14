@@ -32,7 +32,7 @@ void main() {
   group('EmojiJarWidget — overflow badge', () {
     // Regression: v1.1.0 beta UAT — Shelf tab mini jar used a plain Wrap with
     // .take(20) which overflowed its Container when emotion count > 12.
-    // Fix: replaced with EmojiJarWidget(emotionsOverride: ..., showAskAi: false)
+    // Fix: replaced with EmojiJarWidget(emotionsOverride: ..., canUseAI: false, isToday: false)
     // which uses _JarClipper + _EmojiGrid + the overflow badge at > 30 items.
 
     testWidgets('shows +N badge when emotionsOverride exceeds 30', (tester) async {
@@ -42,7 +42,7 @@ void main() {
         date: DateTime(2026),
         size: 160,
         emotionsOverride: emotions,
-        showAskAi: false,
+        canUseAI: false, isToday: false,
       )));
       await tester.pump();
 
@@ -57,7 +57,7 @@ void main() {
         date: DateTime(2026),
         size: 160,
         emotionsOverride: emotions,
-        showAskAi: false,
+        canUseAI: false, isToday: false,
       )));
       await tester.pump();
 
@@ -73,7 +73,7 @@ void main() {
         date: DateTime(2026),
         size: 160,
         emotionsOverride: emotions,
-        showAskAi: false,
+        canUseAI: false, isToday: false,
       )));
       await tester.pump();
 
@@ -90,7 +90,7 @@ void main() {
         date: DateTime(2026),
         size: 160,
         emotionsOverride: const [],
-        showAskAi: false,
+        canUseAI: false, isToday: false,
       ), provider));
       await tester.pump();
 
@@ -98,13 +98,14 @@ void main() {
     });
   });
 
-  group('EmojiJarWidget — showAskAi flag', () {
-    testWidgets('Ask AI button hidden when showAskAi: false', (tester) async {
+  group('EmojiJarWidget — AI button flag', () {
+    testWidgets('AI button hidden when canUseAI: false', (tester) async {
       await tester.pumpWidget(_wrap(EmojiJarWidget(
         date: DateTime(2026),
         size: 160,
         emotionsOverride: const ['😊'],
-        showAskAi: false,
+        canUseAI: false,
+        isToday: false,
       )));
       await tester.pump();
 
@@ -112,16 +113,16 @@ void main() {
       expect(find.text('Ask AI'), findsNothing);
     });
 
-    testWidgets('Ask AI button visible when showAskAi: true (default)', (tester) async {
+    testWidgets('AI button visible when canUseAI + isToday + emoji', (tester) async {
       await tester.pumpWidget(_wrap(EmojiJarWidget(
         date: DateTime(2026),
         size: 160,
         emotionsOverride: const ['😊'],
-        // showAskAi defaults to true
+        canUseAI: true,
+        isToday: true,
       )));
       await tester.pump();
 
-      // Default locale is 'en'
       expect(find.text('Ask AI'), findsOneWidget);
     });
   });
