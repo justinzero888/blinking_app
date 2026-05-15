@@ -669,11 +669,26 @@ class _SettingsScreenState extends State<SettingsScreen>
     } else {
       await provider.setCustomStyle(json);
     }
+    // Seed and activate the custom persona's lens set
     final storage = context.read<StorageService>();
-    final existingActive = await storage.getActiveLensSetId();
-    if (existingActive == null || !existingActive.startsWith('lens_builtin')) {
-      await storage.setActiveLensSet(DefaultLensSets.defaultActiveSetId);
+    final prefs = await SharedPreferences.getInstance();
+    final customList = prefs.getStringList('ai_custom_styles') ?? [];
+    final cIndex = editIndex ?? (customList.length - 1);
+    final lensId = 'lens_style_custom_$cIndex';
+    final existing = await storage.getLensSets();
+    if (!existing.any((s) => s.id == lensId)) {
+      await storage.addLensSet(LensSet(
+        id: lensId,
+        label: '$name — $vibe',
+        lens1: lens1,
+        lens2: lens2,
+        lens3: lens3,
+        isBuiltin: false,
+        sortOrder: 60,
+        createdAt: DateTime.now(),
+      ));
     }
+    await storage.setActiveLensSet(lensId);
 
     if (mounted) {
       final prefs = await SharedPreferences.getInstance();

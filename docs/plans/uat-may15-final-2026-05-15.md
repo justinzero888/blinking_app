@@ -17,7 +17,18 @@
 | 1.6 | Edit custom_0 | Form opens pre-filled, save preserves data | |
 | 1.7 | Delete custom_1 | Card removed, reverts to default if active | |
 | 1.8 | Upload image for custom style | Avatar shows on form preview, custom card, floating robot | |
-| 1.9 | Switch to preset → back to custom | Avatar preserved on custom style | |
+| 1.9 | Switch to preset → back to custom | Custom style + lenses preserved | |
+
+## UAT-1B: Persona-Specific Lens Mapping
+
+| # | Step | Expected | ✅ |
+|---|------|----------|:--:|
+| 1B.1 | Activate Kael → tap robot | Lens questions match Kael (facts, learning, control) | |
+| 1B.2 | Activate Elara → tap robot | Lens questions match Elara (heart, care, forgive) | |
+| 1B.3 | Activate Rush → tap robot | Lens questions match Rush (head, avoid, unfiltered) | |
+| 1B.4 | Activate Marcus → tap robot | Lens questions match Marcus (change, desire, face) | |
+| 1B.5 | Activate custom with own lenses | Lens questions match custom style's lenses | |
+| 1B.6 | Switch between personas | Lenses change each time | |
 
 ## UAT-2: Private Tag AI Filter
 
