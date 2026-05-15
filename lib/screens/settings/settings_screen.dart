@@ -446,12 +446,25 @@ class _SettingsScreenState extends State<SettingsScreen>
   void _activateStyle(ReflectionStyle style) async {
     final persona = context.read<AiPersonaProvider>();
     persona.setStyle(style);
+    // Seed and activate style-specific lens set
     final storage = context.read<StorageService>();
-    // Map persona to matching lens set, or keep current active
-    final existingActive = await storage.getActiveLensSetId();
-    if (existingActive == null || !existingActive.startsWith('lens_builtin')) {
-      await storage.setActiveLensSet(DefaultLensSets.defaultActiveSetId);
+    final lensId = 'lens_style_${style.id}';
+    final isZh = context.read<LocaleProvider>().locale.languageCode == 'zh';
+    final existing = await storage.getLensSets();
+    if (!existing.any((s) => s.id == lensId)) {
+      final lenses = style.lenses(isZh);
+      await storage.addLensSet(LensSet(
+        id: lensId,
+        label: '${style.displayName(isZh)} — ${style.vibe(isZh)}',
+        lens1: lenses[0],
+        lens2: lenses[1],
+        lens3: lenses[2],
+        isBuiltin: false,
+        sortOrder: 50,
+        createdAt: DateTime.now(),
+      ));
     }
+    await storage.setActiveLensSet(lensId);
     if (mounted) setState(() {});
   }
 
@@ -525,13 +538,27 @@ class _SettingsScreenState extends State<SettingsScreen>
 
   void _activateCustomStyle(int index) async {
     if (index >= _customStyles.length) return;
-    await context.read<AiPersonaProvider>().setStyle(
-        ReflectionStyle.fromJson(_customStyles[index], id: 'custom_$index'));
+    final style = ReflectionStyle.fromJson(_customStyles[index], id: 'custom_$index');
+    await context.read<AiPersonaProvider>().setStyle(style);
+    // Seed and activate custom lens set
     final storage = context.read<StorageService>();
-    final existingActive = await storage.getActiveLensSetId();
-    if (existingActive == null || !existingActive.startsWith('lens_builtin')) {
-      await storage.setActiveLensSet(DefaultLensSets.defaultActiveSetId);
+    final lensId = 'lens_style_custom_$index';
+    final isZh = context.read<LocaleProvider>().locale.languageCode == 'zh';
+    final existing = await storage.getLensSets();
+    if (!existing.any((s) => s.id == lensId)) {
+      final lenses = style.lenses(isZh);
+      await storage.addLensSet(LensSet(
+        id: lensId,
+        label: '${style.name} — ${style.vibe(isZh)}',
+        lens1: lenses[0],
+        lens2: lenses[1],
+        lens3: lenses[2],
+        isBuiltin: false,
+        sortOrder: 60,
+        createdAt: DateTime.now(),
+      ));
     }
+    await storage.setActiveLensSet(lensId);
     if (mounted) setState(() {});
   }
 
