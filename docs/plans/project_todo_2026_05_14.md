@@ -8,8 +8,26 @@
 
 | Store | Status |
 |-------|--------|
-| **iOS App Store** | ✅ **Approved** — ready for release |
+| **iOS App Store** | ✅ **Approved** — 1.1.0+36 ready |
 | Google Play | Submitted for review |
+| **Production builds** | ✅ AAB + IPA compiled |
+
+---
+
+## 0. Completed Today ✅
+
+- [x] Default AI persona → Kael/楷迩
+- [x] 31 seed routines (3 active, 28 paused)
+- [x] 9 category PNG icons
+- [x] Tags refresh (6 custom + 3 system)
+- [x] Chinese locale + persona names
+- [x] Private tag AI filter (5 entry points)
+- [x] Notifications (one-shot, reschedule on launch)
+- [x] Locale fixes (description, dialog, routine_item)
+- [x] Reminder validation (HH:MM format)
+- [x] Daily AI counter only on success
+- [x] Code audit + CLAUDE.md updates
+- [x] GitHub commit + push
 
 ---
 

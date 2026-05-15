@@ -153,19 +153,19 @@ class _ReflectionSessionScreenState extends State<ReflectionSessionScreen> {
   }
 
   Future<void> _loadContextAndGenerate() async {
-    // Increment daily counter on each AI generation
     final prefs = await SharedPreferences.getInstance();
     final today = DateTime.now();
     final countKey = 'reflection_count_${today.year}_${today.month}_${today.day}';
-    _dailyCount = (prefs.getInt(countKey) ?? 0) + 1;
-    await prefs.setInt(countKey, _dailyCount);
-    if (_dailyCount >= 3) _readOnly = true;
+    _dailyCount = prefs.getInt(countKey) ?? 0;
 
     final entryProvider = context.read<EntryProvider>();
     final routineProvider = context.read<RoutineProvider>();
+    final filteredEntries = entryProvider.entries
+        .where((e) => !e.tagIds.contains('tag_private'))
+        .toList();
 
     _promptContext = PromptAssembler.buildContext(
-      entries: entryProvider.entries,
+      entries: filteredEntries,
       routines: routineProvider.routines,
       window: _contextWindow,
     );
@@ -210,6 +210,11 @@ class _ReflectionSessionScreenState extends State<ReflectionSessionScreen> {
       final cardsData = PromptAssembler().parseStage1Response(response);
 
       if (!mounted) return;
+      // Increment counter only on success
+      _dailyCount = (prefs.getInt(countKey) ?? 0) + 1;
+      await prefs.setInt(countKey, _dailyCount);
+      if (_dailyCount >= 3) _readOnly = true;
+
       setState(() {
         final parsed = cardsData.map((c) => ReflectionCard.fromJson(c)).toList();
         for (var i = 0; i < _cards.length && i < parsed.length; i++) {

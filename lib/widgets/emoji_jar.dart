@@ -147,7 +147,8 @@ class EmojiJarWidget extends StatelessWidget {
     final dayEntries = entryProvider.entries
         .where((e) =>
             e.createdAt.isAfter(dateStart) &&
-            e.createdAt.isBefore(dateEnd))
+            e.createdAt.isBefore(dateEnd) &&
+            !e.tagIds.contains('tag_private'))
         .toList();
 
     final todayHabits = <String>[];

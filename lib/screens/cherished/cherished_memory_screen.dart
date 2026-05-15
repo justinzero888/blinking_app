@@ -2022,7 +2022,10 @@ class _AnnualReflectionCardState extends State<_AnnualReflectionCard> {
     try {
       final entryProvider = context.read<EntryProvider>();
       final year = DateTime.now().year;
-      final samples = PromptAssembler.selectAnnualSamples(entryProvider.entries, year);
+      final allEntries = entryProvider.entries
+          .where((e) => !e.tagIds.contains('tag_private'))
+          .toList();
+      final samples = PromptAssembler.selectAnnualSamples(allEntries, year);
 
       if (samples.length < 10) {
         setState(() {

@@ -31,7 +31,8 @@ class JarProvider extends ChangeNotifier {
             e.createdAt.year == date.year &&
             e.createdAt.month == date.month &&
             e.createdAt.day == date.day &&
-            e.emotion != null)
+            e.emotion != null &&
+            !e.tagIds.contains('tag_private'))
         .map((e) => e.emotion!)
         .toList();
   }
