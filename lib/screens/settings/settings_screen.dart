@@ -1805,6 +1805,8 @@ class _SettingsScreenState extends State<SettingsScreen>
                 ElevatedButton(
                   onPressed: () async {
                     setDialogState(() => phase = 1);
+                    // Let the progress dialog render before heavy export work
+                    await Future.delayed(const Duration(milliseconds: 100));
                     final exportService = context.read<ExportService>();
                     try {
                       final (startDate, endDate) = resolveRange();
