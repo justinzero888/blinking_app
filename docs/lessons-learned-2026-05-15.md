@@ -114,3 +114,42 @@ When changing defaults (like persona from Elara → Kael):
 8. ✅ SharedPreferences: no data > 1KB, no images
 9. ✅ Commit after each completed feature (not at end of day)
 10. ✅ Update CLAUDE.md when any default changes
+
+## Development Workflow (Mandatory)
+
+```
+Issue Reported
+    │
+    ├── 1. Root Cause Analysis
+    │       Understand WHY before touching code
+    │       If unclear, ask PM for clarification
+    │
+    ├── 2. Propose Solution
+    │       Write 1-2 options with impact assessment
+    │
+    ├── 3. Evaluate Options
+    │       Pick the simplest fix that addresses root cause
+    │       Avoid "fix everything at once" — one bug, one fix
+    │
+    ├── 4. Review Test Cases
+    │       Update existing tests BEFORE coding
+    │       Add new tests for the fix
+    │
+    ├── 5. Implement
+    │       Apply minimal change
+    │       flutter analyze → verify → flutter test → verify
+    │
+    ├── 6. Push to Sims
+    │       Build for all 3 sims
+    │       Install fresh on all 3
+    │
+    ├── 7. UAT on Sims
+    │       Execute UAT test cases
+    │       Verify on iPhone, iPad, Android
+    │
+    └── 8. Build Production
+            Only after UAT passes on all 3 sims
+            Upload to TestFlight/Play Console
+```
+
+**Never:** skip root cause → jump to implementation. **Never:** upload to stores before sim UAT passes.
