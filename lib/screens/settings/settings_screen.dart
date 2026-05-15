@@ -1805,8 +1805,10 @@ class _SettingsScreenState extends State<SettingsScreen>
                 ElevatedButton(
                   onPressed: () async {
                     setDialogState(() => phase = 1);
-                    // Let the progress dialog render before heavy export work
-                    await Future.delayed(const Duration(milliseconds: 100));
+                    // Wait for the frame to render before blocking the thread
+                    await Future(() {});
+                    await Future(() {});
+                    await Future(() {});
                     final exportService = context.read<ExportService>();
                     try {
                       final (startDate, endDate) = resolveRange();
@@ -1853,19 +1855,10 @@ class _SettingsScreenState extends State<SettingsScreen>
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  LinearProgressIndicator(
-                      value: progress > 0 ? progress : null),
-                  const SizedBox(height: 12),
                   Text(
-                    '${(progress * 100).round()}%',
-                    style: const TextStyle(
-                        fontSize: 24, fontWeight: FontWeight.bold),
+                    isZh ? '正在压缩和保存数据文件。' : 'Compressing and saving data files.',
+                    style: const TextStyle(fontSize: 14),
                   ),
-                  if (estimateText.isNotEmpty) ...[
-                    const SizedBox(height: 4),
-                    Text(estimateText,
-                        style: const TextStyle(color: Colors.grey)),
-                  ],
                   const SizedBox(height: 16),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -2058,6 +2051,7 @@ class _SettingsScreenState extends State<SettingsScreen>
       await Share.shareXFiles(
         [XFile(file.path)],
         subject: isZh ? '习惯数据导出' : 'Habits Export',
+        sharePositionOrigin: const Rect.fromLTWH(0, 0, 1, 1),
       );
     } catch (e) {
       if (mounted) _showError(context, isZh, e.toString());
