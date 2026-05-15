@@ -236,8 +236,9 @@ class _FloatingRobotWidgetState extends State<FloatingRobotWidget>
     final avatarPath = persona.avatarPath;
     final avatarFile = avatarPath != null ? File(avatarPath) : null;
     final hasCustomAvatar = avatarFile != null && avatarFile.existsSync();
-    final styleAsset = persona.styleAvatarAssetFor(
-        context.read<LocaleProvider>().locale.languageCode == 'zh');
+    final isZh = context.read<LocaleProvider>().locale.languageCode == 'zh';
+    final styleAsset = persona.styleAvatarAssetFor(isZh);
+    final customEmoji = persona.customStyleEmoji;
 
     Widget avatar = Container(
       width: 52,
@@ -261,7 +262,7 @@ class _FloatingRobotWidgetState extends State<FloatingRobotWidget>
               ? ClipOval(child: Image.asset(styleAsset, fit: BoxFit.cover))
               : Center(
                   child: Text(
-                    '🤖',
+                    customEmoji ?? '🤖',
                     style: TextStyle(
                         fontSize: 28,
                         color: canUse ? null : Colors.grey[500]),

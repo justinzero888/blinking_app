@@ -99,3 +99,11 @@
 - Device identity deployed — no server key needed
 - CN avatars and locale names deployed — auto-switch with language setting
 - AI costs verified: ~$0.01/user for full 21-day trial (DeepSeek V3)
+
+## Known Limitations
+
+| Item | Detail |
+|------|--------|
+| **Custom persona images** | Files in app directory — lost on reinstall (container path changes). Text data (name, vibe, lenses) survives. Emoji fallback shown. |
+| Notifications | Fire in background only. Reschedule on app launch for daily repeat. |
+| Android notifications | Emulator incompatible (needs Play Services). Real device TBD. |

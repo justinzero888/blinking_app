@@ -8,6 +8,9 @@
         android:maxSdkVersion="32" />
     <!-- RevenueCat IAP billing -->
     <uses-permission android:name="com.android.vending.BILLING" />
+    <!-- Local notification reminders -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.READ_MEDIA_VIDEO"
         tools:node="remove" />
     <uses-permission android:name="android.permission.READ_MEDIA_AUDIO"

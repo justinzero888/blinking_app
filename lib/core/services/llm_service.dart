@@ -148,7 +148,7 @@ class LlmService {
 
       if (response.statusCode != 200) {
         final errorBody = await response.stream.transform(utf8.decoder).join();
-        throw LlmException('HTTP ${response.statusCode}', LlmErrorType.serverError);
+        throw LlmException('HTTP ${response.statusCode}: ${errorBody.substring(0, errorBody.length > 100 ? 100 : errorBody.length)}', LlmErrorType.serverError);
       }
 
       final lineStream = response.stream

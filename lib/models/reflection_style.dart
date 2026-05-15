@@ -138,10 +138,20 @@ class ReflectionStyle {
 
   static const String defaultStyleId = 'kael';
 
-  static ReflectionStyle byId(String id) {
-    if (id == 'custom') {
-      return customFallback;
+  /// Cache of custom styles, populated by AiPersonaProvider on load.
+  static final Map<String, ReflectionStyle> customCache = {};
+
+  /// Registers custom styles for byId lookups. Called on app load.
+  static void registerCustomStyles(List<Map<String, dynamic>> styles) {
+    customCache.clear();
+    for (var i = 0; i < styles.length; i++) {
+      final id = 'custom_$i';
+      customCache[id] = fromJson(styles[i], id: id);
     }
+  }
+
+  static ReflectionStyle byId(String id) {
+    if (customCache.containsKey(id)) return customCache[id]!;
     return presets.firstWhere((s) => s.id == id,
         orElse: () => presets.firstWhere((s) => s.id == defaultStyleId));
   }
@@ -164,10 +174,10 @@ class ReflectionStyle {
     lens3Zh: '',
   );
 
-  static ReflectionStyle fromJson(Map<String, dynamic> json) {
+  static ReflectionStyle fromJson(Map<String, dynamic> json, {String id = 'custom'}) {
     final vibe = json['vibe'] as String? ?? 'Your Style';
     return ReflectionStyle(
-      id: 'custom',
+      id: id,
       name: json['name'] as String? ?? 'Custom',
       nameZh: json['name'] as String? ?? '自定义',
       emoji: json['emoji'] as String? ?? '✨',

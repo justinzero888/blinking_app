@@ -47,7 +47,12 @@
       "Bash(1 sleep:*)",
       "Bash(xcodebuild:*)",
       "Bash(xcrun xcodebuild:*)",
-      "Bash(grep -v \"^$\")"
+      "Bash(grep -v \"^$\")",
+      "Bash(grep -E \"\\\\.dart$\")",
+      "Bash(awk '{print $NF}')",
+      "Bash(cat)",
+      "Bash(bash /tmp/fix_widget_tests.sh)",
+      "Read(//tmp/**)"
     ]
   }
 }

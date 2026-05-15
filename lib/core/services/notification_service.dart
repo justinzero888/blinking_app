@@ -40,6 +40,11 @@ class NotificationService {
     );
     _log('Plugin initialized');
 
+    await _plugin
+        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+        ?.requestNotificationsPermission();
+    _log('Requested notification permission');
+
     const androidChannel = AndroidNotificationChannel(
       _channelId,
       _channelName,

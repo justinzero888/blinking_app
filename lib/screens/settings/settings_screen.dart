@@ -26,6 +26,7 @@ import '../../core/services/soft_prompt_service.dart';
 import '../../core/services/file_service.dart';
 import '../../models/reflection_style.dart';
 
+import '../../models/lens_set.dart';
 import '../purchase/paywall_screen.dart';
 
 enum _BackupRange { all, lastMonth, last3Months, last6Months, custom }
@@ -75,6 +76,7 @@ class _SettingsScreenState extends State<SettingsScreen>
   String _aiPersonality = '';
 
   Map<String, dynamic>? _customStyle;
+  List<Map<String, dynamic>> _customStyles = [];
   bool _hasCustomStyle = false;
 
   int _debugTapCount = 0;
@@ -147,14 +149,15 @@ class _SettingsScreenState extends State<SettingsScreen>
   Future<void> _loadAiSettings() async {
     final prefs = await SharedPreferences.getInstance();
     if (mounted) {
-      final jsonStr = prefs.getString('ai_custom_style');
+      final customList = prefs.getStringList('ai_custom_styles') ?? [];
+      final activeId = prefs.getString('ai_style_id') ?? 'kael';
       setState(() {
         _aiName = prefs.getString('ai_assistant_name') ?? 'AI 助手';
         _aiPersonality = prefs.getString('ai_assistant_personality') ?? '';
-        _hasCustomStyle = prefs.getString('ai_style_id') == 'custom' && jsonStr != null;
-        if (jsonStr != null) {
-          _customStyle = jsonDecode(jsonStr) as Map<String, dynamic>;
-        }
+        _customStyles = customList
+            .map((s) => jsonDecode(s) as Map<String, dynamic>)
+            .toList();
+        _hasCustomStyle = _customStyles.isNotEmpty;
       });
     }
   }
@@ -291,12 +294,15 @@ class _SettingsScreenState extends State<SettingsScreen>
           child: Consumer<AiPersonaProvider>(
             builder: (context, persona, _) {
               final styleId = persona.styleId;
-              final isCustom = styleId == 'custom' && _customStyle != null;
-              final style = isCustom
-                  ? ReflectionStyle.fromJson(_customStyle!)
+              final isCustom = styleId.startsWith('custom_') && _customStyles.isNotEmpty;
+              final customIndex = isCustom ? int.tryParse(styleId.split('_').last) : null;
+              final style = isCustom && customIndex != null && customIndex < _customStyles.length
+                  ? ReflectionStyle.fromJson(_customStyles[customIndex], id: styleId)
                   : ReflectionStyle.byId(styleId);
               final color = _colorFromHex(style.colorHex);
-              final avatarPath = isCustom ? _customStyle!['avatarPath'] as String? : null;
+              final avatarPath = isCustom && customIndex != null && customIndex < _customStyles.length
+                  ? _customStyles[customIndex]['avatarPath'] as String?
+                  : null;
               return Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
@@ -316,7 +322,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                             color: Colors.white24, shape: BoxShape.circle,
                           ),
                           child: ClipOval(
-                            child: avatarPath != null && File(avatarPath).existsSync()
+                            child: avatarPath != null && avatarPath.isNotEmpty && File(avatarPath).existsSync()
                                 ? Image.file(File(avatarPath), fit: BoxFit.cover)
                                 : style.avatarAssetFor(isZh) != null
                                     ? Image.asset(style.avatarAssetFor(isZh)!, fit: BoxFit.cover,
@@ -410,9 +416,11 @@ class _SettingsScreenState extends State<SettingsScreen>
             ),
           );
         }),
-        if (_hasCustomStyle && _customStyle != null) ...[
+        if (_hasCustomStyle) ...[
           const SizedBox(height: 4),
-          _buildCustomStyleCard(context, isZh),
+          ...List.generate(_customStyles.length, (i) {
+            return _buildCustomStyleCard(context, isZh, i);
+          }),
         ],
         const SizedBox(height: 4),
         Padding(
@@ -439,16 +447,22 @@ class _SettingsScreenState extends State<SettingsScreen>
     final persona = context.read<AiPersonaProvider>();
     persona.setStyle(style);
     final storage = context.read<StorageService>();
-    await storage.setActiveLensSet('lens_style_${style.id}');
+    // Map persona to matching lens set, or keep current active
+    final existingActive = await storage.getActiveLensSetId();
+    if (existingActive == null || !existingActive.startsWith('lens_builtin')) {
+      await storage.setActiveLensSet(DefaultLensSets.defaultActiveSetId);
+    }
     if (mounted) setState(() {});
   }
 
-  Widget _buildCustomStyleCard(BuildContext context, bool isZh) {
+  Widget _buildCustomStyleCard(BuildContext context, bool isZh, int index) {
     final styleId = context.watch<AiPersonaProvider>().styleId;
-    final isActive = styleId == 'custom';
-    final name = _customStyle?['name'] as String? ?? 'Custom';
-    final emoji = _customStyle?['emoji'] as String? ?? '✨';
-    final avatarPath = _customStyle?['avatarPath'] as String?;
+    final customId = 'custom_$index';
+    final isActive = styleId == customId;
+    final data = _customStyles[index];
+    final name = data['name'] as String? ?? 'Custom';
+    final emoji = data['emoji'] as String? ?? '✨';
+    final avatarPath = data['avatarPath'] as String?;
     final color = _colorFromHex(_customStyle?['colorHex'] as String? ?? '#FF9500');
 
     return Card(
@@ -459,7 +473,7 @@ class _SettingsScreenState extends State<SettingsScreen>
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
-        onTap: isActive ? null : () => _activateCustomStyle(),
+        onTap: isActive ? null : () => _activateCustomStyle(index),
         child: Padding(
           padding: const EdgeInsets.all(14),
           child: Row(
@@ -494,12 +508,12 @@ class _SettingsScreenState extends State<SettingsScreen>
                 Icon(Icons.check_circle, color: color, size: 22),
               IconButton(
                 icon: const Icon(Icons.edit, size: 18),
-                onPressed: () => _showCustomStyleDialog(context, isZh, isEdit: true),
+                onPressed: () => _showCustomStyleDialog(context, isZh, isEdit: true, editIndex: index),
                 tooltip: isZh ? '编辑' : 'Edit',
               ),
               IconButton(
                 icon: const Icon(Icons.delete_outline, size: 18),
-                onPressed: () => _deleteCustomStyle(context, isZh),
+                onPressed: () => _deleteCustomStyle(context, isZh, index),
                 tooltip: isZh ? '删除' : 'Delete',
               ),
             ],
@@ -509,15 +523,19 @@ class _SettingsScreenState extends State<SettingsScreen>
     );
   }
 
-  void _activateCustomStyle() async {
-    if (_customStyle == null) return;
-    await context.read<AiPersonaProvider>().setCustomStyle(_customStyle!);
+  void _activateCustomStyle(int index) async {
+    if (index >= _customStyles.length) return;
+    await context.read<AiPersonaProvider>().setStyle(
+        ReflectionStyle.fromJson(_customStyles[index], id: 'custom_$index'));
     final storage = context.read<StorageService>();
-    await storage.setActiveLensSet('lens_style_custom');
+    final existingActive = await storage.getActiveLensSetId();
+    if (existingActive == null || !existingActive.startsWith('lens_builtin')) {
+      await storage.setActiveLensSet(DefaultLensSets.defaultActiveSetId);
+    }
     if (mounted) setState(() {});
   }
 
-  void _deleteCustomStyle(BuildContext context, bool isZh) async {
+  void _deleteCustomStyle(BuildContext context, bool isZh, int index) async {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -540,17 +558,21 @@ class _SettingsScreenState extends State<SettingsScreen>
 
     if (confirm != true) return;
 
-    await context.read<AiPersonaProvider>().clearCustomStyle();
+    await context.read<AiPersonaProvider>().removeCustomStyle(index);
     if (mounted) {
+      final prefs = await SharedPreferences.getInstance();
+      final customList = prefs.getStringList('ai_custom_styles') ?? [];
       setState(() {
-        _customStyle = null;
-        _hasCustomStyle = false;
+        _customStyles = customList
+            .map((s) => jsonDecode(s) as Map<String, dynamic>)
+            .toList();
+        _hasCustomStyle = _customStyles.isNotEmpty;
       });
     }
   }
 
-  void _showCustomStyleDialog(BuildContext context, bool isZh, {bool isEdit = false}) {
-    final style = (!isEdit || _customStyle == null) ? null : _customStyle!;
+  void _showCustomStyleDialog(BuildContext context, bool isZh, {bool isEdit = false, int editIndex = 0}) {
+    final style = (!isEdit || _customStyles.isEmpty || editIndex >= _customStyles.length) ? null : _customStyles[editIndex];
     final nameCtrl = TextEditingController(text: style?['name'] as String? ?? '');
     final emojiCtrl = TextEditingController(text: style?['emoji'] as String? ?? '✨');
     final vibeCtrl = TextEditingController(text: style?['vibe'] as String? ?? '');
@@ -574,7 +596,7 @@ class _SettingsScreenState extends State<SettingsScreen>
           lens3Ctrl: lens3Ctrl,
           pickedImagePath: pickedImagePath,
           onSave: (name, emoji, vibe, persona, l1, l2, l3, path) {
-            _saveCustomStyle(name, emoji, vibe, persona, l1, l2, l3, isZh, imagePath: path);
+            _saveCustomStyle(name, emoji, vibe, persona, l1, l2, l3, isZh, imagePath: path, editIndex: isEdit ? editIndex : null);
           },
         ),
       ),
@@ -591,6 +613,7 @@ class _SettingsScreenState extends State<SettingsScreen>
     String lens3,
     bool isZh, {
     String? imagePath,
+    int? editIndex,
   }) async {
     // Save custom avatar image if picked
     String? savedAvatarPath;
@@ -598,12 +621,10 @@ class _SettingsScreenState extends State<SettingsScreen>
       try {
         final relative = await FileService().saveFile(imagePath);
         savedAvatarPath = await FileService().getFullPath(relative);
-      } catch (_) {
-        // Image save failed — continue without avatar
-      }
+      } catch (_) {}
     }
 
-    final json = {
+    final json = <String, dynamic>{
       'name': name,
       'emoji': emoji,
       'vibe': vibe,
@@ -612,17 +633,29 @@ class _SettingsScreenState extends State<SettingsScreen>
       'lens1': lens1,
       'lens2': lens2,
       'lens3': lens3,
-      'avatarPath': ?savedAvatarPath,
     };
+    if (savedAvatarPath != null) json['avatarPath'] = savedAvatarPath;
 
-    await context.read<AiPersonaProvider>().setCustomStyle(json);
+    final provider = context.read<AiPersonaProvider>();
+    if (editIndex != null) {
+      await provider.updateCustomStyle(editIndex, json);
+    } else {
+      await provider.setCustomStyle(json);
+    }
     final storage = context.read<StorageService>();
-    await storage.setActiveLensSet('lens_style_custom');
+    final existingActive = await storage.getActiveLensSetId();
+    if (existingActive == null || !existingActive.startsWith('lens_builtin')) {
+      await storage.setActiveLensSet(DefaultLensSets.defaultActiveSetId);
+    }
 
     if (mounted) {
+      final prefs = await SharedPreferences.getInstance();
+      final customList = prefs.getStringList('ai_custom_styles') ?? [];
       setState(() {
-        _customStyle = json;
-        _hasCustomStyle = true;
+        _customStyles = customList
+            .map((s) => jsonDecode(s) as Map<String, dynamic>)
+            .toList();
+        _hasCustomStyle = _customStyles.isNotEmpty;
       });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -2202,18 +2235,27 @@ class _CustomStyleFormPageState extends State<_CustomStyleFormPage> {
             ),
             if (_pickedImagePath != null) ...[
               const SizedBox(height: 8),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  ClipOval(
-                    child: Image.file(
-                      File(_pickedImagePath!),
-                      width: 56, height: 56, fit: BoxFit.cover,
+              Center(
+                child: Wrap(
+                  alignment: WrapAlignment.center,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 8,
+                  children: [
+                    ClipOval(
+                      child: _pickedImagePath!.isNotEmpty
+                          ? Image.file(
+                              File(_pickedImagePath!),
+                              width: 56, height: 56, fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => Container(
+                                width: 56, height: 56,
+                                color: Colors.grey[200],
+                                child: const Icon(Icons.broken_image, size: 24, color: Colors.grey),
+                              ),
+                            )
+                          : const SizedBox(width: 56, height: 56),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  TextButton(
-                    onPressed: () {
+                    TextButton(
+                      onPressed: () {
                       setState(() {
                         _pickedImagePath = null;
                         widget.emojiCtrl.text = '✨';
@@ -2222,6 +2264,7 @@ class _CustomStyleFormPageState extends State<_CustomStyleFormPage> {
                     child: Text(isZh ? '清除' : 'Clear', style: const TextStyle(fontSize: 13)),
                   ),
                 ],
+              ),
               ),
               const SizedBox(height: 8),
             ],
