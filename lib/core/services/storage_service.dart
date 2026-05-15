@@ -82,15 +82,32 @@ class StorageService {
       }
     }
 
-    // Seed built-in lens sets
+    // Seed built-in lens sets matching the 4 personas
     final isZh = _prefs.getString('language') == 'zh';
     final lensSets = await getLensSets();
     if (lensSets.isEmpty) {
       for (final ls in DefaultLensSets.defaults(isZh)) {
         await addLensSet(ls);
       }
-      // Set default active lens set
       await setActiveLensSet(DefaultLensSets.defaultActiveSetId);
+    } else {
+      // Existing users: ensure style-specific lenses exist for all 4 presets
+      for (final style in ReflectionStyle.presets) {
+        final lensId = 'lens_style_${style.id}';
+        if (!lensSets.any((s) => s.id == lensId)) {
+          final lenses = style.lenses(isZh);
+          await addLensSet(LensSet(
+            id: lensId,
+            label: isZh ? '${style.nameZh} — ${style.vibeZh}' : '${style.name} — ${style.vibeEn}',
+            lens1: lenses[0],
+            lens2: lenses[1],
+            lens3: lenses[2],
+            isBuiltin: true,
+            sortOrder: 10,
+            createdAt: DateTime.now(),
+          ));
+        }
+      }
     }
 
     // Seed ai_identity if not present
@@ -99,39 +116,16 @@ class StorageService {
       await _saveAiIdentity(AiIdentity(updatedAt: DateTime.now()));
     }
 
-    // Migrate: if active lens is old default (Honest Weather), switch to Zengzi's Three
-    final activeId = await getActiveLensSetId();
-    if (activeId == 'lens_builtin_honest_weather') {
-      await setActiveLensSet(DefaultLensSets.defaultActiveSetId);
-    }
-
-    // Seed style-specific lens sets and set active to match current style
-    for (final style in ReflectionStyle.presets) {
-      final lensId = 'lens_style_${style.id}';
-      final exists = lensSets.any((s) => s.id == lensId);
-      if (!exists) {
-        final lenses = style.lenses(isZh);
-        await addLensSet(LensSet(
-          id: lensId,
-          label: '${style.name} — ${style.vibe(isZh)}',
-          lens1: lenses[0],
-          lens2: lenses[1],
-          lens3: lenses[2],
-          isBuiltin: false,
-          sortOrder: 50,
-          createdAt: DateTime.now(),
-        ));
+    // Activate lens set matching current style
+    final styleId = _prefs.getString('ai_style_id') ?? ReflectionStyle.defaultStyleId;
+    if (!styleId.startsWith('custom_')) {
+      final styleLensId = 'lens_style_$styleId';
+      final currentActive = await getActiveLensSetId();
+      if (currentActive != styleLensId) {
+        await setActiveLensSet(styleLensId);
       }
     }
-
-    // Activate lens set matching current reflection style
-    final styleId = _prefs.getString('ai_style_id') ?? ReflectionStyle.defaultStyleId;
-    final styleLensId = 'lens_style_$styleId';
-    final currentActive = await getActiveLensSetId();
-    if (currentActive != styleLensId) {
-      await setActiveLensSet(styleLensId);
     }
-  }
 
   /// Default card templates (6 built-in styles)
   List<CardTemplate> _getDefaultTemplates() => [

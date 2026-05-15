@@ -3,25 +3,24 @@ import 'package:blinking/models/lens_set.dart';
 
 void main() {
   group('LensSet', () {
-    test('creates LensSet from defaults with correct lenses list', () {
+    test('creates lens sets for all 4 personas', () {
       final sets = DefaultLensSets.defaults(true);
       expect(sets.length, 4);
 
-      final zengzi = sets.firstWhere((s) => s.id == 'lens_builtin_zengzi');
-      expect(zengzi.label, '曾子三省');
-      expect(zengzi.lenses.length, 3);
-      expect(zengzi.lenses[0], '为人谋而不忠乎？');
-      expect(zengzi.isBuiltin, true);
+      final kael = sets.firstWhere((s) => s.id == 'lens_style_kael');
+      expect(kael.label, contains('楷迩'));
+      expect(kael.lenses.length, 3);
+      expect(kael.isBuiltin, true);
     });
 
-    test('Zengzi sort order is 1 in zh, 2 in en', () {
-      final zhSets = DefaultLensSets.defaults(true);
-      final enSets = DefaultLensSets.defaults(false);
+    test('default active set is Kael', () {
+      expect(DefaultLensSets.defaultActiveSetId, 'lens_style_kael');
+    });
 
-      final zhZengzi = zhSets.firstWhere((s) => s.id == 'lens_builtin_zengzi');
-      final enZengzi = enSets.firstWhere((s) => s.id == 'lens_builtin_zengzi');
-      expect(zhZengzi.sortOrder, 1);
-      expect(enZengzi.sortOrder, 2);
+    test('each persona has unique lenses', () {
+      final enSets = DefaultLensSets.defaults(false);
+      final ids = enSets.map((s) => s.id).toSet();
+      expect(ids, containsAll(['lens_style_kael', 'lens_style_elara', 'lens_style_rush', 'lens_style_marcus']));
     });
 
     test('toJson and fromJson round-trip', () {

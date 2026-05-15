@@ -105,5 +105,6 @@
 | Item | Detail |
 |------|--------|
 | **Custom persona images** | Files in app directory — lost on reinstall (container path changes). Text data (name, vibe, lenses) survives. Emoji fallback shown. |
+| **iPad backup** | Black screen on iPad simulator during backup (larger seed data causes mem pressure). iPhone and real devices unaffected. |
 | Notifications | Fire in background only. Reschedule on app launch for daily repeat. |
 | Android notifications | Emulator incompatible (needs Play Services). Real device TBD. |

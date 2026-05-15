@@ -1,3 +1,5 @@
+import 'reflection_style.dart';
+
 class LensSet {
   final String id;
   final String label;
@@ -50,48 +52,23 @@ class LensSet {
 }
 
 class DefaultLensSets {
-  static List<LensSet> defaults(bool isZh) => [
-    LensSet(
-      id: 'lens_builtin_zengzi',
-      label: isZh ? '曾子三省' : 'Zengzi\'s Three',
-      lens1: isZh ? '为人谋而不忠乎？' : 'Have I been true to others?',
-      lens2: isZh ? '与朋友交而不信乎？' : 'Have I been trustworthy with friends?',
-      lens3: isZh ? '传不习乎？' : 'Have I practiced what I learned?',
-      isBuiltin: true,
-      sortOrder: isZh ? 1 : 2,
-      createdAt: DateTime(2026, 1, 1),
-    ),
-    LensSet(
-      id: 'lens_builtin_honest_weather',
-      label: isZh ? '诚实的天气' : 'Honest Weather',
-      lens1: isZh ? '今天的阳光是什么？' : 'What was the sunlight today?',
-      lens2: isZh ? '今天的雨是什么？' : 'What was the rain today?',
-      lens3: isZh ? '明天的天气会怎样？' : 'What might the weather be tomorrow?',
-      isBuiltin: true,
-      sortOrder: isZh ? 2 : 1,
-      createdAt: DateTime(2026, 1, 1),
-    ),
-    LensSet(
-      id: 'lens_builtin_body_mind_heart',
-      label: isZh ? '身·心·灵' : 'Body·Mind·Heart',
-      lens1: isZh ? '我的身体需要什么？' : 'What is my body asking for?',
-      lens2: isZh ? '我的思绪在盘算什么？' : 'What is my mind turning over?',
-      lens3: isZh ? '我的内心想要什么？' : 'What is my heart wanting?',
-      isBuiltin: true,
-      sortOrder: 3,
-      createdAt: DateTime(2026, 1, 1),
-    ),
-    LensSet(
-      id: 'lens_builtin_forward_sideways_back',
-      label: isZh ? '前·侧·后' : 'Forward·Sideways·Back',
-      lens1: isZh ? '前方有什么在等你？' : 'What lies ahead?',
-      lens2: isZh ? '此刻你身边有什么？' : 'What is beside you right now?',
-      lens3: isZh ? '身后留下了什么？' : 'What have you left behind?',
-      isBuiltin: true,
-      sortOrder: 4,
-      createdAt: DateTime(2026, 1, 1),
-    ),
-  ];
+  /// Built-in lens sets matching the 4 persona presets.
+  static List<LensSet> defaults(bool isZh) {
+    final styles = ReflectionStyle.presets;
+    return styles.map((s) {
+      final lenses = s.lenses(isZh);
+      return LensSet(
+        id: 'lens_style_${s.id}',
+        label: isZh ? '${s.nameZh} — ${s.vibeZh}' : '${s.name} — ${s.vibeEn}',
+        lens1: lenses[0],
+        lens2: lenses[1],
+        lens3: lenses[2],
+        isBuiltin: true,
+        sortOrder: styles.indexOf(s) + 1,
+        createdAt: DateTime(2026, 1, 1),
+      );
+    }).toList();
+  }
 
-  static const String defaultActiveSetId = 'lens_builtin_zengzi';
+  static const String defaultActiveSetId = 'lens_style_kael';
 }
