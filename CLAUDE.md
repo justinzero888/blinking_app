@@ -7,7 +7,7 @@ Personal memory/habit-tracking Flutter app (记忆闪烁). Path: `/Users/justinz
 - **Flutter SDK:** `^3.11.0` (currently 3.41.8 stable, Apr 24 2026)
 - **macOS:** 26.2 (Tahoe beta) — requires Xcode 26, managed in `ClaudeDev/system-upgrade`
 - **Current version:** `1.1.0+36` (pubspec.yaml)
-- **iOS App Store:** ✅ Approved — Ready for Distribution
+- **iOS App Store:** ✅ Live — [Blinking Notes](https://apps.apple.com/app/id6765900648) (Apple ID: 6765900648)
 - **Google Play:** Submitted for review
 - **macOS:** 26.2 (Tahoe beta) — Xcode 26.4.1 GM for production builds
 - **DB version:** 13 (`kSchemaVersion = 13` in `DatabaseService`)
@@ -260,6 +260,7 @@ Use `try { await launchUrl(uri); } catch (_) { ... }` pattern. Do NOT use `canLa
 | Routine redesign — Build/Do/Reflect tabs | ✅ Done |
 | RevenueCat Test Store verified | ✅ Done |
 | iOS App Store Sandbox purchase verified | ✅ Done |
+| iOS App Store production release (v1.1.0+36) | ✅ Done |
 | Google Play purchase verified (refund + re-purchase tested) | ✅ Done |
 | ALL previous features | ✅ Done |
 
@@ -267,7 +268,6 @@ Use `try { await launchUrl(uri); } catch (_) { ... }` pattern. Do NOT use `canLa
 | Priority | Item | Effort | Status |
 |----------|------|--------|--------|
 | P1 | IAP — Google Play Console (final production review) | ~30min | v30 AAB uploaded |
-| P1 | IAP — App Store Connect (upload IPA + submit for review) | ~1h | IPA ready, API key needed |
 | P3 | Restore streaming refactor — OOM on large backups | ~2h | Known limitation |
 | P3 | Firebase / Cloud Sync | Large | All deps commented out |
 
