@@ -14,7 +14,7 @@ Personal memory/habit-tracking Flutter app (记忆闪烁). Path: `/Users/justinz
 - **Lint:** `flutter analyze --no-pub` (target: 0 errors)
 - **Tests:** `flutter test` (164 tests, all passing)
 - **Server config:** `https://blinkingchorus.com/api/config` — AI keys + model selection, updatable without app deploy
-- **AI Model:** DeepSeek `deepseek-chat-v3-0324` primary, Gemini `gemini-2.0-flash-001` failover
+- **AI Model:** DeepSeek `deepseek-chat-v3-0324` primary, Gemini `gemini-2.0-flash-001` failover (both trial + pro, configurable via KV secrets at `/api/config`)
 - **IAP Price:** $19.99 (non-consumable `blinking_pro`, entitlement `pro_access`)
 - **Personas:** Kael (📝 Factual, default), Elara (🌿 Warm), Rush (⚡ Unfiltered), Marcus (⚔️ Stoic)
 - **AI Keys:** Server-configurable via OpenRouter. Streaming enabled for perceived speed (0.6s first token)

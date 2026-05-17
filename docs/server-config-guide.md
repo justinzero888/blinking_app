@@ -28,12 +28,12 @@ Host a JSON file at `https://blinkingchorus.com/api/config`:
 ```json
 {
   "trial_keys": [
-    {"key": "sk-or-v1-primary-key", "model": "qwen/qwen3.5-flash"},
-    {"key": "sk-or-v1-backup-key", "model": "qwen/qwen3.5-flash"}
+    {"key": "sk-or-v1-trial-key", "model": "deepseek/deepseek-chat-v3-0324"},
+    {"key": "sk-or-v1-trial-key", "model": "google/gemini-2.0-flash-001"}
   ],
   "pro_keys": [
-    {"key": "sk-or-v1-primary-key", "model": "qwen/qwen3.5-flash"},
-    {"key": "sk-or-v1-backup-key", "model": "qwen/qwen3.5-flash"}
+    {"key": "sk-or-v1-pro-key", "model": "deepseek/deepseek-chat-v3-0324"},
+    {"key": "sk-or-v1-pro-key", "model": "google/gemini-2.0-flash-001"}
   ]
 }
 ```
