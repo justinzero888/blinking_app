@@ -78,6 +78,7 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
             onPressed: () => Share.share(
               entry.content,
               subject: isZh ? '来自 Blinking' : 'From Blinking',
+              sharePositionOrigin: const Rect.fromLTWH(0, 0, 1, 1),
             ),
           ),
           IconButton(

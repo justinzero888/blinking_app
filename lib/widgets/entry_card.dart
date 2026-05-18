@@ -103,7 +103,7 @@ class EntryCard extends StatelessWidget {
         GestureDetector(
           onTap: () {
             final isZh = context.read<LocaleProvider>().locale.languageCode == 'zh';
-            Share.share(entry.content, subject: isZh ? '来自 Blinking' : 'From Blinking');
+            Share.share(entry.content, subject: isZh ? '来自 Blinking' : 'From Blinking', sharePositionOrigin: const Rect.fromLTWH(0, 0, 1, 1));
           },
           child: const Icon(Icons.share, size: 16, color: Colors.grey),
         ),
@@ -189,7 +189,7 @@ class EntryCard extends StatelessWidget {
         GestureDetector(
           onTap: () {
             final isZh = context.read<LocaleProvider>().locale.languageCode == 'zh';
-            Share.share(entry.content, subject: isZh ? '来自 Blinking' : 'From Blinking');
+            Share.share(entry.content, subject: isZh ? '来自 Blinking' : 'From Blinking', sharePositionOrigin: const Rect.fromLTWH(0, 0, 1, 1));
           },
           child: const Icon(Icons.share, size: 16, color: Colors.grey),
         ),
