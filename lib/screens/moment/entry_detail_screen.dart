@@ -75,10 +75,12 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
           IconButton(
             icon: const Icon(Icons.share),
             tooltip: isZh ? '分享' : 'Share',
-            onPressed: () => Share.share(
-              entry.content,
-              subject: isZh ? '来自 Blinking' : 'From Blinking',
-              sharePositionOrigin: const Rect.fromLTWH(0, 0, 1, 1),
+            onPressed: () => SharePlus.instance.share(
+              ShareParams(
+                text: entry.content,
+                subject: isZh ? '来自 Blinking' : 'From Blinking',
+                sharePositionOrigin: const Rect.fromLTWH(0, 0, 1, 1),
+              ),
             ),
           ),
           IconButton(

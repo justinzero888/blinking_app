@@ -18,6 +18,7 @@ import '../../core/config/constants.dart';
 import '../../providers/entry_provider.dart';
 import '../../providers/routine_provider.dart';
 import '../../models/tag.dart';
+import '../../core/services/voice_notification_service.dart';
 import '../../core/config/theme.dart';
 import '../../core/services/storage_service.dart';
 import '../../core/services/export_service.dart';
@@ -376,7 +377,9 @@ class _SettingsScreenState extends State<SettingsScreen>
         ...ReflectionStyle.presets.map((style) {
           final isActive = context.watch<AiPersonaProvider>().styleId == style.id;
           final color = _colorFromHex(style.colorHex);
-          return Card(
+          return Semantics(
+          identifier: 'persona_${style.id}',
+          child: Card(
             margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
@@ -414,6 +417,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                 ),
               ),
             ),
+          ),
           );
         }),
         if (_hasCustomStyle) ...[
@@ -757,18 +761,27 @@ class _SettingsScreenState extends State<SettingsScreen>
         _buildSectionHeader(isZh ? '语言' : 'Language'),
         Consumer<LocaleProvider>(
           builder: (context, localeProvider, _) {
-            return ListTile(
-              leading: const Icon(Icons.language),
-              title: Text(isZh ? '语言' : 'Language'),
-              subtitle: Text(isZh ? '中文' : 'English'),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => _showLanguageDialog(context, localeProvider),
+            return Semantics(
+              identifier: 'btn_language_picker',
+              child: ListTile(
+                leading: const Icon(Icons.language),
+                title: Text(isZh ? '语言' : 'Language'),
+                subtitle: Text(isZh ? '中文' : 'English'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => _showLanguageDialog(context, localeProvider),
+              ),
             );
           },
         ),
         const Divider(),
+        _buildSectionHeader(isZh ? '通知' : 'Notifications'),
+        _buildVoiceToggle(isZh),
+        const Divider(),
         _buildSectionHeader(isZh ? '数据备份与迁移' : 'Data Portability'),
-        ListTile(
+        MergeSemantics(
+          child: Semantics(
+          identifier: 'btn_full_backup',
+          child: ListTile(
           leading: const Icon(Icons.archive_outlined),
           title: Text(isZh ? '完整备份 (ZIP)' : 'Full Backup (ZIP)'),
           subtitle: Text(isZh ? '包含所有数据和多媒体文件' : 'All data and media files'),
@@ -791,7 +804,7 @@ class _SettingsScreenState extends State<SettingsScreen>
             }
             _handleBackup(context, isZh);
           },
-        ),
+        ))),
         ListTile(
           leading: const Icon(Icons.table_chart_outlined),
           title: Text(isZh ? '导出为 CSV' : 'Export to CSV'),
@@ -864,7 +877,10 @@ class _SettingsScreenState extends State<SettingsScreen>
             _handleRestore(context, isZh);
           },
         ),
-        ListTile(
+        MergeSemantics(
+          child: Semantics(
+          identifier: 'btn_export_habits',
+          child: ListTile(
           leading: const Icon(Icons.fitness_center_outlined),
           title: Text(isZh ? '导出习惯数据' : 'Export Habits'),
           subtitle: Text(isZh ? '导出所有习惯为 JSON 文件' : 'Export all habits as JSON'),
@@ -887,7 +903,7 @@ class _SettingsScreenState extends State<SettingsScreen>
             }
             _handleExportHabits(context, isZh);
           },
-        ),
+        ))),
         ListTile(
           leading: const Icon(Icons.upload_outlined),
           title: Text(isZh ? '导入习惯数据' : 'Import Habits'),
@@ -948,20 +964,67 @@ class _SettingsScreenState extends State<SettingsScreen>
             ),
           ),
         ),
-        ListTile(
-          leading: const Icon(Icons.info),
-          title: const Text('Blinking (记忆闪烁)'),
-          subtitle: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: () => _debugToggleEntitlement(),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: Text(isZh ? '版本 ${AppConstants.appVersion}' : 'Version ${AppConstants.appVersion}'),
+        MergeSemantics(
+          child: Semantics(
+            identifier: 'btn_debug_toggle',
+            child: ListTile(
+              leading: const Icon(Icons.info),
+              title: const Text('Blinking (记忆闪烁)'),
+              subtitle: Text(isZh ? '版本 ${AppConstants.appVersion}' : 'Version ${AppConstants.appVersion}'),
+              onTap: () => _debugToggleEntitlement(),
             ),
           ),
         ),
         const SizedBox(height: 32),
       ],
+    );
+  }
+
+  Widget _buildVoiceToggle(bool isZh) {
+    return StatefulBuilder(
+      builder: (context, setState) {
+        return FutureBuilder<SharedPreferences>(
+          future: SharedPreferences.getInstance(),
+          builder: (context, snapshot) {
+            final prefs = snapshot.data;
+            final enabled = prefs?.getBool('voice_notifications_enabled') ?? false;
+            return Column(
+              children: [
+                SwitchListTile(
+                  secondary: const Icon(Icons.volume_up_outlined),
+                  title: Text(isZh ? '语音提醒' : 'Voice Reminders'),
+                  subtitle: Text(isZh ? '提醒时如果应用打开，会朗读习惯名称' : 'Speak routine names at reminder time when app is open'),
+                  value: enabled,
+                  onChanged: (value) async {
+                    if (prefs == null) return;
+                    await prefs.setBool('voice_notifications_enabled', value);
+                    if (value) {
+                      await VoiceNotificationService.init();
+                    } else {
+                      await VoiceNotificationService.stop();
+                    }
+                    setState(() {});
+                  },
+                ),
+                if (enabled)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 72, right: 16),
+                    child: OutlinedButton.icon(
+                      icon: const Icon(Icons.play_arrow, size: 18),
+                      label: Text(isZh ? '测试语音' : 'Test Voice'),
+                      onPressed: () async {
+                        await VoiceNotificationService.speak(
+                          isZh ? '你好，这是语音提醒测试' : 'Hello, this is a voice reminder test',
+                          language: isZh ? 'zh-CN' : 'en-US',
+                        );
+                      },
+                    ),
+                  ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 
@@ -1174,9 +1237,9 @@ class _SettingsScreenState extends State<SettingsScreen>
           TabBar(
             controller: _tabController,
             tabs: [
-              Tab(text: isZh ? 'AI 个性化' : 'AI Personalization'),
-              Tab(text: isZh ? '标签管理' : 'Tags'),
-              Tab(text: isZh ? '通用' : 'General'),
+              Tab(child: Semantics(identifier: 'settings_tab_ai', child: Text(isZh ? 'AI 个性化' : 'AI Personalization'))),
+              Tab(child: Semantics(identifier: 'settings_tab_tags', child: Text(isZh ? '标签管理' : 'Tags'))),
+              Tab(child: Semantics(identifier: 'settings_tab_general', child: Text(isZh ? '通用' : 'General'))),
             ],
           ),
           Expanded(
@@ -2048,10 +2111,12 @@ class _SettingsScreenState extends State<SettingsScreen>
       final dir = await getTemporaryDirectory();
       final file = File('${dir.path}/habits_export.json');
       await file.writeAsString(json);
-      await Share.shareXFiles(
-        [XFile(file.path)],
-        subject: isZh ? '习惯数据导出' : 'Habits Export',
-        sharePositionOrigin: const Rect.fromLTWH(0, 0, 1, 1),
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [XFile(file.path)],
+          subject: isZh ? '习惯数据导出' : 'Habits Export',
+          sharePositionOrigin: const Rect.fromLTWH(0, 0, 1, 1),
+        ),
       );
     } catch (e) {
       if (mounted) _showError(context, isZh, e.toString());
@@ -2222,14 +2287,19 @@ class _CustomStyleFormPageState extends State<_CustomStyleFormPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            TextField(
-              controller: widget.nameCtrl,
-              decoration: InputDecoration(
-                labelText: isZh ? '名称 *' : 'Name *',
-                border: const OutlineInputBorder(),
-                hintText: isZh ? '给你的风格起个名字' : 'Name your style',
+            MergeSemantics(
+              child: Semantics(
+              identifier: 'input_custom_style_name',
+              textField: true,
+              child: TextField(
+                controller: widget.nameCtrl,
+                decoration: InputDecoration(
+                  labelText: isZh ? '名称 *' : 'Name *',
+                  border: const OutlineInputBorder(),
+                  hintText: isZh ? '给你的风格起个名字' : 'Name your style',
+                ),
               ),
-            ),
+            )),
             const SizedBox(height: 16),
             TextField(
               controller: widget.vibeCtrl,
@@ -2380,32 +2450,46 @@ class _CustomStyleFormPageState extends State<_CustomStyleFormPage> {
               style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
             ),
             const SizedBox(height: 8),
-            TextField(
-              controller: widget.lens1Ctrl,
-              decoration: InputDecoration(
-                labelText: isZh ? '镜头 1 *' : 'Lens 1 *',
-                border: const OutlineInputBorder(),
+            MergeSemantics(child: Semantics(
+              identifier: 'input_custom_style_lens1',
+              textField: true,
+              child: TextField(
+                controller: widget.lens1Ctrl,
+                decoration: InputDecoration(
+                  labelText: isZh ? '镜头 1 *' : 'Lens 1 *',
+                  border: const OutlineInputBorder(),
+                ),
               ),
-            ),
+            )),
             const SizedBox(height: 10),
-            TextField(
-              controller: widget.lens2Ctrl,
-              decoration: InputDecoration(
-                labelText: isZh ? '镜头 2 *' : 'Lens 2 *',
-                border: const OutlineInputBorder(),
+            MergeSemantics(child: Semantics(
+              identifier: 'input_custom_style_lens2',
+              textField: true,
+              child: TextField(
+                controller: widget.lens2Ctrl,
+                decoration: InputDecoration(
+                  labelText: isZh ? '镜头 2 *' : 'Lens 2 *',
+                  border: const OutlineInputBorder(),
+                ),
               ),
-            ),
+            )),
             const SizedBox(height: 10),
-            TextField(
-              controller: widget.lens3Ctrl,
-              decoration: InputDecoration(
-                labelText: isZh ? '镜头 3 *' : 'Lens 3 *',
-                border: const OutlineInputBorder(),
+            MergeSemantics(child: Semantics(
+              identifier: 'input_custom_style_lens3',
+              textField: true,
+              child: TextField(
+                controller: widget.lens3Ctrl,
+                decoration: InputDecoration(
+                  labelText: isZh ? '镜头 3 *' : 'Lens 3 *',
+                  border: const OutlineInputBorder(),
+                ),
               ),
-            ),
+            )),
             const SizedBox(height: 24),
             SizedBox(
               width: double.infinity,
+              child: MergeSemantics(child: Semantics(
+              identifier: 'btn_custom_style_save',
               child: FilledButton(
                 onPressed: () {
                   final name = widget.nameCtrl.text.trim();
@@ -2435,7 +2519,7 @@ class _CustomStyleFormPageState extends State<_CustomStyleFormPage> {
                   widget.onSave(name, emoji, vibe, persona, l1, l2, l3, _pickedImagePath);
                 },
                 child: Text(isZh ? '保存' : 'Save'),
-              ),
+              ))),
             ),
             const SizedBox(height: 32),
           ],

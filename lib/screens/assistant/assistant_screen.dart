@@ -788,8 +788,11 @@ class _AssistantScreenState extends State<AssistantScreen> {
       child: Row(
         children: [
           Expanded(
-            child: TextField(
-              controller: _messageController,
+            child: MergeSemantics(child: Semantics(
+              identifier: 'input_ai_chat',
+              textField: true,
+              child: TextField(
+                controller: _messageController,
               decoration: InputDecoration(
                 hintText: isZh ? '向 AI 提问…' : 'Ask AI…',
                 border: OutlineInputBorder(
@@ -801,6 +804,7 @@ class _AssistantScreenState extends State<AssistantScreen> {
               textInputAction: TextInputAction.send,
               onSubmitted: (_) => _sendMessage(),
             ),
+            )),
           ),
           const SizedBox(width: 8),
           _isSending
@@ -812,10 +816,13 @@ class _AssistantScreenState extends State<AssistantScreen> {
                     child: CircularProgressIndicator(strokeWidth: 2),
                   ),
                 )
-              : IconButton(
-                  icon: const Icon(Icons.send),
-                  onPressed: _sendMessage,
-                  color: Theme.of(context).colorScheme.primary,
+              : Semantics(
+                  identifier: 'btn_ai_send',
+                  child: IconButton(
+                    icon: const Icon(Icons.send),
+                    onPressed: _sendMessage,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
                 ),
         ],
       ),

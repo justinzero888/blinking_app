@@ -44,6 +44,11 @@ class PurchasesService extends ChangeNotifier {
         PurchasesConfiguration(platformKey)
           ..appUserID = await DeviceService.getDeviceId(),
       );
+      Purchases.addCustomerInfoUpdateListener((info) {
+        debugPrint('[PurchasesService] CustomerInfo updated via listener');
+        _customerInfo = info;
+        notifyListeners();
+      });
     } catch (e) {
       debugPrint('RevenueCat configure error: $e');
       _lastError = e.toString();
@@ -137,7 +142,7 @@ class PurchasesService extends ChangeNotifier {
         return null;
       }
 
-      final result = await Purchases.purchasePackage(pkg);
+      final result = await Purchases.purchase(PurchaseParams.package(pkg));
       final customerInfo = result.customerInfo;
 
       if (customerInfo.entitlements.active.containsKey('pro_access')) {
@@ -208,9 +213,11 @@ class PurchasesService extends ChangeNotifier {
               ? 'google'
               : 'apple',
           'device_id': deviceId,
-          'receipt': 'revenuecat_validated',
+          // TODO(v1.3): Replace stub with real receipt when server entitlement is enabled
+          'receipt': null,
         }),
       ).timeout(const Duration(seconds: 10));
+      debugPrint('[PurchasesService] Server validation sent (receipt: null — deferred)');
     } catch (_) {}
   }
 

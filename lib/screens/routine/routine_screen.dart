@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../core/services/file_service.dart';
@@ -70,9 +71,9 @@ class RoutineScreenState extends State<RoutineScreen>
         bottom: TabBar(
           controller: _tabController,
           tabs: [
-            Tab(text: _buildLabel(isZh)),
-            Tab(text: _doLabel(isZh)),
-            Tab(text: _reflectLabel(isZh)),
+            Tab(child: Semantics(identifier: 'routine_tab_build', child: Text(_buildLabel(isZh)))),
+            Tab(child: Semantics(identifier: 'routine_tab_do', child: Text(_doLabel(isZh)))),
+            Tab(child: Semantics(identifier: 'routine_tab_reflect', child: Text(_reflectLabel(isZh)))),
           ],
         ),
       ),
@@ -954,8 +955,8 @@ class _ReflectTab extends StatelessWidget {
               fontWeight: FontWeight.bold,
               fontSize: 16,
             ),
-          ),
-          const SizedBox(height: 12),
+            ),
+            const SizedBox(height: 4),
           for (final habit in activeHabits)
             _HabitSummaryCard(habit: habit),
           const SizedBox(height: 24),
@@ -1276,6 +1277,7 @@ class _RoutineDialogWidgetState extends State<_RoutineDialogWidget> {
   RoutineCategory? _category;
   String? _iconImagePath;
   bool _isActive = true;
+  bool _voiceEnabled = false;
 
   static const List<String> _dayLabelsZh = ['', '一', '二', '三', '四', '五', '六', '日'];
   static const List<String> _dayLabelsEn = ['', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -1295,10 +1297,17 @@ class _RoutineDialogWidgetState extends State<_RoutineDialogWidget> {
     _category = r?.category;
     _iconImagePath = r?.iconImagePath;
     _isActive = r?.isActive ?? true;
+    _voiceEnabled = r?.voiceEnabled ?? false;
+    _reminderController.addListener(_onReminderChanged);
+  }
+
+  void _onReminderChanged() {
+    setState(() {}); // Show/hide voice toggle dynamically as user types
   }
 
   @override
   void dispose() {
+    _reminderController.removeListener(_onReminderChanged);
     _nameController.dispose();
     _reminderController.dispose();
     _whyController.dispose();
@@ -1363,13 +1372,17 @@ class _RoutineDialogWidgetState extends State<_RoutineDialogWidget> {
             ),
             const SizedBox(height: 12),
             // Name
-            TextField(
-              controller: _nameController,
-              decoration: InputDecoration(
-                labelText: isZh ? '名称' : 'Name',
-                hintText: isZh ? '例如: 喝水' : 'e.g. Drink water',
+            MergeSemantics(child: Semantics(
+              identifier: 'input_routine_name',
+              textField: true,
+              child: TextField(
+                controller: _nameController,
+                decoration: InputDecoration(
+                  labelText: isZh ? '名称' : 'Name',
+                  hintText: isZh ? '例如: 喝水' : 'e.g. Drink water',
+                ),
               ),
-            ),
+            )),
             const SizedBox(height: 12),
 
             // Why — personal motivation
@@ -1401,6 +1414,28 @@ class _RoutineDialogWidgetState extends State<_RoutineDialogWidget> {
                 counterText: '',
               ),
             ),
+            const SizedBox(height: 4),
+            // Voice toggle — only shown when global voice is enabled
+            if (_reminderController.text.trim().isNotEmpty) ...[
+              FutureBuilder<SharedPreferences>(
+                future: SharedPreferences.getInstance(),
+                builder: (context, snapshot) {
+                  final prefs = snapshot.data;
+                  final globalVoice = prefs?.getBool('voice_notifications_enabled') ?? false;
+                  if (!globalVoice) return const SizedBox.shrink();
+                  return SwitchListTile(
+                    dense: true,
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(isZh ? '朗读提醒' : 'Speak reminder',
+                        style: const TextStyle(fontSize: 14)),
+                    subtitle: Text(isZh ? '提醒时如果应用打开，会朗读习惯名称' : 'Reads the routine aloud at reminder time when app is open',
+                        style: const TextStyle(fontSize: 12)),
+                    value: _voiceEnabled,
+                    onChanged: (v) => setState(() => _voiceEnabled = v),
+                  );
+                },
+              ),
+            ],
             const SizedBox(height: 12),
 
             // Frequency
@@ -1512,12 +1547,15 @@ class _RoutineDialogWidgetState extends State<_RoutineDialogWidget> {
           onPressed: () => Navigator.pop(context),
           child: Text(isZh ? '取消' : 'Cancel'),
         ),
-        TextButton(
-          onPressed: _save,
-          child: Text(widget.existing != null
-              ? (isZh ? '保存' : 'Save')
-              : (isZh ? '添加' : 'Add')),
-        ),
+        MergeSemantics(child: Semantics(
+          identifier: 'btn_routine_dialog_save',
+          child: TextButton(
+            onPressed: _save,
+            child: Text(widget.existing != null
+                ? (isZh ? '保存' : 'Save')
+                : (isZh ? '添加' : 'Add')),
+          ),
+        )),
       ],
     );
   }
@@ -1606,6 +1644,7 @@ class _RoutineDialogWidgetState extends State<_RoutineDialogWidget> {
         iconImagePath: _iconImagePath,
         clearIconImagePath: _iconImagePath == null,
         isActive: _isActive,
+        voiceEnabled: _voiceEnabled,
       );
       provider.updateRoutine(updated);
       // Reschedule notification
@@ -1624,6 +1663,7 @@ class _RoutineDialogWidgetState extends State<_RoutineDialogWidget> {
         scheduledDaysOfWeek: days,
         scheduledDate: schedDate,
         iconImagePath: _iconImagePath,
+        voiceEnabled: _voiceEnabled,
       );
       // Schedule notification
       if (newRoutine != null && reminder != null && reminder.isNotEmpty) {

@@ -232,9 +232,10 @@ void main() {
       // Should have 3 progress updates (2 media + 1 avatar)
       expect(progressValues.length, 3);
 
-      // Progress should be: 1/3, 2/3, 1.0
-      expect(progressValues[0], closeTo(1.0 / 3.0, 0.01));
-      expect(progressValues[1], closeTo(2.0 / 3.0, 0.01));
+      // Progress is byte-weighted: 1024, 1024, 2048 → total 4096 bytes
+      // 1st file (1024/4096), 2nd file (2048/4096), 3rd file (4096/4096)
+      expect(progressValues[0], closeTo(1024.0 / 4096.0, 0.01));
+      expect(progressValues[1], closeTo(2048.0 / 4096.0, 0.01));
       expect(progressValues[2], 1.0);
     });
 
@@ -473,6 +474,158 @@ void main() {
         // Verify it parses as invalid (restore code catches this)
         expect(() => json.decode(personaStr) as Map<String, dynamic>,
             throwsA(isA<FormatException>()));
+      } finally {
+        await decoded?.clear();
+        await inputStream.close();
+      }
+    });
+  });
+
+  group('StorageService.restoreFromBackup — streaming', () {
+    late Directory tempDir;
+
+    setUp(() {
+      SharedPreferences.setMockInitialValues({});
+      tempDir = Directory.systemTemp.createTempSync('restore_streaming_test_');
+    });
+
+    tearDown(() {
+      tempDir.deleteSync(recursive: true);
+    });
+
+    test('byte-weighted progress: larger file contributes more progress', () async {
+      final archive = Archive();
+
+      final dataJson = jsonEncode({
+        'entries': [], 'tags': [], 'routines': [],
+        'note_cards': [], 'card_folders': [], 'templates': [],
+      });
+      archive.addFile(ArchiveFile('data.json', dataJson.length, utf8.encode(dataJson)));
+
+      // Small file: 512 bytes
+      archive.addFile(ArchiveFile('media/small.jpg', 512, List<int>.filled(512, 0)));
+      // Large file: 2048 bytes (4x the small file)
+      archive.addFile(ArchiveFile('media/large.jpg', 2048, List<int>.filled(2048, 0)));
+
+      final zipPath = '${tempDir.path}/mixed_sizes.zip';
+      final zipBytes = ZipEncoder().encode(archive);
+      File(zipPath).writeAsBytesSync(zipBytes);
+
+      final storageService = _FakeStorageService();
+
+      final progressValues = <double>[];
+      await storageService.restoreFromBackup(
+        File(zipPath),
+        onProgress: (p) => progressValues.add(p),
+      );
+
+      expect(progressValues.length, 2);
+      // Small file: 512 / (512 + 2048) = 0.2
+      expect(progressValues[0], closeTo(512.0 / 2560.0, 0.01));
+      // After large file: (512 + 2048) / 2560 = 1.0
+      expect(progressValues[1], 1.0);
+    });
+
+    test('progress values monotonically increase with many files', () async {
+      final archive = Archive();
+
+      final dataJson = jsonEncode({
+        'entries': [], 'tags': [], 'routines': [],
+        'note_cards': [], 'card_folders': [], 'templates': [],
+      });
+      archive.addFile(ArchiveFile('data.json', dataJson.length, utf8.encode(dataJson)));
+
+      // 15 media files to trigger event-loop yields (every 10)
+      for (int i = 0; i < 15; i++) {
+        final size = 100 + (i * 10); // varying sizes
+        archive.addFile(ArchiveFile('media/file_$i.jpg', size, List<int>.filled(size, i)));
+      }
+
+      final zipPath = '${tempDir.path}/many_files.zip';
+      final zipBytes = ZipEncoder().encode(archive);
+      File(zipPath).writeAsBytesSync(zipBytes);
+
+      final storageService = _FakeStorageService();
+
+      final progressValues = <double>[];
+      await storageService.restoreFromBackup(
+        File(zipPath),
+        onProgress: (p) => progressValues.add(p),
+      );
+
+      expect(progressValues.length, 15);
+      // Monotonically increasing
+      for (int i = 1; i < progressValues.length; i++) {
+        expect(progressValues[i], greaterThanOrEqualTo(progressValues[i - 1]));
+      }
+      // Final is 1.0
+      expect(progressValues.last, 1.0);
+    });
+
+    test('restore with zero-size media files does not divide by zero', () async {
+      final archive = Archive();
+
+      final dataJson = jsonEncode({
+        'entries': [], 'tags': [], 'routines': [],
+        'note_cards': [], 'card_folders': [], 'templates': [],
+      });
+      archive.addFile(ArchiveFile('data.json', dataJson.length, utf8.encode(dataJson)));
+
+      // Zero-size media file (edge case)
+      archive.addFile(ArchiveFile('media/empty.jpg', 0, []));
+
+      final zipPath = '${tempDir.path}/zero_size.zip';
+      final zipBytes = ZipEncoder().encode(archive);
+      File(zipPath).writeAsBytesSync(zipBytes);
+
+      final storageService = _FakeStorageService();
+
+      final progressValues = <double>[];
+      await storageService.restoreFromBackup(
+        File(zipPath),
+        onProgress: (p) => progressValues.add(p),
+      );
+
+      // With zero totalBytes, progress is not called (guarded by totalBytes > 0)
+      expect(progressValues.isEmpty, isTrue);
+    });
+
+    test('fused decode produces identical data as two-step decode', () async {
+      final dataJson = jsonEncode({
+        'entries': [], 'tags': [], 'routines': [],
+        'note_cards': [], 'card_folders': [], 'templates': [],
+      });
+      final archive = Archive();
+      archive.addFile(ArchiveFile('data.json', dataJson.length, utf8.encode(dataJson)));
+      archive.addFile(ArchiveFile('persona.json', jsonEncode({
+        'ai_assistant_name': 'Test',
+        'ai_assistant_personality': 'testing',
+      }).length, utf8.encode(jsonEncode({
+        'ai_assistant_name': 'Test',
+        'ai_assistant_personality': 'testing',
+      }))));
+
+      final zipPath = '${tempDir.path}/fused_test.zip';
+      final zipBytes = ZipEncoder().encode(archive);
+      File(zipPath).writeAsBytesSync(zipBytes);
+
+      final inputStream = InputFileStream(zipPath);
+      Archive? decoded;
+      try {
+        decoded = ZipDecoder().decodeStream(inputStream);
+
+        // Verify data.json via fused decode matches expected
+        final dataFile = decoded.findFile('data.json');
+        expect(dataFile, isNotNull);
+        final fusedData = json.fuse(utf8).decode(dataFile!.content as List<int>);
+        expect(fusedData, isA<Map<String, dynamic>>());
+        expect((fusedData as Map<String, dynamic>)['tags'], isEmpty);
+
+        // Verify persona.json via fused decode
+        final personaFile = decoded.findFile('persona.json');
+        expect(personaFile, isNotNull);
+        final fusedPersona = json.fuse(utf8).decode(personaFile!.content as List<int>);
+        expect((fusedPersona as Map<String, dynamic>)['ai_assistant_name'], 'Test');
       } finally {
         await decoded?.clear();
         await inputStream.close();

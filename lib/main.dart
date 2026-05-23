@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/semantics.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'app.dart';
 import 'core/services/storage_service.dart';
@@ -12,6 +13,10 @@ const _rcApiKey = String.fromEnvironment('RC_API_KEY');
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  if (kDebugMode || kProfileMode) {
+    SemanticsBinding.instance.ensureSemantics();
+  }
 
   await DeviceService.getDeviceId();
 

@@ -300,11 +300,13 @@ class ExportService {
 
   /// Share a file using the system share sheet
   Future<void> shareFile(String filePath, {String? subject, String? text}) async {
-    await Share.shareXFiles(
-      [XFile(filePath)],
-      subject: subject,
-      text: text,
-      sharePositionOrigin: const Rect.fromLTWH(0, 0, 1, 1),
+    await SharePlus.instance.share(
+      ShareParams(
+        files: [XFile(filePath)],
+        subject: subject,
+        text: text,
+        sharePositionOrigin: const Rect.fromLTWH(0, 0, 1, 1),
+      ),
     );
   }
 

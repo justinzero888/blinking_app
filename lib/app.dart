@@ -247,23 +247,23 @@ class _MainScreenState extends State<MainScreen> {
         type: BottomNavigationBarType.fixed,
         items: [
           BottomNavigationBarItem(
-            icon: const Icon(Icons.calendar_today),
+            icon: Semantics(identifier: 'nav_my_day', child: const Icon(Icons.calendar_today)),
             label: l10n.calendar,
           ),
           BottomNavigationBarItem(
-            icon: const Icon(Icons.access_time),
+            icon: Semantics(identifier: 'nav_moments', child: const Icon(Icons.access_time)),
             label: l10n.moment,
           ),
           BottomNavigationBarItem(
-            icon: const Icon(Icons.check_circle_outline),
+            icon: Semantics(identifier: 'nav_routine', child: const Icon(Icons.check_circle_outline)),
             label: l10n.routine,
           ),
           BottomNavigationBarItem(
-            icon: const Icon(Icons.insights),
+            icon: Semantics(identifier: 'nav_insights', child: const Icon(Icons.insights)),
             label: l10n.insights,
           ),
           BottomNavigationBarItem(
-            icon: const Icon(Icons.settings),
+            icon: Semantics(identifier: 'nav_settings', child: const Icon(Icons.settings)),
             label: l10n.settings,
           ),
         ],
@@ -289,19 +289,26 @@ class _MainScreenState extends State<MainScreen> {
           }
           _routineKey.currentState?.showAddRoutineDialog(context);
         },
-        child: const Icon(Icons.playlist_add),
+        child: Semantics(
+          identifier: 'main_add_routine_fab',
+          child: const Icon(Icons.playlist_add),
+        ),
       );
     }
 
     return FloatingActionButton(
       heroTag: 'main_add_entry_fab',
+      tooltip: 'Add memory',
       onPressed: () {
         Navigator.push(
           context,
           MaterialPageRoute(builder: (_) => const AddEntryScreen()),
         );
       },
-      child: const Icon(Icons.add),
+      child: Semantics(
+        identifier: 'btn_fab_add_entry',
+        child: const Icon(Icons.add),
+      ),
     );
   }
 }

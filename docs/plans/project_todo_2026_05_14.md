@@ -1,110 +1,83 @@
-# Blinking — TODO May 14
+# Blinking — Post-Launch Status (Audited May 20)
 
-**Version:** 1.1.0+36 | **Tests:** 164/164 | **Lint:** 0 errors
+**Version:** 1.1.0+40 | **Tests:** 454/454 | **Lint:** 0 errors
 
 ---
 
 ## Production Status
 
-| Store | Status |
-|-------|--------|
-| **iOS App Store** | ✅ **Approved** — 1.1.0+36 ready |
-| Google Play | Submitted for review |
-| **Production builds** | ✅ AAB + IPA compiled |
+| Store | Version | Status |
+|-------|---------|--------|
+| **iOS App Store** | 1.1.0+40 | ✅ Live |
+| **Google Play** | 1.1.0+40 | ✅ Live |
+| **Server** | — | ✅ AI config + legal pages deployed, KV secrets aligned |
 
 ---
 
-## 0. Completed Today ✅
+## ✅ Completed (in v40 Production)
 
+- [x] 31 seed routines (3 active, 28 paused across 9 categories) — this is the habit starter pack
+- [x] Language audit — all seed routines have dual-locale `name`/`nameEn` + `description`/`descriptionEn`
 - [x] Default AI persona → Kael/楷迩
-- [x] 31 seed routines (3 active, 28 paused)
-- [x] 9 category PNG icons
+- [x] 9 category PNG icons with locale-aware names
 - [x] Tags refresh (6 custom + 3 system)
-- [x] Chinese locale + persona names
 - [x] Private tag AI filter (5 entry points)
 - [x] Notifications (one-shot, reschedule on launch)
-- [x] Locale fixes (description, dialog, routine_item)
 - [x] Reminder validation (HH:MM format)
 - [x] Daily AI counter only on success
+- [x] Multi-custom persona support
+- [x] Persona-specific lens mapping
+- [x] CN avatars auto-switch with locale
+- [x] Persona backup/restore fix
+- [x] iPad backup black screen fix (yield event loop before export)
+- [x] Image compression (1920px, q85) + media-exclude toggle
 - [x] Code audit + CLAUDE.md updates
-- [x] GitHub commit + push
 
 ---
 
-## 0. Today's Priorities (P0)
+## 🔧 Fixed in Code (Not Yet Released)
 
-- [ ] Clean up habit building list — language mixing in routine names/descriptions
-- [ ] Default AI persona changed to Kael (楷迩) ✅
-
----
-
-## 1. Habit Builder and Default
-
-- [ ] Design default habit templates (starter pack for new users)
-- [ ] Implement habit template builder UI
-- [ ] Allow users to import/export habit templates (JSON)
-- [ ] Seed default habit suggestions based on wellness categories
+| Item | Commit | Detail |
+|------|--------|--------|
+| iPad share sheet | `128af6e` | Added `sharePositionOrigin` to all `Share.shareXFiles()` calls. iPad share button unresponsive in v40 production. |
 
 ---
 
-## 2. UAT — Final Validation on Sims
+## 📋 Remaining Post-Launch Items
 
-- [ ] UAT-A: Avatars — verify CN avatars switch with locale
-- [ ] UAT-B: Welcome entry — verify no duplicate on force-kill
-- [ ] UAT-C: Custom persona — full form flow, edit, delete, cancel
-- [ ] UAT-D: Routine history — reflect tab + insights charts
-- [ ] UAT-E: Restricted gates — all 17 gate checks
-- [ ] UAT-F: Paywall — spinner, disable, cancel, store unavailable
-- [ ] UAT-G: Annual Reflection — generate with seeded data, save-once
-- [ ] UAT-H: Trial banner — 21-day preview text + robot menu
+### P1 — Next Build
 
----
+| # | Item | Effort |
+|---|------|--------|
+| 1 | Ship iPad share fix in new release (v1.1.1 or v1.2.0) | ~1h |
+| 2 | UAT on real devices — 9 test sections pending (avatars, welcome entry, custom persona, routine history, restricted gates, paywall, annual reflection, trial banner, iPad share) | ~2h |
 
-## 3. iOS App Icon + Android Icon
+### P2 — Polish & Marketing
 
-- [x] iOS icon updated on sim home screen
-- [ ] Android icon — emulator unstable, documented. APK source files verified correct.
+| # | Item | Effort |
+|---|------|--------|
+| 3 | Personas web page at `blinkingchorus.com/personas` | ~2h |
+| 4 | Marketing plan — launch strategy, positioning, ASO | TBD |
+| 5 | Routine import/export template browsing (separate from full backup) | ~2h |
 
-## 4. App Store Approval
+### P3 — Technical Debt
 
-| Store | Status |
-|-------|--------|
-| **iOS App Store** | ✅ **Approved** — ready for release (`Version 1.1.0 — Ready for Distribution`) |
-| **Google Play** | Submitted for review |
-
----
-
-## 4. Remaining from May 12–13
-
-| # | Item | Priority |
-|---|------|----------|
-| D1 | #6 — Personas web page at `blinkingchorus.com/personas` | P2 |
-| G2 | Hardcoded `'receipt': 'revenuecat_validated'` in server | P3 |
-| G3 | `addCustomerInfoUpdateListener` in RevenueCat | P3 |
+| # | Item | Detail | Effort |
+|---|------|--------|--------|
+| 6 | Restore streaming refactor | `ZipDecoder().decodeStream()` loads entire archive into RAM at `storage_service.dart:664`. Process entries incrementally instead. Peak RAM: backup size → largest single file. | ~2h |
+| 7 | `addCustomerInfoUpdateListener` | RevenueCat listener for out-of-app events (refunds, cross-device purchases). Without it, `isPro` only updates on cold launch. Low impact for $19.99 non-consumable. | ~15min |
+| 8 | Hardcoded `'receipt': 'revenuecat_validated'` in server | Stub value — no production impact since server entitlement is deferred | ~30min |
+| 9 | Firebase / Cloud Sync | Large — all deps currently commented out | Large |
 
 ---
-
-## 5. Prepare for App Review Response (if needed)
-
-- [ ] Monitor Apple + Google review status
-- [ ] Prepare responses if rejection comes back
-- [ ] Have App Store Connect IAP screenshots ready
-
----
-
-## Notes
-
-- Build 35 (iOS) and AAB (Android) both submitted for production review
-- Paid Apps Agreement active; IAP sandbox tested and passing
-- Device identity deployed — no server key needed
-- CN avatars and locale names deployed — auto-switch with language setting
-- AI costs verified: ~$0.01/user for full 21-day trial (DeepSeek V3)
 
 ## Known Limitations
 
 | Item | Detail |
 |------|--------|
-| **Custom persona images** | Files in app directory — lost on reinstall (container path changes). Text data (name, vibe, lenses) survives. Emoji fallback shown. |
-| **iPad backup** | Black screen on iPad simulator during backup (larger seed data causes mem pressure). iPhone and real devices unaffected. |
+| iPad share button | Unresponsive in v40 production. Fix in `128af6e`, needs release. |
+| Custom persona images | Lost on reinstall (container path changes). Emoji fallback shown. |
+| iPad backup | Static dialog (no progress bar) — known limitation on iPad simulator |
 | Notifications | Fire in background only. Reschedule on app launch for daily repeat. |
 | Android notifications | Emulator incompatible (needs Play Services). Real device TBD. |
+| Restore OOM | Large backups (>100MB) crash on restore. Streaming refactor planned. |

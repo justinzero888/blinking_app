@@ -6,7 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../models/models.dart';
 
 class DatabaseService {
-  static const int kSchemaVersion = 13;
+  static const int kSchemaVersion = 14;
   static final DatabaseService _instance = DatabaseService._internal();
   factory DatabaseService() => _instance;
   DatabaseService._internal();
@@ -207,6 +207,9 @@ class DatabaseService {
         )
       ''');
     }
+    if (oldVersion < 14) {
+      await db.execute('ALTER TABLE routines ADD COLUMN voice_enabled INTEGER NOT NULL DEFAULT 0');
+    }
   }
 
   Future<void> _onCreate(Database db, int version) async {
@@ -270,6 +273,7 @@ class DatabaseService {
         category TEXT,
         scheduled_days_of_week TEXT,
         scheduled_date TEXT,
+        voice_enabled INTEGER NOT NULL DEFAULT 0,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       )

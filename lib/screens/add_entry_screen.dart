@@ -389,10 +389,13 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
             : (isZh ? '添加记录' : 'Add Memory')),
         actions: [
           if (!_isPastEntry)
-            IconButton(
-              icon: const Icon(Icons.check, size: 28),
-              onPressed: _saveEntry,
-              tooltip: 'Save',
+            Semantics(
+              identifier: 'btn_entry_save',
+              child: IconButton(
+                icon: const Icon(Icons.check, size: 28),
+                onPressed: _saveEntry,
+                tooltip: 'Save',
+              ),
             ),
         ],
       ),
@@ -428,12 +431,15 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
 
   List<Widget> _buildNoteMode(BuildContext context, bool isZh) {
     return [
-      TextField(
-        controller: _textController,
-        readOnly: _isPastEntry,
-        maxLines: 6,
-        decoration: InputDecoration(
-          hintText: isZh ? '今天有什么想记录的？' : 'What\'s on your mind?',
+      MergeSemantics(child: Semantics(
+        identifier: 'input_entry_body',
+        textField: true,
+        child: TextField(
+          controller: _textController,
+          readOnly: _isPastEntry,
+          maxLines: 6,
+          decoration: InputDecoration(
+            hintText: isZh ? '今天有什么想记录的？' : 'What\'s on your mind?',
           filled: true,
           fillColor: Theme.of(context)
               .colorScheme
@@ -455,7 +461,7 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
             ),
           ),
         ),
-      ),
+      ))),
     ];
   }
 
@@ -504,11 +510,13 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
         Row(
         children: [
           Expanded(
-            child: TextField(
-              controller: _itemController,
-              focusNode: _itemFocusNode,
-              decoration: InputDecoration(
-                hintText: l.listItemHint,
+            child: Semantics(
+              identifier: 'input_checklist_item',
+              child: TextField(
+                controller: _itemController,
+                focusNode: _itemFocusNode,
+                decoration: InputDecoration(
+                  hintText: l.listItemHint,
                 filled: true,
                 fillColor: Theme.of(context)
                     .colorScheme
@@ -532,6 +540,7 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
               ),
               textInputAction: TextInputAction.done,
               onSubmitted: (_) => _addListItem(),
+            ),
             ),
           ),
           const SizedBox(width: 8),
@@ -666,40 +675,42 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
       const SizedBox(height: 8),
       SizedBox(
         height: 44,
-        child: ListView.builder(
+        child: SingleChildScrollView(
           scrollDirection: Axis.horizontal,
-          itemCount: kDefaultEmotions.length,
-          itemBuilder: (context, index) {
-            final emoji = kDefaultEmotions[index];
-            final isSelected = _selectedEmotion == emoji;
-            final label = _moodLabel(context, emoji);
-            return Semantics(
-              label: label,
-              button: true,
-              selected: isSelected,
-              child: GestureDetector(
-                onTap: () {
-                  setState(() {
-                    _selectedEmotion = isSelected ? null : emoji;
-                  });
-                },
-                child: Container(
-                  margin: const EdgeInsets.only(right: 8),
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: isSelected
-                        ? Theme.of(context).colorScheme.primaryContainer
-                        : Theme.of(context).colorScheme.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(20),
-                    border: isSelected
-                        ? Border.all(color: Theme.of(context).colorScheme.primary, width: 2)
-                        : null,
+          child: Row(
+            children: kDefaultEmotions.map((emoji) {
+              final isSelected = _selectedEmotion == emoji;
+              final label = _moodLabel(context, emoji);
+              return MergeSemantics(
+                child: Semantics(
+                  label: label,
+                  button: true,
+                  selected: isSelected,
+                  child: GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _selectedEmotion = isSelected ? null : emoji;
+                      });
+                    },
+                    child: Container(
+                      margin: const EdgeInsets.only(right: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? Theme.of(context).colorScheme.primaryContainer
+                            : Theme.of(context).colorScheme.surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(20),
+                        border: isSelected
+                            ? Border.all(color: Theme.of(context).colorScheme.primary, width: 2)
+                            : null,
+                      ),
+                      child: Text(emoji, style: const TextStyle(fontSize: 22)),
+                    ),
                   ),
-                  child: Text(emoji, style: const TextStyle(fontSize: 22)),
                 ),
-              ),
-            );
-          },
+              );
+            }).toList(),
+          ),
         ),
       ),
       if (_selectedEmotion != null)

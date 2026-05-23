@@ -1,9 +1,12 @@
 import 'dart:convert';
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import '../models/routine.dart';
 import '../models/schedule.dart';
 import '../repositories/routine_repository.dart';
 import '../core/services/notification_service.dart';
+import '../core/services/voice_notification_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 /// Provider for managing routines (daily habits)
 /// Uses RoutineRepository for data access
 class RoutineProvider extends ChangeNotifier {
@@ -12,6 +15,8 @@ class RoutineProvider extends ChangeNotifier {
   List<Routine> _routines = [];
   bool _isLoading = false;
   String? _error;
+  Timer? _foregroundTimer;
+  final Set<String> _recentlySpoken = {};
 
   RoutineProvider(this._repository);
 
@@ -76,6 +81,10 @@ class RoutineProvider extends ChangeNotifier {
       _routines = await _repository.getAll();
       // Reschedule notifications for all active routines
       NotificationService.rescheduleAll(_routines, false);
+      // Speak recently-missed reminders if voice is enabled
+      _speakRecentReminders(false);
+      // Start periodic foreground check for reminders arriving while app is open
+      _startForegroundCheck();
     } catch (e) {
       _error = e.toString();
     }
@@ -97,6 +106,7 @@ class RoutineProvider extends ChangeNotifier {
     List<int>? scheduledDaysOfWeek,
     DateTime? scheduledDate,
     String? iconImagePath,
+    bool voiceEnabled = false,
   }) async {
     _error = null;
 
@@ -113,6 +123,7 @@ class RoutineProvider extends ChangeNotifier {
         scheduledDaysOfWeek: scheduledDaysOfWeek,
         scheduledDate: scheduledDate,
         iconImagePath: iconImagePath,
+        voiceEnabled: voiceEnabled,
       );
       _routines.add(routine);
       notifyListeners();
@@ -347,4 +358,55 @@ class RoutineProvider extends ChangeNotifier {
     return (imported: imported, skipped: skipped);
   }
 
+  void _startForegroundCheck() {
+    _foregroundTimer?.cancel();
+    _recentlySpoken.clear();
+    _foregroundTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      _speakRecentReminders(false);
+    });
+  }
+
+  @override
+  void dispose() {
+    _foregroundTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _speakRecentReminders(bool isZh) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final voiceEnabled = prefs.getBool('voice_notifications_enabled') ?? false;
+      if (!voiceEnabled) return;
+
+      await VoiceNotificationService.init();
+
+      final now = DateTime.now();
+      for (final r in _routines) {
+        if (!r.isActive || !r.voiceEnabled || r.reminderTime == null) continue;
+        final parts = r.reminderTime!.split(':');
+        if (parts.length != 2) continue;
+        final hour = int.tryParse(parts[0]);
+        final minute = int.tryParse(parts[1]);
+        if (hour == null || minute == null) continue;
+        final reminderToday = DateTime(now.year, now.month, now.day, hour, minute);
+        final diff = now.difference(reminderToday);
+        if (diff.inMinutes >= 0 && diff.inMinutes < 2) {
+          if (_recentlySpoken.contains(r.id)) continue; // Already spoken this window
+          _recentlySpoken.add(r.id);
+          final text = r.displayName(isZh);
+          final desc = isZh
+              ? (r.description ?? '')
+              : (r.descriptionEn ?? r.description ?? '');
+          final spokenText = desc.isNotEmpty ? '$text — $desc' : text;
+          await VoiceNotificationService.speak(
+            spokenText,
+            language: isZh ? 'zh-CN' : 'en-US',
+          );
+          break; // Speak only one to avoid flooding
+        }
+      }
+    } catch (_) {
+      // Voice is best-effort — never crash on failure
+    }
+  }
 }

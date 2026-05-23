@@ -447,6 +447,7 @@ class StorageService {
       routineMap['currentCount'] = map['current_count'];
       routineMap['category'] = map['category'];
       routineMap['iconImagePath'] = map['icon_image_path'];
+      routineMap['voiceEnabled'] = map['voice_enabled'] == 1;
       routineMap['scheduledDaysOfWeek'] = map['scheduled_days_of_week'] != null
           ? (json.decode(map['scheduled_days_of_week'] as String) as List<dynamic>)
               .map((e) => e as int)
@@ -495,6 +496,7 @@ class StorageService {
             ? json.encode(routine.scheduledDaysOfWeek)
             : null,
         'scheduled_date': routine.scheduledDate?.toIso8601String(),
+        'voice_enabled': routine.voiceEnabled ? 1 : 0,
         'created_at': routine.createdAt.toIso8601String(),
         'updated_at': routine.updatedAt.toIso8601String(),
       }, conflictAlgorithm: ConflictAlgorithm.replace);
@@ -663,26 +665,29 @@ class StorageService {
       try {
         archive = ZipDecoder().decodeStream(inputStream);
 
-        // Find and process data.json first
+        // Phase A: Import data.json with minimal memory
         final dataFile = archive.findFile('data.json');
         if (dataFile != null) {
-          final dataStr = utf8.decode(dataFile.content as List<int>);
-          final data = json.decode(dataStr) as Map<String, dynamic>;
+          final dataBytes = dataFile.content as List<int>;
+          final data = json.fuse(utf8).decode(dataBytes) as Map<String, dynamic>;
           await importData(data);
+          // Release memory before processing media files
+          archive.removeFile(dataFile);
         }
 
-        // Process media and avatar files — stream each directly to disk
+        // Phase B: Stream media & avatar files to disk
         final docDir = await getApplicationDocumentsDirectory();
 
-        // Count total files to extract for progress tracking
-        int totalFiles = 0;
+        // Pre-scan total bytes for byte-weighted progress
+        int totalBytes = 0;
         for (final file in archive) {
           if (file.isFile && (file.name.startsWith('media/') || file.name.startsWith('avatar/'))) {
-            totalFiles++;
+            totalBytes += file.size;
           }
         }
 
-        int processedFiles = 0;
+        int processedBytes = 0;
+        int fileCount = 0;
         for (final file in archive) {
           if (file.isFile && (file.name.startsWith('media/') || file.name.startsWith('avatar/'))) {
             final targetPath = path_pkg.join(docDir.path, file.name);
@@ -696,19 +701,23 @@ class StorageService {
             } finally {
               await output.close();
             }
-            processedFiles++;
-            if (totalFiles > 0) {
-              onProgress?.call(processedFiles / totalFiles);
+            processedBytes += file.size;
+            fileCount++;
+            if (totalBytes > 0) {
+              onProgress?.call(processedBytes / totalBytes);
+            }
+            // Yield to event loop every 10 files to prevent UI freeze and allow GC
+            if (fileCount % 10 == 0) {
+              await Future(() {});
             }
           }
         }
 
-        // Restore AI persona settings from persona.json
+        // Phase C: Restore AI persona settings
         final personaFile = archive.findFile('persona.json');
         if (personaFile != null) {
           try {
-            final personaStr = utf8.decode(personaFile.content as List<int>);
-            final personaMap = json.decode(personaStr) as Map<String, dynamic>;
+            final personaMap = json.fuse(utf8).decode(personaFile.content as List<int>) as Map<String, dynamic>;
             if (personaMap.containsKey('ai_assistant_name')) {
               await _prefs.setString('ai_assistant_name', personaMap['ai_assistant_name'] as String);
             }

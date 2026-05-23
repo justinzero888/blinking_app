@@ -3,6 +3,6 @@ import 'package:blinking/core/services/database_service.dart';
 
 void main() {
   test('DatabaseService targets schema version 13', () {
-    expect(DatabaseService.kSchemaVersion, 13);
+    expect(DatabaseService.kSchemaVersion, 14);
   });
 }

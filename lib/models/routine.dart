@@ -108,6 +108,7 @@ class Routine {
   final List<int>? scheduledDaysOfWeek;  // 1=Mon…7=Sun (ISO 8601). Used when frequency==weekly.
   final DateTime? scheduledDate;          // Used when frequency==scheduled.
   final String? iconImagePath;
+  final bool voiceEnabled;
 
   Routine({
     required this.id,
@@ -130,6 +131,7 @@ class Routine {
     this.scheduledDaysOfWeek,
     this.scheduledDate,
     this.iconImagePath,
+    this.voiceEnabled = false,
   });
 
   /// Effective icon: explicit icon > category icon > auto-detect > fallback
@@ -204,6 +206,7 @@ class Routine {
     bool clearScheduledDate = false,
     String? iconImagePath,
     bool clearIconImagePath = false,
+    bool? voiceEnabled,
   }) {
     return Routine(
       id: id ?? this.id,
@@ -226,6 +229,7 @@ class Routine {
       scheduledDaysOfWeek: scheduledDaysOfWeek ?? this.scheduledDaysOfWeek,
       scheduledDate: clearScheduledDate ? null : (scheduledDate ?? this.scheduledDate),
       iconImagePath: clearIconImagePath ? null : (iconImagePath ?? this.iconImagePath),
+      voiceEnabled: voiceEnabled ?? this.voiceEnabled,
     );
   }
 
@@ -372,6 +376,7 @@ class Routine {
       'scheduledDaysOfWeek': scheduledDaysOfWeek,
       'scheduledDate': scheduledDate?.toIso8601String(),
       'iconImagePath': iconImagePath,
+      'voiceEnabled': voiceEnabled,
     };
   }
 
@@ -413,6 +418,7 @@ class Routine {
           ? DateTime.parse(json['scheduledDate'] as String)
           : null,
       iconImagePath: json['iconImagePath'] as String?,
+      voiceEnabled: json['voiceEnabled'] as bool? ?? false,
     );
   }
 }

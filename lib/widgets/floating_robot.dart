@@ -214,8 +214,8 @@ class _FloatingRobotWidgetState extends State<FloatingRobotWidget>
       return const SizedBox.shrink();
     }
 
-    // Content checks: no robot if nothing to reflect on
-    final entryProvider = context.read<EntryProvider>();
+    // Content checks: no robot if nothing to reflect on — watch so we rebuild when entries added
+    final entryProvider = context.watch<EntryProvider>();
     if (widget.currentTabIndex == 0) {
       // My Day: show only if today has entries
       final today = DateTime.now();
@@ -275,9 +275,11 @@ class _FloatingRobotWidgetState extends State<FloatingRobotWidget>
     final opacity = canUse ? 1.0 : 0.55;
     final animate = canUse;
 
-    Widget robotWidget = GestureDetector(
-      onTap: _onTap,
-      onLongPress: _onLongPress,
+    Widget robotWidget = Semantics(
+      identifier: 'btn_ai_robot',
+      child: GestureDetector(
+        onTap: _onTap,
+        onLongPress: _onLongPress,
       child: Stack(
         clipBehavior: Clip.none,
         children: [
@@ -305,6 +307,7 @@ class _FloatingRobotWidgetState extends State<FloatingRobotWidget>
               ),
             ),
         ],
+      ),
       ),
     );
 

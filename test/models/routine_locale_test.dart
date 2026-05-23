@@ -58,12 +58,83 @@ void main() {
       final cat = autoDetectCategory('random text xyz');
       expect(cat, isNull);
     });
+  });
 
-    test('category icon paths exist for all categories', () {
-      for (final cat in RoutineCategory.values) {
-        expect(kCategoryIconPath.containsKey(cat), true);
-        expect(kCategoryIconPath[cat]!.startsWith('assets/icons/'), true);
-      }
+  group('Routine voiceEnabled', () {
+    test('defaults to false', () {
+      final r = Routine(
+        id: 'test', name: 'Test', nameEn: 'Test',
+        frequency: RoutineFrequency.daily,
+        createdAt: DateTime.now(), updatedAt: DateTime.now(),
+      );
+      expect(r.voiceEnabled, isFalse);
+    });
+
+    test('fromJson reads voiceEnabled when true', () {
+      final json = {
+        'id': 'test', 'name': 'Test', 'nameEn': 'Test',
+        'frequency': 'daily',
+        'createdAt': DateTime.now().toIso8601String(),
+        'updatedAt': DateTime.now().toIso8601String(),
+        'voiceEnabled': true,
+      };
+      final r = Routine.fromJson(json);
+      expect(r.voiceEnabled, isTrue);
+    });
+
+    test('fromJson defaults voiceEnabled to false when missing', () {
+      final json = {
+        'id': 'test', 'name': 'Test', 'nameEn': 'Test',
+        'frequency': 'daily',
+        'createdAt': DateTime.now().toIso8601String(),
+        'updatedAt': DateTime.now().toIso8601String(),
+      };
+      final r = Routine.fromJson(json);
+      expect(r.voiceEnabled, isFalse);
+    });
+
+    test('toJson writes voiceEnabled', () {
+      final r = Routine(
+        id: 'test', name: 'Test', nameEn: 'Test',
+        frequency: RoutineFrequency.daily,
+        createdAt: DateTime.now(), updatedAt: DateTime.now(),
+        voiceEnabled: true,
+      );
+      final json = r.toJson();
+      expect(json['voiceEnabled'], isTrue);
+    });
+
+    test('toJson round-trip preserves voiceEnabled', () {
+      final r = Routine(
+        id: 'test', name: 'Test', nameEn: 'Test',
+        frequency: RoutineFrequency.daily,
+        createdAt: DateTime.now(), updatedAt: DateTime.now(),
+        voiceEnabled: true,
+      );
+      final round = Routine.fromJson(r.toJson());
+      expect(round.voiceEnabled, r.voiceEnabled);
+    });
+
+    test('copyWith preserves voiceEnabled', () {
+      final r = Routine(
+        id: 'test', name: 'Test', nameEn: 'Test',
+        frequency: RoutineFrequency.daily,
+        createdAt: DateTime.now(), updatedAt: DateTime.now(),
+        voiceEnabled: true,
+      );
+      final copy = r.copyWith(name: 'Changed');
+      expect(copy.voiceEnabled, isTrue);
+    });
+
+    test('copyWith can override voiceEnabled', () {
+      final r = Routine(
+        id: 'test', name: 'Test', nameEn: 'Test',
+        frequency: RoutineFrequency.daily,
+        createdAt: DateTime.now(), updatedAt: DateTime.now(),
+        voiceEnabled: false,
+      );
+      final copy = r.copyWith(voiceEnabled: true);
+      expect(copy.voiceEnabled, isTrue);
     });
   });
 

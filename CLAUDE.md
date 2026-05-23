@@ -4,15 +4,15 @@ Personal memory/habit-tracking Flutter app (记忆闪烁). Path: `/Users/justinz
 
 ## Quick Reference
 
-- **Flutter SDK:** `^3.11.0` (currently 3.41.8 stable, Apr 24 2026)
-- **macOS:** 26.2 (Tahoe beta) — requires Xcode 26, managed in `ClaudeDev/system-upgrade`
-- **Current version:** `1.1.0+36` (pubspec.yaml)
-- **iOS App Store:** ✅ Live — [Blinking Notes](https://apps.apple.com/app/id6765900648) (Apple ID: 6765900648)
-- **Google Play:** Submitted for review
+- **Flutter SDK:** `^3.11.0` (currently 3.41.9 stable, Apr 29 2026)
 - **macOS:** 26.2 (Tahoe beta) — Xcode 26.4.1 GM for production builds
-- **DB version:** 13 (`kSchemaVersion = 13` in `DatabaseService`)
+- **Current version:** `1.1.0+40` (pubspec.yaml)
+- **iOS App Store:** ✅ Live — [Blinking Notes](https://apps.apple.com/app/id6765900648) (Apple ID: 6765900648)
+- **Google Play:** ✅ Live (1.1.0+40)
+- **Android:** compileSdk 36 / targetSdk 36 (via Flutter SDK)
+- **DB version:** 14 (`kSchemaVersion = 14` in `DatabaseService`)
 - **Lint:** `flutter analyze --no-pub` (target: 0 errors)
-- **Tests:** `flutter test` (164 tests, all passing)
+- **Tests:** `flutter test` (484 tests, 482 passing, 2 pre-existing flaky)
 - **Server config:** `https://blinkingchorus.com/api/config` — AI keys + model selection, updatable without app deploy
 - **AI Model:** DeepSeek `deepseek-chat-v3-0324` primary, Gemini `gemini-2.0-flash-001` failover (both trial + pro, configurable via KV secrets at `/api/config`)
 - **IAP Price:** $19.99 (non-consumable `blinking_pro`, entitlement `pro_access`)
@@ -262,14 +262,21 @@ Use `try { await launchUrl(uri); } catch (_) { ... }` pattern. Do NOT use `canLa
 | iOS App Store Sandbox purchase verified | ✅ Done |
 | iOS App Store production release (v1.1.0+36) | ✅ Done |
 | Google Play purchase verified (refund + re-purchase tested) | ✅ Done |
+| Google Play production release (v1.1.0+40) | ✅ Done |
 | ALL previous features | ✅ Done |
 
 ### Pending
 | Priority | Item | Effort | Status |
 |----------|------|--------|--------|
-| P1 | IAP — Google Play Console (final production review) | ~30min | v30 AAB uploaded |
-| P3 | Restore streaming refactor — OOM on large backups | ~2h | Known limitation |
+| P1 | Ship iPad share fix (`128af6e`) in next release | ~1h | Fixed in code, needs build |
+| P1 | Keepsake cards — 8 templates, single-page, photo+text, entry badge, re-render-on-restore (Phase 3, Keepsake-only) | ~2 weeks | Design locked (D1–D14), starts May 29 |
+| P2 | Personas web page at blinkingchorus.com/personas | ~2h | Not started |
+| P2 | Habit template browse/import UI (separate from full backup) | ~2h | Not started |
+| P2 | Marketing plan (launch strategy, ASO) | TBD | Not started |
+| P3 | Restore streaming refactor — OOM on large backups | ~2h | Known limitation (deferred to future) |
+| P3 | `addCustomerInfoUpdateListener` in RevenueCat | ~15min | Low impact for $19.99 (deferred to future) |
 | P3 | Firebase / Cloud Sync | Large | All deps commented out |
+| — | Voice notification — background TTS | ~4h | Deferred to v1.3.0 |
 
 ---
 
@@ -300,3 +307,9 @@ Use `try { await launchUrl(uri); } catch (_) { ... }` pattern. Do NOT use `canLa
 | v1.1.0-beta.7+22 | 2026-05-05 | Image compression (pick/save/export, 1920px q85). Media-exclude toggle (text-only ~200 KB). Persona backup/restore fix (reload before pop + error handling). Offline local preview (21d, 3 AI/day). M3 Onboarding: 3-screen first-launch flow + soft prompts + re-engagement. Routine redesign: Build/Do/Reflect tabs (P0–P3), streak grace period, habit summary cards, periodic summary. Settings AI cleanup. System locale detection. Seed data (entries + routines with streaks). 106/106 tests. Session summary at `docs/session-summary-2026-05-05.md` |
 | v1.1.0+29 | 2026-05-09 | iOS TestFlight push build 29. 147/147 tests. Updated App Store Connect API key (4UK6U499RC). |
 | v1.1.0+30 | 2026-05-09 | iOS TestFlight push build 30. 147/147 tests. New App Store Connect API key (4UK6U499RC) replacing expired 6S889FNN6R. Session summary at `docs/session-summary-2026-05-09.md`. |
+| v1.1.0+35 | 2026-05-13 | iOS App Store submission (production). 440/440 tests. Persona defaults refined, locale fixes. |
+| v1.1.0+36 | e5fb97f | Production: persona defaults (Kael), 31 seed routines, 9 category PNG icons, tags refresh, notifications, locale fixes, IAP audit, device identity. |
+| v1.1.0+38 | f48a2a3 | Multi-custom persona, private AI filter (5 surfaces), locale fixes, notifications working, 440 tests. |
+| v1.1.0+39 | 6f459e3 | Persona-specific lens mapping, stale defaults sync, iPad backup doc, 454 tests. |
+| v1.1.0+40 | 6fbe6ea | iPad share sheet + backup black screen fix. Production release on both stores. 454 tests. |
+| v1.2.0-dev | — | Phase 1 (iPad share, deprecated APIs, RevenueCat listener, receipt stub, version audit) + Phase 2 (restore streaming, voice notification, DB v14). 458 tests. |

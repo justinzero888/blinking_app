@@ -46,24 +46,27 @@ class _MomentScreenState extends State<MomentScreen> {
               // Search Bar
               Padding(
                 padding: const EdgeInsets.all(16),
-                child: TextField(
-                  controller: _searchController,
-                  decoration: InputDecoration(
-                    hintText: isZh ? '搜索记录...' : 'Search entries...',
-                    prefixIcon: const Icon(Icons.search),
-                    suffixIcon: _searchQuery.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(Icons.clear),
-                            onPressed: () {
-                              _searchController.clear();
-                              setState(() => _searchQuery = '');
-                            },
-                          )
-                        : null,
+                child: Semantics(
+                  identifier: 'input_moments_search',
+                  child: TextField(
+                    controller: _searchController,
+                    decoration: InputDecoration(
+                      hintText: isZh ? '搜索记录...' : 'Search entries...',
+                      prefixIcon: const Icon(Icons.search),
+                      suffixIcon: _searchQuery.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear),
+                              onPressed: () {
+                                _searchController.clear();
+                                setState(() => _searchQuery = '');
+                              },
+                            )
+                          : null,
+                    ),
+                    onChanged: (value) {
+                      setState(() => _searchQuery = value.trim());
+                    },
                   ),
-                  onChanged: (value) {
-                    setState(() => _searchQuery = value.trim());
-                  },
                 ),
               ),
               // Filter Chips
@@ -236,7 +239,9 @@ class _MomentScreenState extends State<MomentScreen> {
       grouped.putIfAbsent(dateKey, () => []).add(entry);
     }
 
-    return ListView.builder(
+    return Semantics(
+      identifier: 'list_entries',
+      child: ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       itemCount: grouped.length,
       itemBuilder: (context, index) {
@@ -260,45 +265,49 @@ class _MomentScreenState extends State<MomentScreen> {
           ],
         );
       },
+    ),
     );
   }
 
   Widget _buildEntryCard(Entry entry, EntryProvider provider, bool isZh) {
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
-      child: ListTile(
-        leading: Icon(
-          _getEntryIcon(entry),
-          color: Theme.of(context).colorScheme.primary,
-        ),
-        title: Text(entry.content),
-        subtitle: Text(
-          DateFormat('HH:mm').format(entry.createdAt),
-          style: const TextStyle(fontSize: 12),
-        ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (entry.tagIds.isNotEmpty) ...[
-              const Icon(Icons.label, size: 16, color: Colors.grey),
-              const SizedBox(width: 2),
-              Text('${entry.tagIds.length}',
-                  style: const TextStyle(fontSize: 12)),
-              const SizedBox(width: 4),
+      child: Semantics(
+        identifier: 'entry_item',
+        child: ListTile(
+          leading: Icon(
+            _getEntryIcon(entry),
+            color: Theme.of(context).colorScheme.primary,
+          ),
+          title: Text(entry.content),
+          subtitle: Text(
+            DateFormat('HH:mm').format(entry.createdAt),
+            style: const TextStyle(fontSize: 12),
+          ),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (entry.tagIds.isNotEmpty) ...[
+                const Icon(Icons.label, size: 16, color: Colors.grey),
+                const SizedBox(width: 2),
+                Text('${entry.tagIds.length}',
+                    style: const TextStyle(fontSize: 12)),
+                const SizedBox(width: 4),
+              ],
             ],
-          ],
+          ),
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => EntryDetailScreen(entry: entry),
+              ),
+            );
+          },
+          onLongPress: () {
+            _showDeleteDialog(entry, provider);
+          },
         ),
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => EntryDetailScreen(entry: entry),
-            ),
-          );
-        },
-        onLongPress: () {
-          _showDeleteDialog(entry, provider);
-        },
       ),
     );
   }

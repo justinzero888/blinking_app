@@ -59,6 +59,7 @@ class RoutineRepository {
     List<int>? scheduledDaysOfWeek,
     DateTime? scheduledDate,
     String? iconImagePath,
+    bool voiceEnabled = false,
   }) async {
     final now = DateTime.now();
     final routine = Routine(
@@ -78,6 +79,7 @@ class RoutineRepository {
       scheduledDaysOfWeek: scheduledDaysOfWeek,
       scheduledDate: scheduledDate,
       iconImagePath: iconImagePath,
+      voiceEnabled: voiceEnabled,
     );
     await _storage.addRoutine(routine);
     return routine;

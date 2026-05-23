@@ -1,8 +1,11 @@
 import 'package:flutter/foundation.dart';
+import 'dart:convert';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tzData;
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../models/routine.dart';
+import 'voice_notification_service.dart';
 
 /// Local-only notification service tied to routine reminders.
 /// Zero data leaves the device — fully aligned with privacy claim.
@@ -60,6 +63,18 @@ class NotificationService {
     _log('Init complete');
   }
 
+  static Future<String?> _voicePayload(Routine routine, bool isZh) async {
+    if (!routine.voiceEnabled) return null;
+    final prefs = await SharedPreferences.getInstance();
+    final globalVoice = prefs.getBool('voice_notifications_enabled') ?? false;
+    if (!globalVoice) return null;
+    return json.encode({
+      'voice': 'true',
+      'text': routine.displayName(isZh),
+      'lang': isZh ? 'zh-CN' : 'en-US',
+    });
+  }
+
   static Future<void> scheduleRoutine(Routine routine, bool isZh) async {
     if (!_initialized) return;
     if (routine.reminderTime == null) return;
@@ -86,6 +101,7 @@ class NotificationService {
       _log('Scheduling: "$body" at ${scheduledDate.hour}:${scheduledDate.minute.toString().padLeft(2,'0')} (now: ${now.hour}:${now.minute.toString().padLeft(2,'0')})');
 
       final details = _notificationDetails();
+      final payload = await _voicePayload(routine, isZh);
 
       if (routine.frequency == RoutineFrequency.weekly && routine.scheduledDaysOfWeek != null) {
         for (final day in routine.scheduledDaysOfWeek!) {
@@ -98,6 +114,7 @@ class NotificationService {
             scheduledDate: tzWeekday,
             notificationDetails: details,
             androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+            payload: payload,
           );
         }
         _log('Scheduled weekly: $body (${routine.scheduledDaysOfWeek!.length} days)');
@@ -123,6 +140,7 @@ class NotificationService {
         scheduledDate: tzScheduled,
         notificationDetails: details,
         androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        payload: payload,
       );
       _log('Scheduled: $body at $tzScheduled');
     } catch (e) {
