@@ -18,7 +18,7 @@ class DatabaseService {
   /// Returns the raw Database so tests can inspect indexes.
   @visibleForTesting
   static Future<Database> createTestDatabase(String path, {int? version}) async {
-    final targetVersion = version ?? 13;
+    final targetVersion = version ?? 15;
     final db = await openDatabase(
       path,
       version: targetVersion,
@@ -34,7 +34,7 @@ class DatabaseService {
   @visibleForTesting
   static Future<void> runMigration(Database db, int oldVersion) async {
     final svc = DatabaseService._internal();
-    await svc._onUpgrade(db, oldVersion, 13);
+    await svc._onUpgrade(db, oldVersion, 15);
   }
 
   Future<Database> get database async {

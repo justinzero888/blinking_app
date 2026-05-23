@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 /// A rendered note card linking entries to a template and folder
 class NoteCard {
   final String id;
@@ -122,13 +124,22 @@ class NoteCard {
         updatedAt: DateTime.parse(json['updated_at'] as String),
         cardContent: json['card_content'] as String?,
         emotion: json['emotion'] as String?,
-        displayTags: json['display_tags'] != null
-            ? List<String>.from(json['display_tags'] as List)
-            : null,
+        displayTags: _parseTagList(json['display_tags']),
         showMood: (json['show_mood'] as int? ?? 1) == 1,
         showDate: (json['show_date'] as int? ?? 1) == 1,
         showTags: (json['show_tags'] as int? ?? 1) == 1,
         showFooter: (json['show_footer'] as int? ?? 1) == 1,
         templateOverrides: json['template_overrides'] as String?,
       );
+
+  static List<String>? _parseTagList(dynamic value) {
+    if (value == null) return null;
+    if (value is List) return List<String>.from(value);
+    if (value is String) {
+      try {
+        return List<String>.from(jsonDecode(value) as List);
+      } catch (_) {}
+    }
+    return null;
+  }
 }

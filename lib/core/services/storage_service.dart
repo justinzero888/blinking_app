@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:meta/meta.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:archive/archive.dart';
@@ -129,6 +130,9 @@ class StorageService {
     }
 
   /// Default card templates (8 built-in RedNotes-style)
+  @visibleForTesting
+  List<CardTemplate> getDefaultTemplatesForTest() => _getDefaultTemplates();
+
   List<CardTemplate> _getDefaultTemplates() => [
         CardTemplate(
             id: 'tpl_ink_rhythm',
@@ -899,7 +903,7 @@ class StorageService {
         'rich_content': card.richContent,
         'card_content': card.cardContent,
         'emotion': card.emotion,
-        'display_tags': card.displayTags,
+        'display_tags': card.displayTags != null ? jsonEncode(card.displayTags) : null,
         'show_mood': card.showMood ? 1 : 0,
         'show_date': card.showDate ? 1 : 0,
         'show_tags': card.showTags ? 1 : 0,
@@ -928,7 +932,7 @@ class StorageService {
         'rich_content': card.richContent,
         'card_content': card.cardContent,
         'emotion': card.emotion,
-        'display_tags': card.displayTags,
+        'display_tags': card.displayTags != null ? jsonEncode(card.displayTags) : null,
         'show_mood': card.showMood ? 1 : 0,
         'show_date': card.showDate ? 1 : 0,
         'show_tags': card.showTags ? 1 : 0,
