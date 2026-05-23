@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/card_template.dart';
@@ -17,6 +18,18 @@ class CardBuilderSheet extends StatefulWidget {
   final List<String>? initialTags;
   final String? initialPhotoPath;
   final DateTime? entryDate;
+  final Future<String> Function({
+    required CardTemplate template,
+    required String content,
+    String? imagePath,
+    String? emotion,
+    List<String>? tags,
+    DateTime? date,
+    bool? showMood,
+    bool? showDate,
+    bool? showTags,
+    bool? showFooter,
+  })? _renderFn;
 
   const CardBuilderSheet({
     super.key,
@@ -26,7 +39,19 @@ class CardBuilderSheet extends StatefulWidget {
     this.initialTags,
     this.initialPhotoPath,
     this.entryDate,
-  });
+    @visibleForTesting Future<String> Function({
+      required CardTemplate template,
+      required String content,
+      String? imagePath,
+      String? emotion,
+      List<String>? tags,
+      DateTime? date,
+      bool? showMood,
+      bool? showDate,
+      bool? showTags,
+      bool? showFooter,
+    })? renderFn,
+  }) : _renderFn = renderFn;
 
   /// Show the builder as a modal bottom sheet. Returns the created NoteCard, or null if cancelled.
   static Future<NoteCard?> show(
@@ -37,6 +62,18 @@ class CardBuilderSheet extends StatefulWidget {
     List<String>? initialTags,
     String? initialPhotoPath,
     DateTime? entryDate,
+    @visibleForTesting Future<String> Function({
+      required CardTemplate template,
+      required String content,
+      String? imagePath,
+      String? emotion,
+      List<String>? tags,
+      DateTime? date,
+      bool? showMood,
+      bool? showDate,
+      bool? showTags,
+      bool? showFooter,
+    })? renderFn,
   }) {
     return showModalBottomSheet<NoteCard>(
       context: context,
@@ -49,6 +86,7 @@ class CardBuilderSheet extends StatefulWidget {
         initialTags: initialTags,
         initialPhotoPath: initialPhotoPath,
         entryDate: entryDate,
+        renderFn: renderFn,
       ),
     );
   }
@@ -275,7 +313,8 @@ class _CardBuilderSheetState extends State<CardBuilderSheet> {
       final cardProvider = context.read<CardProvider>();
 
       // Render the PNG
-      final renderedPath = await CardRenderService.renderToFile(
+      final renderFn = widget._renderFn ?? CardRenderService.renderToFile;
+      final renderedPath = await renderFn(
         template: _selectedTemplate,
         content: content,
         imagePath: widget.initialPhotoPath,
