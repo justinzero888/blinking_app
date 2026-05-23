@@ -6,6 +6,7 @@ import 'package:blinking/models/tag.dart';
 import 'package:blinking/providers/entry_provider.dart';
 import 'package:blinking/providers/locale_provider.dart';
 import 'package:blinking/providers/tag_provider.dart';
+import 'package:blinking/providers/card_provider.dart';
 import 'package:blinking/repositories/entry_repository.dart';
 import 'package:blinking/repositories/tag_repository.dart';
 import 'package:blinking/core/services/storage_service.dart';
@@ -41,6 +42,7 @@ Widget _wrap(Widget child, {List<Entry> entries = const []}) {
       ChangeNotifierProvider(create: (_) => LocaleProvider()),
       ChangeNotifierProvider(create: (_) => _tagProvider()),
       ChangeNotifierProvider(create: (_) => _entryProvider(entries: entries)),
+      ChangeNotifierProvider(create: (_) => CardProvider(_FakeStorage())..loadForTest()),
     ],
     child: MaterialApp(home: child),
   );

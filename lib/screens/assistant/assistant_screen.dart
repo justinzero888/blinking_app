@@ -7,6 +7,7 @@ import '../../providers/locale_provider.dart';
 import '../../models/entry.dart';
 import '../../core/services/llm_service.dart';
 import '../../core/services/soft_prompt_service.dart';
+import '../../widgets/card_builder_sheet.dart';
 
 class AssistantScreen extends StatefulWidget {
   const AssistantScreen({super.key});
@@ -22,6 +23,8 @@ class _AssistantScreenState extends State<AssistantScreen> {
   final List<ChatMessage> _messages = [];
   bool _isSending = false;
   bool _showTrialExpiredBanner = false;
+  bool _hasSavedReflection = false;
+  String _lastSavedReflectionContent = '';
 
   // Notes context — always on; custom range overrides the 30-day default
   bool _customRangeActive = false;
@@ -457,6 +460,10 @@ class _AssistantScreenState extends State<AssistantScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(isZhSnack ? '反思已保存到记录 ✨' : 'Reflection saved ✨')),
       );
+      setState(() {
+        _hasSavedReflection = true;
+        _lastSavedReflectionContent = summary;
+      });
       await SoftPromptService.maybeShow(context);
     }
   }
@@ -511,6 +518,17 @@ class _AssistantScreenState extends State<AssistantScreen> {
           ],
         ),
         actions: [
+          if (_hasSavedReflection)
+            IconButton(
+              icon: const Icon(Icons.photo_album_outlined),
+              tooltip: isZh ? '保存为纪念' : 'Save as Keepsake',
+              onPressed: () {
+                CardBuilderSheet.show(
+                  context,
+                  initialContent: _lastSavedReflectionContent,
+                );
+              },
+            ),
           if (hasRealMessages)
             IconButton(
               icon: const Icon(Icons.save_alt),

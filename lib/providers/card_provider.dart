@@ -240,6 +240,12 @@ class CardProvider extends ChangeNotifier {
     _cards = List.of(cards);
   }
 
+  /// Test-only: marks provider as loaded without touching storage.
+  @visibleForTesting
+  void loadForTest() {
+    _isLoading = false;
+  }
+
   /// Test-only: seeds the internal template list without touching storage.
   @visibleForTesting
   void seedTemplatesForTest(List<CardTemplate> templates) {

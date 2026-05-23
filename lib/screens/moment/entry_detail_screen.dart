@@ -11,8 +11,11 @@ import '../../providers/locale_provider.dart';
 import '../../providers/tag_provider.dart';
 import '../../l10n/app_localizations.dart';
 import '../../widgets/tag_chip.dart';
+import '../../widgets/card_builder_sheet.dart';
+import '../../providers/card_provider.dart';
 import '../add_entry_screen.dart';
 import '../chorus/post_to_chorus_sheet.dart';
+import 'card_preview_screen.dart';
 
 class EntryDetailScreen extends StatefulWidget {
   final Entry entry;
@@ -84,6 +87,11 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
             ),
           ),
           IconButton(
+            icon: const Icon(Icons.photo_library_outlined),
+            tooltip: isZh ? '保存为纪念' : 'Save as Keepsake',
+            onPressed: () => _handleSaveAsKeepsake(context, entry),
+          ),
+          IconButton(
             icon: const Icon(Icons.public_outlined),
             tooltip: isZh ? '发布到 Chorus' : 'Post to Chorus',
             onPressed: () async {
@@ -134,6 +142,9 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
               const SizedBox(height: 12),
               _MediaGrid(mediaUrls: entry.mediaUrls),
             ],
+            // Keepsake badge
+            const SizedBox(height: 16),
+            _KeepsakeBadge(entryId: entry.id),
           ],
         ),
       ),
@@ -221,6 +232,60 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
     final entryDay = DateTime(entry.createdAt.year, entry.createdAt.month, entry.createdAt.day);
     final todayDay = DateTime(today.year, today.month, today.day);
     return entryDay.isBefore(todayDay);
+  }
+
+  void _handleSaveAsKeepsake(BuildContext context, Entry entry) {
+    final isZh = context.read<LocaleProvider>().locale.languageCode == 'zh';
+    final tagProvider = context.read<TagProvider>();
+    final tags = tagProvider.tags
+        .where((t) => entry.tagIds.contains(t.id))
+        .map((t) => t.name)
+        .toList();
+    final photoPath = entry.mediaUrls.isNotEmpty ? entry.mediaUrls.first : null;
+
+    CardBuilderSheet.show(
+      context,
+      entryId: entry.id,
+      initialContent: entry.content,
+      initialEmotion: entry.emotion,
+      initialTags: tags,
+      initialPhotoPath: photoPath,
+      entryDate: entry.createdAt,
+    );
+  }
+}
+
+class _KeepsakeBadge extends StatelessWidget {
+  final String entryId;
+  const _KeepsakeBadge({required this.entryId});
+
+  @override
+  Widget build(BuildContext context) {
+    final cardProvider = context.watch<CardProvider>();
+    final card = cardProvider.getCardByEntryId(entryId);
+    if (card == null) return const SizedBox.shrink();
+
+    final isZh = context.watch<LocaleProvider>().locale.languageCode == 'zh';
+    final template = cardProvider.getTemplateById(card.templateId);
+    final templateName = template?.displayNameFor(isZh) ?? '';
+
+    return Center(
+      child: ActionChip(
+        avatar: const Icon(Icons.photo_album, size: 18),
+        label: Text(
+          isZh ? '纪念 · $templateName' : 'Keepsake · $templateName',
+          style: const TextStyle(fontSize: 13),
+        ),
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => CardPreviewScreen(card: card),
+            ),
+          );
+        },
+      ),
+    );
   }
 }
 
