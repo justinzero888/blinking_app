@@ -49,6 +49,14 @@ class CardProvider extends ChangeNotifier {
     String? renderedImagePath,
     String? aiSummary,
     String? richContent,
+    String? cardContent,
+    String? emotion,
+    List<String>? displayTags,
+    bool showMood = true,
+    bool showDate = true,
+    bool showTags = true,
+    bool showFooter = true,
+    String? templateOverrides,
   }) async {
     final now = DateTime.now();
     final card = NoteCard(
@@ -59,6 +67,14 @@ class CardProvider extends ChangeNotifier {
       renderedImagePath: renderedImagePath,
       aiSummary: aiSummary,
       richContent: richContent,
+      cardContent: cardContent,
+      emotion: emotion,
+      displayTags: displayTags,
+      showMood: showMood,
+      showDate: showDate,
+      showTags: showTags,
+      showFooter: showFooter,
+      templateOverrides: templateOverrides,
       createdAt: now,
       updatedAt: now,
     );
@@ -119,6 +135,11 @@ class CardProvider extends ChangeNotifier {
 
   List<NoteCard> getCardsInFolder(String folderId) {
     return _cards.where((c) => c.folderId == folderId).toList();
+  }
+
+  /// Returns the first card linked to the given entry, or null if none.
+  NoteCard? getCardByEntryId(String entryId) {
+    return _cards.where((c) => c.entryIds.contains(entryId)).firstOrNull;
   }
 
   // ---- Folders ----

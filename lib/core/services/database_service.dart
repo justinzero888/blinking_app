@@ -6,7 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../models/models.dart';
 
 class DatabaseService {
-  static const int kSchemaVersion = 14;
+  static const int kSchemaVersion = 15;
   static final DatabaseService _instance = DatabaseService._internal();
   factory DatabaseService() => _instance;
   DatabaseService._internal();
@@ -210,6 +210,50 @@ class DatabaseService {
     if (oldVersion < 14) {
       await db.execute('ALTER TABLE routines ADD COLUMN voice_enabled INTEGER NOT NULL DEFAULT 0');
     }
+    if (oldVersion < 15) {
+      // templates: add v1.2.0 card revitalization columns
+      await db.execute('ALTER TABLE templates ADD COLUMN name_en TEXT');
+      await db.execute('ALTER TABLE templates ADD COLUMN layout TEXT NOT NULL DEFAULT \'hero_image\'');
+      await db.execute('ALTER TABLE templates ADD COLUMN accent_color TEXT');
+      await db.execute('ALTER TABLE templates ADD COLUMN text_area_opacity REAL NOT NULL DEFAULT 0.85');
+      await db.execute('ALTER TABLE templates ADD COLUMN text_backdrop_color TEXT');
+      await db.execute('ALTER TABLE templates ADD COLUMN footer_text TEXT DEFAULT \'Blinking Notes\'');
+      await db.execute('ALTER TABLE templates ADD COLUMN show_mood INTEGER NOT NULL DEFAULT 1');
+      await db.execute('ALTER TABLE templates ADD COLUMN show_date INTEGER NOT NULL DEFAULT 1');
+      await db.execute('ALTER TABLE templates ADD COLUMN show_tags INTEGER NOT NULL DEFAULT 1');
+      await db.execute('ALTER TABLE templates ADD COLUMN show_footer INTEGER NOT NULL DEFAULT 1');
+      await db.execute('ALTER TABLE templates ADD COLUMN corner_style TEXT NOT NULL DEFAULT \'rounded\'');
+      await db.execute('ALTER TABLE templates ADD COLUMN decoration_style TEXT');
+
+      // note_cards: add v1.2.0 card revitalization columns
+      await db.execute('ALTER TABLE note_cards ADD COLUMN card_content TEXT');
+      await db.execute('ALTER TABLE note_cards ADD COLUMN emotion TEXT');
+      await db.execute('ALTER TABLE note_cards ADD COLUMN display_tags TEXT');
+      await db.execute('ALTER TABLE note_cards ADD COLUMN show_mood INTEGER NOT NULL DEFAULT 1');
+      await db.execute('ALTER TABLE note_cards ADD COLUMN show_date INTEGER NOT NULL DEFAULT 1');
+      await db.execute('ALTER TABLE note_cards ADD COLUMN show_tags INTEGER NOT NULL DEFAULT 1');
+      await db.execute('ALTER TABLE note_cards ADD COLUMN show_footer INTEGER NOT NULL DEFAULT 1');
+      await db.execute('ALTER TABLE note_cards ADD COLUMN template_overrides TEXT');
+
+      // Replace old 6 templates with new 8 RedNotes-style templates
+      await db.delete('templates', where: 'is_built_in = ?', whereArgs: [1]);
+      await db.execute("INSERT INTO templates (id, name, name_en, icon, font_family, font_color, bg_color, is_built_in, created_at, layout, accent_color, text_area_opacity, text_backdrop_color, decoration_style) VALUES "
+        "('tpl_ink_rhythm', '墨韵', 'Ink Rhythm', '🖋️', 'default', '#2C2C2C', '#F5F0E8', 1, datetime('now'), 'hero_image', '#C43A31', 0.85, 'rgba(245,240,232,0.85)', 'ink_wash')");
+      await db.execute("INSERT INTO templates (id, name, name_en, icon, font_family, font_color, bg_color, is_built_in, created_at, layout, accent_color, text_area_opacity, decoration_style) VALUES "
+        "('tpl_plain_paper', '素笺', 'Plain Paper', '📃', 'default', '#2C2C2C', '#F5F0E8', 1, datetime('now'), 'left_aligned', '#C43A31', 0.85, 'rice_paper')");
+      await db.execute("INSERT INTO templates (id, name, name_en, icon, font_family, font_color, bg_color, is_built_in, created_at, layout, accent_color, text_area_opacity, text_backdrop_color, decoration_style) VALUES "
+        "('tpl_bamboo', '竹影', 'Bamboo Shadow', '🎋', 'default', '#2C2C2C', '#EDF5EC', 1, datetime('now'), 'hero_image', '#7A9A6D', 0.85, 'rgba(237,245,236,0.85)', 'bamboo')");
+      await db.execute("INSERT INTO templates (id, name, name_en, icon, font_family, font_color, bg_color, is_built_in, created_at, layout, text_area_opacity, decoration_style) VALUES "
+        "('tpl_moonlight', '月色', 'Moonlight', '🌙', 'default', '#E8E4DF', '#1B2838', 1, datetime('now'), 'centered', 0.80, 'crescent')");
+      await db.execute("INSERT INTO templates (id, name, name_en, icon, font_family, font_color, bg_color, is_built_in, created_at, layout, accent_color, text_area_opacity, decoration_style) VALUES "
+        "('tpl_porcelain', '青花', 'Blue Porcelain', '🏺', 'default', '#2B5F8A', '#FAFAF6', 1, datetime('now'), 'centered', '#2B5F8A', 0.85, 'porcelain')");
+      await db.execute("INSERT INTO templates (id, name, name_en, icon, font_family, font_color, bg_color, is_built_in, created_at, layout, accent_color, text_area_opacity, text_backdrop_color, decoration_style) VALUES "
+        "('tpl_tea', '茶语', 'Tea Whisper', '🍵', 'default', '#5C4033', '#F5EDE3', 1, datetime('now'), 'hero_image', '#D4A76A', 0.85, 'rgba(245,237,227,0.85)', 'tea')");
+      await db.execute("INSERT INTO templates (id, name, name_en, icon, font_family, font_color, bg_color, is_built_in, created_at, layout, accent_color, text_area_opacity, decoration_style) VALUES "
+        "('tpl_seal', '朱砂', 'Cinnabar Seal', '🔴', 'default', '#2C2C2C', '#F5F0E8', 1, datetime('now'), 'centered', '#C43A31', 0.85, 'seal')");
+      await db.execute("INSERT INTO templates (id, name, name_en, icon, font_family, font_color, bg_color, is_built_in, created_at, layout, accent_color, text_area_opacity, text_backdrop_color, decoration_style) VALUES "
+        "('tpl_landscape', '山水', 'Landscape', '🏔️', 'default', '#2C2C2C', '#D6E0E8', 1, datetime('now'), 'hero_image', '#6B7B8D', 0.85, 'rgba(214,224,232,0.85)', 'landscape')");
+    }
   }
 
   Future<void> _onCreate(Database db, int version) async {
@@ -307,6 +351,7 @@ class DatabaseService {
       CREATE TABLE IF NOT EXISTS templates (
         id TEXT PRIMARY KEY,
         name TEXT NOT NULL,
+        name_en TEXT,
         icon TEXT NOT NULL,
         font_family TEXT NOT NULL DEFAULT 'default',
         font_color TEXT NOT NULL DEFAULT '#222222',
@@ -314,7 +359,18 @@ class DatabaseService {
         is_built_in INTEGER NOT NULL DEFAULT 0,
         custom_image_path TEXT,
         source_template_id TEXT,
-        created_at TEXT NOT NULL
+        created_at TEXT NOT NULL,
+        layout TEXT NOT NULL DEFAULT 'hero_image',
+        accent_color TEXT,
+        text_area_opacity REAL NOT NULL DEFAULT 0.85,
+        text_backdrop_color TEXT,
+        footer_text TEXT DEFAULT 'Blinking Notes',
+        show_mood INTEGER NOT NULL DEFAULT 1,
+        show_date INTEGER NOT NULL DEFAULT 1,
+        show_tags INTEGER NOT NULL DEFAULT 1,
+        show_footer INTEGER NOT NULL DEFAULT 1,
+        corner_style TEXT NOT NULL DEFAULT 'rounded',
+        decoration_style TEXT
       )
     ''');
 
@@ -327,6 +383,14 @@ class DatabaseService {
         rendered_image_path TEXT,
         ai_summary TEXT,
         rich_content TEXT,
+        card_content TEXT,
+        emotion TEXT,
+        display_tags TEXT,
+        show_mood INTEGER NOT NULL DEFAULT 1,
+        show_date INTEGER NOT NULL DEFAULT 1,
+        show_tags INTEGER NOT NULL DEFAULT 1,
+        show_footer INTEGER NOT NULL DEFAULT 1,
+        template_overrides TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       )

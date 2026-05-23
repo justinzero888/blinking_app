@@ -10,6 +10,16 @@ class NoteCard {
   final DateTime createdAt;
   final DateTime updatedAt;
 
+  // v1.2.0 new fields
+  final String? cardContent; // final text displayed on card (post-edit)
+  final String? emotion; // emoji shown on card
+  final List<String>? displayTags; // tags shown as hashtags on card
+  final bool showMood;
+  final bool showDate;
+  final bool showTags;
+  final bool showFooter;
+  final String? templateOverrides; // JSON for user style overrides
+
   const NoteCard({
     required this.id,
     required this.entryIds,
@@ -20,6 +30,14 @@ class NoteCard {
     this.richContent,
     required this.createdAt,
     required this.updatedAt,
+    this.cardContent,
+    this.emotion,
+    this.displayTags,
+    this.showMood = true,
+    this.showDate = true,
+    this.showTags = true,
+    this.showFooter = true,
+    this.templateOverrides,
   });
 
   NoteCard copyWith({
@@ -33,6 +51,18 @@ class NoteCard {
     String? richContent,
     DateTime? createdAt,
     DateTime? updatedAt,
+    String? cardContent,
+    bool clearCardContent = false,
+    String? emotion,
+    bool clearEmotion = false,
+    List<String>? displayTags,
+    bool clearDisplayTags = false,
+    bool? showMood,
+    bool? showDate,
+    bool? showTags,
+    bool? showFooter,
+    String? templateOverrides,
+    bool clearTemplateOverrides = false,
   }) {
     return NoteCard(
       id: id ?? this.id,
@@ -45,6 +75,18 @@ class NoteCard {
       richContent: richContent ?? this.richContent,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      cardContent:
+          clearCardContent ? null : (cardContent ?? this.cardContent),
+      emotion: clearEmotion ? null : (emotion ?? this.emotion),
+      displayTags:
+          clearDisplayTags ? null : (displayTags ?? this.displayTags),
+      showMood: showMood ?? this.showMood,
+      showDate: showDate ?? this.showDate,
+      showTags: showTags ?? this.showTags,
+      showFooter: showFooter ?? this.showFooter,
+      templateOverrides: clearTemplateOverrides
+          ? null
+          : (templateOverrides ?? this.templateOverrides),
     );
   }
 
@@ -58,6 +100,14 @@ class NoteCard {
         'rich_content': richContent,
         'created_at': createdAt.toIso8601String(),
         'updated_at': updatedAt.toIso8601String(),
+        'card_content': cardContent,
+        'emotion': emotion,
+        'display_tags': displayTags,
+        'show_mood': showMood ? 1 : 0,
+        'show_date': showDate ? 1 : 0,
+        'show_tags': showTags ? 1 : 0,
+        'show_footer': showFooter ? 1 : 0,
+        'template_overrides': templateOverrides,
       };
 
   factory NoteCard.fromJson(Map<String, dynamic> json) => NoteCard(
@@ -70,5 +120,15 @@ class NoteCard {
         richContent: json['rich_content'] as String?,
         createdAt: DateTime.parse(json['created_at'] as String),
         updatedAt: DateTime.parse(json['updated_at'] as String),
+        cardContent: json['card_content'] as String?,
+        emotion: json['emotion'] as String?,
+        displayTags: json['display_tags'] != null
+            ? List<String>.from(json['display_tags'] as List)
+            : null,
+        showMood: (json['show_mood'] as int? ?? 1) == 1,
+        showDate: (json['show_date'] as int? ?? 1) == 1,
+        showTags: (json['show_tags'] as int? ?? 1) == 1,
+        showFooter: (json['show_footer'] as int? ?? 1) == 1,
+        templateOverrides: json['template_overrides'] as String?,
       );
 }
