@@ -212,13 +212,16 @@ class _CardBuilderSheetState extends State<CardBuilderSheet> {
                               style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
                             ),
                             const SizedBox(height: 4),
-                            TextField(
-                              controller: _contentController,
-                              maxLines: 8,
-                              minLines: 4,
-                              decoration: InputDecoration(
-                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                                hintText: isZh ? '你的文字...' : 'Your words...',
+                            Semantics(
+                              identifier: 'card_builder_content',
+                              child: TextField(
+                                controller: _contentController,
+                                maxLines: 8,
+                                minLines: 4,
+                                decoration: InputDecoration(
+                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                                  hintText: isZh ? '你的文字...' : 'Your words...',
+                                ),
                               ),
                             ),
                             const SizedBox(height: 8),
@@ -297,7 +300,7 @@ class _CardBuilderSheetState extends State<CardBuilderSheet> {
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
             child: Semantics(
               identifier: 'btn_card_save',
-              button: true,
+              container: true,
               child: SizedBox(
                 width: double.infinity,
                 height: 48,
