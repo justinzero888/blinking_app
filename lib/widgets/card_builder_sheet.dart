@@ -136,151 +136,194 @@ class _CardBuilderSheetState extends State<CardBuilderSheet> {
 
     return Padding(
       padding: EdgeInsets.only(bottom: bottomInset),
-      child: DraggableScrollableSheet(
-        initialChildSize: 0.85,
-        minChildSize: 0.5,
-        maxChildSize: 0.95,
-        builder: (context, scrollController) {
-          return Container(
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-            ),
-            child: Column(
-              children: [
-                // Drag handle
-                Container(
-                  margin: const EdgeInsets.only(top: 12),
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade300,
-                    borderRadius: BorderRadius.circular(2),
+      child: Column(
+        children: [
+          Expanded(
+            child: DraggableScrollableSheet(
+              initialChildSize: 0.85,
+              minChildSize: 0.5,
+              maxChildSize: 0.95,
+              builder: (context, scrollController) {
+                return Container(
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
                   ),
-                ),
-                const SizedBox(height: 8),
-                // Title
-                Text(
-                  isZh ? '保存为纪念' : 'Save as Keepsake',
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: 8),
-                // Body
-                Expanded(
-                  child: ListView(
-                    controller: scrollController,
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Column(
                     children: [
-                      // Template picker
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 4),
-                        child: Text(
-                          isZh ? '选择模板' : 'Choose Template',
-                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-                        ),
-                      ),
-                      CardTemplatePicker(
-                        selectedTemplate: _selectedTemplate,
-                        onTemplateSelected: (tpl) {
-                          setState(() => _selectedTemplate = tpl);
-                        },
-                      ),
-                      const SizedBox(height: 16),
-                      // Content editor
-                      Text(
-                        isZh ? '内容' : 'Content',
-                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-                      ),
-                      const SizedBox(height: 4),
-                      TextField(
-                        controller: _contentController,
-                        maxLines: 8,
-                        minLines: 4,
-                        decoration: InputDecoration(
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                          hintText: isZh ? '你的文字...' : 'Your words...',
+                      // Drag handle
+                      Container(
+                        margin: const EdgeInsets.only(top: 12),
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade300,
+                          borderRadius: BorderRadius.circular(2),
                         ),
                       ),
                       const SizedBox(height: 8),
-                      // AI Rewrite button
-                      SizedBox(
-                        width: double.infinity,
-                        child: OutlinedButton.icon(
-                          onPressed: _isRewriting ? null : _handleAiRewrite,
-                          icon: _isRewriting
-                              ? const SizedBox(
-                                  width: 16, height: 16,
-                                  child: CircularProgressIndicator(strokeWidth: 2),
-                                )
-                              : const Icon(Icons.auto_awesome, size: 18),
-                          label: Text(_isRewriting
-                              ? (isZh ? '润色中...' : 'Rewriting...')
-                              : (isZh ? 'AI 润色' : 'AI Rewrite')),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      // Toggle row
-                      Text(
-                        isZh ? '显示元素' : 'Show Elements',
-                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-                      ),
-                      SwitchListTile(
-                        dense: true,
-                        title: Text(isZh ? '心情' : 'Mood'),
-                        value: _showMood,
-                        onChanged: (v) => setState(() => _showMood = v),
-                      ),
-                      SwitchListTile(
-                        dense: true,
-                        title: Text(isZh ? '日期' : 'Date'),
-                        value: _showDate,
-                        onChanged: (v) => setState(() => _showDate = v),
-                      ),
-                      SwitchListTile(
-                        dense: true,
-                        title: Text(isZh ? '标签' : 'Tags'),
-                        value: _showTags,
-                        onChanged: (v) => setState(() => _showTags = v),
-                      ),
-                      SwitchListTile(
-                        dense: true,
-                        title: Text(isZh ? '水印' : 'Footer'),
-                        value: _showFooter,
-                        onChanged: (v) => setState(() => _showFooter = v),
-                      ),
-                      const SizedBox(height: 20),
-                      // Save button
-                      SizedBox(
-                        width: double.infinity,
-                        height: 48,
-                        child: ElevatedButton(
-                          onPressed: _isSaving ? null : _handleSave,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Theme.of(context).primaryColor,
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                      // Title row with close button
+                      Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          Text(
+                            isZh ? '保存为纪念' : 'Save as Keepsake',
+                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                          ),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: Semantics(
+                              identifier: 'btn_close_builder',
+                              button: true,
+                              onTap: () => Navigator.of(context).pop(),
+                              child: IconButton(
+                                icon: const Icon(Icons.close),
+                                onPressed: () => Navigator.of(context).pop(),
+                              ),
                             ),
                           ),
-                          child: _isSaving
-                              ? const SizedBox(
-                                  width: 20, height: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2, color: Colors.white,
-                                  ),
-                                )
-                              : Text(isZh ? '保存纪念' : 'Save Keepsake',
-                                  style: const TextStyle(fontSize: 16)),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      // Scrollable body
+                      Expanded(
+                        child: ListView(
+                          controller: scrollController,
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          children: [
+                            // Template picker
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 4),
+                              child: Text(
+                                isZh ? '选择模板' : 'Choose Template',
+                                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                              ),
+                            ),
+                            CardTemplatePicker(
+                              selectedTemplate: _selectedTemplate,
+                              onTemplateSelected: (tpl) {
+                                setState(() => _selectedTemplate = tpl);
+                              },
+                            ),
+                            const SizedBox(height: 16),
+                            // Content editor
+                            Text(
+                              isZh ? '内容' : 'Content',
+                              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                            ),
+                            const SizedBox(height: 4),
+                            TextField(
+                              controller: _contentController,
+                              maxLines: 8,
+                              minLines: 4,
+                              decoration: InputDecoration(
+                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                                hintText: isZh ? '你的文字...' : 'Your words...',
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            // AI Rewrite button
+                            SizedBox(
+                              width: double.infinity,
+                              child: OutlinedButton.icon(
+                                onPressed: _isRewriting ? null : _handleAiRewrite,
+                                icon: _isRewriting
+                                    ? const SizedBox(
+                                        width: 16, height: 16,
+                                        child: CircularProgressIndicator(strokeWidth: 2),
+                                      )
+                                    : const Icon(Icons.auto_awesome, size: 18),
+                                label: Text(_isRewriting
+                                    ? (isZh ? '润色中...' : 'Rewriting...')
+                                    : (isZh ? 'AI 润色' : 'AI Rewrite')),
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            // Toggle row
+                            Text(
+                              isZh ? '显示元素' : 'Show Elements',
+                              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                            ),
+                            MergeSemantics(child: Semantics(
+                              identifier: 'toggle_show_mood',
+                              child: SwitchListTile(
+                                dense: true,
+                                title: Text(isZh ? '心情' : 'Mood'),
+                                value: _showMood,
+                                onChanged: (v) => setState(() => _showMood = v),
+                              ),
+                            )),
+                            MergeSemantics(child: Semantics(
+                              identifier: 'toggle_show_date',
+                              child: SwitchListTile(
+                                dense: true,
+                                title: Text(isZh ? '日期' : 'Date'),
+                                value: _showDate,
+                                onChanged: (v) => setState(() => _showDate = v),
+                              ),
+                            )),
+                            MergeSemantics(child: Semantics(
+                              identifier: 'toggle_show_tags',
+                              child: SwitchListTile(
+                                dense: true,
+                                title: Text(isZh ? '标签' : 'Tags'),
+                                value: _showTags,
+                                onChanged: (v) => setState(() => _showTags = v),
+                              ),
+                            )),
+                            MergeSemantics(child: Semantics(
+                              identifier: 'toggle_show_footer',
+                              child: SwitchListTile(
+                                dense: true,
+                                title: Text(isZh ? '水印' : 'Footer'),
+                                value: _showFooter,
+                                onChanged: (v) => setState(() => _showFooter = v),
+                              ),
+                            )),
+                            const SizedBox(height: 8),
+                          ],
                         ),
                       ),
-                      const SizedBox(height: 24),
                     ],
                   ),
-                ),
-              ],
+                );
+              },
             ),
-          );
-        },
+          ),
+          // Save button — fixed outside DraggableScrollableSheet so it is not
+          // in the drag gesture arena. Native UIKit/XCTest taps reach it cleanly.
+          Container(
+            color: Colors.white,
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+            child: Semantics(
+              identifier: 'btn_card_save',
+              button: true,
+              child: SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: ElevatedButton(
+                  onPressed: _isSaving ? null : _handleSave,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Theme.of(context).primaryColor,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: _isSaving
+                      ? const SizedBox(
+                          width: 20, height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white,
+                          ),
+                        )
+                      : Text(isZh ? '保存纪念' : 'Save Keepsake',
+                          style: const TextStyle(fontSize: 16)),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

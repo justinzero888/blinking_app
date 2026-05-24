@@ -206,12 +206,18 @@ void main() {
         cardProvider: _FakeCardProvider(templates),
       ));
 
-      final switches = find.byType(SwitchListTile);
-      final moodSwitch = switches.first;
-      // Tap to toggle off
-      await tester.tap(moodSwitch);
+      // Scroll to reveal toggles — drag the ListView inside the sheet
+      final listFinder = find.byType(ListView).first;
+      await tester.drag(listFinder, const Offset(0, -500));
       await tester.pump();
-      expect(tester.widget<SwitchListTile>(moodSwitch).value, isFalse);
+      await tester.drag(listFinder, const Offset(0, -500));
+      await tester.pump();
+
+      final switches = find.byType(SwitchListTile);
+      expect(switches, findsNWidgets(4));
+      await tester.tap(switches.first);
+      await tester.pump();
+      expect(tester.widget<SwitchListTile>(switches.first).value, isFalse);
     });
 
     testWidgets('empty content shows snackbar on save', (tester) async {
