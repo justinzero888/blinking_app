@@ -351,24 +351,59 @@ class _CardBuilderSheetState extends State<CardBuilderSheet> {
       return;
     }
 
+    if (!mounted) return;
     setState(() => _isSaving = true);
     try {
       final cardProvider = context.read<CardProvider>();
 
-      // Render the PNG
-      final renderFn = widget._renderFn ?? CardRenderService.renderToFile;
-      final renderedPath = await renderFn(
-        template: _selectedTemplate,
-        content: content,
-        imagePath: widget.initialPhotoPath,
-        emotion: widget.initialEmotion,
-        tags: widget.initialTags,
-        date: widget.entryDate,
-        showMood: _showMood,
-        showDate: _showDate,
-        showTags: _showTags,
-        showFooter: _showFooter,
-      );
+      String? renderedPath;
+      if (widget._renderFn != null) {
+        // Test path: use injected mock renderer
+        renderedPath = await widget._renderFn!(
+          template: _selectedTemplate,
+          content: content,
+          emotion: widget.initialEmotion,
+          tags: widget.initialTags,
+          date: widget.entryDate,
+          showMood: _showMood,
+          showDate: _showDate,
+          showTags: _showTags,
+          showFooter: _showFooter,
+        );
+      } else {
+        // App path: render via OverlayEntry in the app's widget tree
+        final key = GlobalKey();
+        final entry = OverlayEntry(
+          builder: (_) => RepaintBoundary(
+            key: key,
+            child: CardRenderService.buildPreviewWidget(
+              template: _selectedTemplate,
+              content: content,
+              emotion: widget.initialEmotion,
+              tags: widget.initialTags,
+              date: widget.entryDate,
+              showMood: _showMood,
+              showDate: _showDate,
+              showTags: _showTags,
+              showFooter: _showFooter,
+            ),
+          ),
+        );
+        Overlay.of(context).insert(entry);
+        await WidgetsBinding.instance.endOfFrame;
+        renderedPath = await CardRenderService.captureFromKey(key);
+        entry.remove();
+      }
+
+      if (renderedPath == null) {
+        if (mounted) {
+          final isZh = context.read<LocaleProvider>().locale.languageCode == 'zh';
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(isZh ? '渲染失败，请重试' : 'Render failed, please retry')),
+          );
+        }
+        return;
+      }
 
       // Persist to DB
       final card = await cardProvider.addCard(

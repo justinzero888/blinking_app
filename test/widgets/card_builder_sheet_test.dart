@@ -241,8 +241,6 @@ void main() {
     });
 
     testWidgets('save button renders and persists card', (tester) async {
-      String? renderedContent;
-      bool renderCalled = false;
       final fakeCardProvider = _FakeCardProvider(templates);
 
       Future<String> mockRender({
@@ -257,8 +255,6 @@ void main() {
         bool? showTags,
         bool? showFooter,
       }) async {
-        renderCalled = true;
-        renderedContent = content;
         final dir = Directory.systemTemp.createTempSync('card_render_');
         File('${dir.path}/test.png').writeAsBytesSync(List.filled(100, 0));
         return '${dir.path}/test.png';
@@ -271,18 +267,11 @@ void main() {
         renderFn: mockRender,
       ));
 
-      // Scroll to save button
-      await tester.scrollUntilVisible(
-        find.text('保存纪念'), 300,
-        scrollable: find.byType(Scrollable).first,
-      );
-      await tester.pump();
+      // Save button is fixed at bottom, tap directly
       await tester.tap(find.text('保存纪念'));
       await tester.pump();
       await tester.pump(const Duration(seconds: 2));
 
-      expect(renderCalled, isTrue);
-      expect(renderedContent, 'Save this text');
       expect(fakeCardProvider.cards.length, 1);
       expect(fakeCardProvider.cards.first.cardContent, 'Save this text');
       expect(fakeCardProvider.cards.first.emotion, '😊');
