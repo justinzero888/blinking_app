@@ -1,6 +1,41 @@
 # Feature Development Playbook — Blinking Notes
 
-> Based on Phase 3 (Keepsake Cards), May 2026. Derived from 10 lessons learned and 8 commits of implementation. Applicable to any feature in this codebase.
+> Derived from 50+ lessons learned across 6 sessions (May 5–23, 2026). Covers full lifecycle from scoping through post-launch.
+
+---
+
+## Before You Start: Daily Baseline
+
+```bash
+flutter analyze --no-pub    # Must be 0 errors
+flutter test                # Must all pass
+```
+
+### Mandatory Workflow
+
+```
+Issue / Feature
+    │
+    ├── 1. Root Cause Analysis — understand WHY before touching code
+    ├── 2. Propose Solution — 1-2 options with impact assessment
+    ├── 3. Evaluate — pick simplest fix; one bug/fix, one feature/ship
+    ├── 4. Review Tests — update existing tests BEFORE coding
+    ├── 5. Implement — minimal change
+    │       flutter analyze → verify 0 errors
+    │       flutter test → verify all pass
+    ├── 6. Push to Sims — build for all 3 simulators, install fresh
+    ├── 7. UAT on Sims — execute test cases on iPhone, iPad, Android
+    └── 8. Build Production — only after UAT passes on all 3
+```
+
+### Core Rules (from repeated failures)
+
+1. **One edit = one `flutter analyze`** — never chain edits without verifying
+2. **Never hardcode IDs** — every ID in logic must be a named constant in its model
+3. **SharedPreferences is for settings only** — no data > 1KB, no images (use filesystem)
+4. **Seed data: one canonical source per dataset** — never duplicate in tests
+5. **Commit after each feature** — not at end of day; enables safe `git checkout` rollback
+6. **Simulator ≠ Real Device** — functional testing (notifications, IAP, backup) requires hardware
 
 ---
 
@@ -43,9 +78,13 @@ List every sub-feature that could be cut without breaking the core user goal. Ra
 
 For any feature that stores user data, answer: what goes in the backup ZIP? Phase 3's answer: metadata only (~2KB per card), never rendered PNGs (~2MB each). Use "store the recipe, not the cake" — back up inputs, regenerate outputs on restore.
 
-### 0.5 Write Test Cases Before Code
+### 0.5 Check Dependency APIs Against Design Assumptions
 
-Write the test cases (both automated and UAT) as part of the design document. Phase 3 had 27 UAT cases + 44 unit/widget tests specified before any code was written. This serves as both a contract and a checklist.
+`flutter_local_notifications` v21 removed `onDidReceiveLocalNotification` — a callback our design assumed existed based on pub.dev docs. **After `flutter pub add`, `grep` the installed package's source (not pub.dev) for the API you plan to use.** Run `flutter analyze` immediately.
+
+### 0.6 Write Test Cases Before Code
+
+Write both automated and UAT cases in the design doc. Phase 3 specified 27 UAT + 44 unit/widget tests before implementation. **Design docs listing tests are not the tests — write the test files or coverage is zero.**
 
 ---
 
@@ -61,7 +100,35 @@ Order: enums → models → test helpers → seed data → DB migration.
 - **Seed data** in `StorageService._getDefault*()` — one canonical source per dataset
 - **DB migration last** — only after models and seeds are finalized
 
-### 1.2 JSON-Encode Complex Types for SQLite
+### 1.2 Model Field Addition: Full Write-Chain Checklist
+
+Adding one field (`voiceEnabled` to Routine) requires 7 layers. Missing any = data appears to work (in-memory) but is lost on restart.
+
+```
+[ ] Model: field + constructor default + fromJson + toJson + copyWith
+[ ] DB: _onCreate schema column
+[ ] DB: _onUpgrade migration block
+[ ] StorageService: INSERT map in add*() method
+[ ] StorageService: SELECT map in get*() method
+[ ] Repository: pass-through if it maps to model constructor
+[ ] Provider: pass-through if it calls repository
+[ ] Test: kSchemaVersion in db_version_test.dart
+```
+
+### 1.3 Never Hardcode IDs in Business Logic
+
+```dart
+// ❌ Breaks on rename — grep-and-replace misses references
+if (activeId == 'lens_builtin_zengzi') { ... }
+
+// ✅ Single source of truth
+static const kDefaultLensId = 'lens_style_kael';
+if (activeId == DefaultLensSets.defaultActiveSetId) { ... }
+```
+
+Every ID in logic = named constant in its owning model.
+
+### 1.4 JSON-Encode Complex Types for SQLite
 
 SQLite has no List, Map, or Set type. Always `jsonEncode()` before storing, `jsonDecode()` after reading.
 
@@ -80,7 +147,7 @@ static List<String>? _parseTagList(dynamic value) {
 
 **Pitfall:** Passing a raw `List<String>` to `db.insert()` throws `Invalid sql argument type` at runtime — sqflite doesn't catch this at compile time.
 
-### 1.3 `ALTER TABLE ADD COLUMN` Is Not Idempotent
+### 1.5 `ALTER TABLE ADD COLUMN` Is Not Idempotent
 
 Migrations using `ALTER TABLE ADD COLUMN` cannot be run twice. Don't write idempotency tests for them. Earlier migrations using `CREATE TABLE IF NOT EXISTS` ARE idempotent — don't mix the patterns.
 
@@ -91,7 +158,7 @@ if (oldVersion < 15) {
 }
 ```
 
-### 1.4 Seed Data: One Source, Zero Duplication
+### 1.6 Seed Data: One Source, Zero Duplication
 
 Every built-in dataset must exist in exactly one place. `StorageService._getDefaultTemplates()` is the canonical source. Never duplicate seed data in tests — reference the canonical source or use `@visibleForTesting` accessors.
 
@@ -288,17 +355,113 @@ Before marking a feature complete:
 
 ---
 
-## Quick Reference: Common Pitfalls
+## Phase 6: Deployment & Post-Launch
+
+### 6.1 Session Summaries ≠ Ground Truth
+
+Post-launch audit found server endpoints documented as "✅ Live" that were never deployed. The app worked because of compile-time fallback keys. Verify with `curl`:
+
+```bash
+curl -s https://blinkingchorus.com/api/config | python3 -c "import json,sys; d=json.load(sys.stdin); assert 'trial_keys' in d; print('OK')"
+```
+
+### 6.2 Compile-Time Fallbacks Need Observability
+
+AI key fallback (dart-define baked into builds) was so reliable that nobody noticed the server wasn't deployed. Add logging:
+
+```dart
+if (config == null) debugPrint('[Config] WARNING: Using fallback keys — server unreachable');
+```
+
+### 6.3 KV Secrets Can Drift Without Detection
+
+Cloudflare KV secrets are opaque blobs. Trial keys were set to wrong model during an intermediate switch and never reverted. Add a validation script.
+
+### 6.4 Feature Gates: One Feature, One Gate
+
+Device fingerprinting was blocked behind `ENTITLEMENT_ENABLED` — a lightweight feature gated behind a heavy one. Use separate gates per feature.
+
+### 6.5 Deployment Checklist
+
+```
+[ ] git status — clean working tree, all changes committed
+[ ] git log -1 — verify the right commit is being deployed
+[ ] curl each new endpoint — verify HTTP 200 + correct content type
+[ ] curl each modified endpoint — verify no regression
+[ ] Check KV secrets match intended config (run validate script)
+[ ] Run full test suite (client + server) — 0 failures
+[ ] Document deployed commit hash in session summary
+[ ] Verify feature gates are correctly configured
+```
+
+---
+
+## Phase 7: Debugging & Troubleshooting
+
+### 7.1 File Damage from Cascading Edits
+
+Heavy editing (15+ edits to one file) caused brace mismatches and lost method definitions. **Use `git` to checkpoint between phases.** Prefer targeted edits over large-block replacements.
+
+### 7.2 Async Method Ordering
+
+`rescheduleAll()` called `cancelAll()` which ran AFTER `scheduleRoutine()`. Notifications scheduled then immediately canceled. Never put `cancelAll()` inside a method that runs after user actions. Cancel specific IDs only.
+
+### 7.3 Seed Accumulation in Loops
+
+Loop used `routine.completionLog` (always empty original) instead of accumulating: track a `current` variable that updates across iterations.
+
+### 7.4 Emulator Limitations
+
+- Android TTS crashes on emulator (native library incompatibility)
+- iPad simulator has memory constraints for backup
+- Android emulator caches old app icons after reinstalls
+- Simulators are for UI layout only — functional testing requires real devices
+
+### 7.5 Zsh Variable Name Collisions
+
+`status=$(adb shell ...)` fails silently because `status` is a zsh read-only builtin. Avoid: `status`, `path`, `argv`, `fignore`.
+
+---
+
+## Quick Reference: All Pitfalls
+
+### Compile/Runtime Errors
 
 | Pitfall | Symptom | Fix |
 |---------|----------|-----|
-| Missing Provider in widget test | Silent failure or crash | Add provider to test's `MultiProvider` |
 | Raw List in SQLite INSERT | `Invalid sql argument type` | `jsonEncode()` before insert |
-| `BuildOwner.flushPaint()` | `undefined_method` error | Use `PipelineOwner.flushPaint()` |
-| Redundant `buildScope()` | `_debugStateLocked` assertion | Remove — `mount()` calls it internally |
-| `scrollUntilVisible` with nested scrollables | `Bad state: Too many elements` | Specify `scrollable: find.byType(Scrollable).first` |
-| `toImage()` without paint | `!debugNeedsPaint` assertion | Ensure `pipelineOwner.flushPaint()` ran |
-| Unregistered provider | Widget silently has no data | Register in `app.dart` MultiProvider |
-| Hardcoded IDs in logic | Breaks on rename | Use named constants from model |
-| Seed data in two places | Drift between sources | One canonical `_getDefault*()` method |
-| `ALTER TABLE ADD COLUMN` run twice | `duplicate column name` error | Don't test idempotency for column additions |
+| `BuildOwner.flushPaint()` | `undefined_method` | Use `PipelineOwner.flushPaint()` |
+| Redundant `buildScope()` | `_debugStateLocked` assertion | `mount()` calls it internally |
+| `toImage()` without paint | `!debugNeedsPaint` | Run `pipelineOwner.flushPaint()` |
+| `ALTER TABLE ADD COLUMN` 2x | `duplicate column name` | Don't test idempotency for ALTER TABLE |
+| `const` on method calls | `const_eval_method_invocation` | Remove const; use factory |
+| `--no-codesign` on simulator | Icon tap does nothing | Use `--simulator` flag |
+| Missing model field write chain | Data lost on restart | Use 7-layer checklist |
+
+### Silent/Subtle Failures
+
+| Pitfall | Symptom | Fix |
+|---------|----------|-----|
+| Missing Provider in test | Test crash / no data | Add all providers to `MultiProvider` |
+| Unregistered provider | Widget silently empty | Register in `app.dart` |
+| Hardcoded IDs in logic | Break on rename | Named constant in model |
+| Duplicate seed data sources | Drift between sources | One `_getDefault*()` per dataset |
+| Provider seed runs in tests | Tests fail unexpectedly | Seed in `main.dart` only |
+| Async cancel after schedule | Notifications vanish | Cancel by ID; chain explicitly |
+| Fallback masks missing server | Everything works, nothing deployed | Add `debugPrint` on fallback |
+| Feature gate blocks unrelated | Simple feature doesn't work | One gate per feature |
+| Session summary says "deployed" | `git status` shows uncommitted | `curl` after deploy |
+| Maestro: "code fix needed" | Fix already committed | Check `git log` first |
+| Seed accumulation in loop | Results show 0 | Track `current` across iterations |
+| State machine not persisting | Reverts on restart | `_saveState()` + check stale cache |
+
+### Design/Architecture
+
+| Pitfall | Symptom | Fix |
+|---------|----------|-----|
+| Conflated use cases | Conflicting requirements | Split; ship one at a time |
+| Decisions deferred to code | Rework mid-build | Lock D1, D2, ... before coding |
+| SharedPreferences for images | Only last image survives | Filesystem + stored path |
+| Backup stores rendered output | Massive ZIP, OOM | Store recipe (metadata), regenerate |
+| API assumption without check | Removed callback breaks feature | `grep` installed package source |
+| Dependency on pub.dev docs | Shows wrong API version | Check local `pub-cache/hosted/` |
