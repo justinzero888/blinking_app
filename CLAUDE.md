@@ -6,13 +6,13 @@ Personal memory/habit-tracking Flutter app (记忆闪烁). Path: `/Users/justinz
 
 - **Flutter SDK:** `^3.11.0` (currently 3.41.9 stable, Apr 29 2026)
 - **macOS:** 26.2 (Tahoe beta) — Xcode 26.4.1 GM for production builds
-- **Current version:** `1.1.0+40` (pubspec.yaml)
+- **Current version:** `1.2.0-dev` (v1.1.0+40 live on both stores; v1.2.0+41 target)
 - **iOS App Store:** ✅ Live — [Blinking Notes](https://apps.apple.com/app/id6765900648) (Apple ID: 6765900648)
 - **Google Play:** ✅ Live (1.1.0+40)
 - **Android:** compileSdk 36 / targetSdk 36 (via Flutter SDK)
-- **DB version:** 14 (`kSchemaVersion = 14` in `DatabaseService`)
+- **DB version:** 15 (`kSchemaVersion = 15` in `DatabaseService`)
 - **Lint:** `flutter analyze --no-pub` (target: 0 errors)
-- **Tests:** `flutter test` (484 tests, 482 passing, 2 pre-existing flaky)
+- **Tests:** `flutter test` (556 tests, 554 passing, 2 pre-existing flaky)
 - **Server config:** `https://blinkingchorus.com/api/config` — AI keys + model selection, updatable without app deploy
 - **AI Model:** DeepSeek `deepseek-chat-v3-0324` primary, Gemini `gemini-2.0-flash-001` failover (both trial + pro, configurable via KV secrets at `/api/config`)
 - **IAP Price:** $19.99 (non-consumable `blinking_pro`, entitlement `pro_access`)
@@ -107,7 +107,13 @@ Calendar | Moment | Routine | Insights | Settings
 | `lib/screens/purchase/paywall_screen.dart` | Pro purchase — $19.99 one-time, feature checklist |
 | `lib/screens/settings/byok_setup_screen.dart` | 6-provider BYOK setup with ping validation |
 | `lib/widgets/emoji_jar.dart` | `EmojiJarWidget` CustomPainter + AI bottom sheet |
-| `lib/widgets/card_renderer.dart` | Off-screen PNG render; `_autoFontSize()` 96px→9px; text area = height×0.8/width×0.88; custom bg image with rounded clip (may be deprecated) |
+| `lib/widgets/card_renderer.dart` | **Deleted** — replaced by `CardRenderService` |
+| `lib/core/services/card_render_service.dart` | Off-screen PNG renderer with 4 layouts (hero_image/centered/left_aligned/two_column), 8 templates, 6 decorative motifs, auto-font sizing (96→9px binary search), overlay elements, re-render-on-restore |
+| `lib/models/card_enums.dart` | `CardLayout`, `CardCornerStyle` enums with value/fromString extensions |
+| `lib/widgets/card_template_picker.dart` | Horizontal scroll of 8 template thumbnails with locale-aware names (ZH/EN) and selection highlight |
+| `lib/widgets/card_builder_sheet.dart` | `DraggableScrollableSheet` — template picker, content editor, AI Rewrite, toggle overlays, Save Keepsake flow. Injectable `renderFn` for testing. |
+| `lib/screens/moment/card_preview_screen.dart` | Full-screen PNG preview with pinch-to-zoom, share, edit, re-render placeholder |
+| `lib/widgets/floating_robot.dart` | Bobbing + pulse + wave-on-tap robot overlay (3 AnimationControllers); avatar = 🤖 emoji |
 | `lib/widgets/floating_robot.dart` | Bobbing + pulse + wave-on-tap robot overlay (3 AnimationControllers); avatar = 🤖 emoji |
 | `lib/widgets/entry_card.dart` | Entry display card with share button |
 
@@ -177,21 +183,26 @@ For `SummaryProvider` emotion trend chart: 😊=5, 😌=4, 😐=3, 😢=2, 😡=
 - `isMissedOn(Routine, DateTime)` is a pure derivation — no extra DB column
 
 ### Card Content Priority
-`NoteCard` has three text fields in precedence order:
-1. `richContent: String?` — Quill Delta JSON (set by `CardEditorScreen`); source of truth when present
-2. `aiSummary: String?` — plain text; written by AI merge in `CardBuilderDialog` and kept in sync as plain-text mirror of `richContent` on every save
-3. First entry's `content` — fallback when neither field is set
+`NoteCard` has four text fields in precedence order:
+1. `cardContent: String?` — final text displayed on card (post-edit, v1.2.0)
+2. `richContent: String?` — Quill Delta JSON (legacy, deprecated)
+3. `aiSummary: String?` — plain text; AI-generated
+4. First entry's `content` — fallback when neither field is set
 
-`_extractPlainText()` in `CardRenderer` implements this priority. `note_card_entries` links to original entries and must never be modified by card operations.
+### Card Templates (v1.2.0)
+Eight built-in templates with Chinese aesthetic design (宁静 · 淡雅 · 含蓄): 墨韵 (Ink Rhythm), 素笺 (Plain Paper), 竹影 (Bamboo Shadow), 月色 (Moonlight), 青花 (Blue Porcelain), 茶语 (Tea Whisper), 朱砂 (Cinnabar Seal), 山水 (Landscape). All seeded via `StorageService._getDefaultTemplates()`. Template display names use `CardTemplate.displayNameFor(bool isZh)` with `nameEn` field — do not use `.name` directly in UI.
 
-### Card Templates
-Built-in templates must never be mutated. Use `CardProvider.copyBuiltInTemplate({bool isZh})` to create an `isBuiltIn: false` copy before editing. Template display names use `CardTemplate.displayNameFor(bool isZh)` — do not use `.name` directly in UI. Copies of built-in templates store `sourceTemplateId` so they can resolve English display names (e.g. "Custom — Spring Day").
+### Card Renderer (v1.2.0)
+`CardRenderService` — static service for off-screen rendering. `buildPreviewWidget()` returns widget tree for preview. `renderToFile()` renders to 1080×1440 PNG via `RenderRepaintBoundary` + `PipelineOwner`. `captureFromKey()` captures from preview screen boundary. Auto-font sizing 96px→9px via binary search `TextPainter`. Photo integration: full-bleed (hero), hero header (two_column), inline thumbnail (left_aligned).
 
-### Card Renderer
-`CardRenderer` uses `_autoFontSize(text, maxWidth, maxHeight)` — iterates 96px→9px via `TextPainter` to find largest font that fits. Text area = `width * 0.88` × `height * 0.8`. Both the widget `build()` and static `renderToImage()` use the same helper for consistent sizing.
+### Card Builder (v1.2.0)
+`CardBuilderSheet` — open via `CardBuilderSheet.show(context, initialContent: ...)`. Accepts optional `renderFn` parameter for testing. On save: renders PNG → persists `NoteCard` via `CardProvider.addCard()`. Entry points: `EntryDetailScreen` (🖼️ icon in AppBar), `ReflectionSessionScreen` (post-save button), `AssistantScreen` (post-save icon in AppBar).
 
-### Card Share
-Always call `Share.shareXFiles([XFile(path)])` without `text:` or `subject:` params. The image contains all content; sending text alongside is redundant.
+### Keepsake Badge (v1.2.0)
+`_KeepsakeBadge` widget on `EntryDetailScreen` — watches `CardProvider` for card linked to current entry via `getCardByEntryId()`. Shows chip with template name. Tap → `CardPreviewScreen`. Hides when no card exists.
+
+### Card Share (v1.2.0)
+Always call `SharePlus.instance.share(ShareParams(files: [XFile(path)], sharePositionOrigin: ...))`. Rendered PNG at 1080×1440. The image contains all content.
 
 ### flutter_quill Integration
 `FlutterQuillLocalizations.delegate` **must** be present in `MaterialApp.localizationsDelegates` (registered in `app.dart`). Without it, `QuillEditor` throws `UnimplementedError` at runtime. The delegate is appended via spread: `[...AppLocalizations.localizationsDelegates, FlutterQuillLocalizations.delegate]`.
@@ -264,18 +275,25 @@ Use `try { await launchUrl(uri); } catch (_) { ... }` pattern. Do NOT use `canLa
 | Google Play purchase verified (refund + re-purchase tested) | ✅ Done |
 | Google Play production release (v1.1.0+40) | ✅ Done |
 | ALL previous features | ✅ Done |
+| **Keepsake cards — Phase 3** (8 templates, single-page, photo+text, entry badge, re-render-on-restore, CardRenderService with 4 layouts + 6 decorative motifs, CardBuilderSheet, CardPreviewScreen, 3 entry points) | ✅ Done (May 23, 2026) |
+| Restore streaming refactor — OOM on large backups | ✅ Done |
+| `addCustomerInfoUpdateListener` in RevenueCat | ✅ Done |
+| Platform version audit (Flutter 3.41.9, Xcode 26.4.1, SDK 36) | ✅ Done |
+| Voice notification for routines (flutter_tts, global + per-routine toggle, DB v14) | ✅ Done |
 
 ### Pending
 | Priority | Item | Effort | Status |
 |----------|------|--------|--------|
-| P1 | Ship iPad share fix (`128af6e`) in next release | ~1h | Fixed in code, needs build |
-| P1 | Keepsake cards — 8 templates, single-page, photo+text, entry badge, re-render-on-restore (Phase 3, Keepsake-only) | ~2 weeks | Design locked (D1–D14), starts May 29 |
+| P1 | Ship Keepsake cards in next release (v1.2.0+41) | ~1h | Code complete, needs build + UAT |
+| P1 | Write 10 Maestro UAT flows for Keepsake | ~2-3h | Not started |
+| P1 | Manual visual QA on real devices (8 cases) | ~1h | Not started |
 | P2 | Personas web page at blinkingchorus.com/personas | ~2h | Not started |
 | P2 | Habit template browse/import UI (separate from full backup) | ~2h | Not started |
 | P2 | Marketing plan (launch strategy, ASO) | TBD | Not started |
-| P3 | Restore streaming refactor — OOM on large backups | ~2h | Known limitation (deferred to future) |
-| P3 | `addCustomerInfoUpdateListener` in RevenueCat | ~15min | Low impact for $19.99 (deferred to future) |
 | P3 | Firebase / Cloud Sync | Large | All deps commented out |
+| P3 | Card History screen (grid) | ~3h | Deferred to v1.2.1 |
+| P3 | XHS Export mode (multi-page, ratio toggle, page breaks) | ~1 week | Deferred to v1.3.0 |
+| P3 | Custom template saving | ~2 days | Deferred to v1.3.0 |
 | — | Voice notification — background TTS | ~4h | Deferred to v1.3.0 |
 
 ---
@@ -312,4 +330,11 @@ Use `try { await launchUrl(uri); } catch (_) { ... }` pattern. Do NOT use `canLa
 | v1.1.0+38 | f48a2a3 | Multi-custom persona, private AI filter (5 surfaces), locale fixes, notifications working, 440 tests. |
 | v1.1.0+39 | 6f459e3 | Persona-specific lens mapping, stale defaults sync, iPad backup doc, 454 tests. |
 | v1.1.0+40 | 6fbe6ea | iPad share sheet + backup black screen fix. Production release on both stores. 454 tests. |
-| v1.2.0-dev | — | Phase 1 (iPad share, deprecated APIs, RevenueCat listener, receipt stub, version audit) + Phase 2 (restore streaming, voice notification, DB v14). 458 tests. |
+| v1.2.0-dev | f5ad852 | Phase 3 Day 9-10: DB migration v15, NoteCard/CardTemplate model updates, 8 seed templates (墨韵–山水), CardLayout enums, CardProvider registered in app.dart. |
+| v1.2.0-dev | 2ad6915 | Phase 3 Day 9-10 tests: card_migration (7 tests), card_provider (11 tests), UAT automation catalog. |
+| v1.2.0-dev | ef3ac92 | Phase 3 Day 11-12: CardRenderService — 4 layouts, 8 templates, 6 decorative motifs, auto-font sizing, photo integration, re-render-on-restore. |
+| v1.2.0-dev | 97fd8c7 | Phase 3 Day 13-14: CardTemplatePicker, CardBuilderSheet UI — template picker, content editor, AI Rewrite, toggle overlays, Save Keepsake. |
+| v1.2.0-dev | 8d38cc2 | Phase 3 Day 13-14 tests: CardBuilderSheet widget tests (8 cases — open, edit, save flow, locales, toggles). |
+| v1.2.0-dev | c09c08c | Phase 3 Day 15-16: CardPreviewScreen (pinch-zoom, share, edit, re-render placeholder), keepsake badge on EntryDetailScreen, 3 entry points (EntryDetail, ReflectionSession, Assistant). |
+| v1.2.0-dev | 7030132 | Phase 3 integration tests: full-flow keepsake lifecycle (9 cases — create, edit, re-render, multi-card, delete, template lookup, provider reload). |
+| v1.2.0-dev | 487a6db | Phase 3 UAT master document: 30 test cases (22 Maestro-automatable, 8 manual). |
