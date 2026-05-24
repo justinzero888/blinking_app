@@ -41,16 +41,33 @@ Issue / Feature
 
 ## Phase 0: Scoping & Design (before any code)
 
-### 0.1 Separate Use Cases
+### 0.1 Requirement Analysis & Competitive Research
 
-Before opening the editor, write down the user's goal as a single sentence. If you find two goals, split them into separate use cases. Keepsake (preserve memory) and XHS Export (social sharing) were conflated — separating them shrank scope from 17 days to 11 and eliminated conflicting requirements.
+Before any design work, answer three questions:
+
+**1. Is the requirement aligned with the product intent?**
+The feature must serve the app's core promise. Blinking is a personal memory/habit-tracking app — "local-first, private, no accounts." Any feature that introduces social complexity, server-side data storage, or public-facing UX must be explicitly justified against this promise.
+
+**2. Is there any ambiguity in the requirement?**
+Rewrite the requirement in your own words and check for gaps: Who is the user? What exactly are they trying to accomplish? What does "done" look like? If you can't answer all three, the requirement is ambiguous — push back for clarification before proceeding.
+
+**3. What does the competitive landscape look like?**
+Research 3–5 comparable apps. For each, answer: How do they solve this problem? What's their UX flow? Where do they fall short? This reveals table-stakes features vs. differentiators and often surfaces better flows.
+
+Phase 3 example: Competitive analysis of 5 apps (RedNotes, Day One, Stoic, Canva, Notion) found that no competitor combines AI-generated reflection + mood data + tags on shareable visual cards — a unique differentiator. This confirmed the feature's value and shaped the 8-template, photo+text design.
+
+**Output of 0.1:** A 1-page brief covering product alignment, clarified requirement (no ambiguity), and competitive positioning with recommended approach.
+
+### 0.2 Separate Use Cases
+
+Write down each user goal as a single sentence. If you find two goals, split them into separate use cases. Keepsake (preserve memory) and XHS Export (social sharing) were conflated — separating them shrank scope from 17 days to 11 and eliminated conflicting requirements.
 
 ```
 ❌ "Build shareable image cards"
 ✅ "Build keepsake cards (photo+text, single page, in-app)" + "Build XHS export (multi-page, social, camera roll)" — ship #1 first
 ```
 
-### 0.2 Lock Decisions Before Coding
+### 0.3 Lock Decisions Before Coding
 
 List every ambiguous choice as a numbered decision (D1, D2, ...). Get explicit answers from stakeholders before writing code. Phase 3 had 14 decisions (D1–D14). None were changed during implementation because each was locked upfront.
 
@@ -62,11 +79,11 @@ List every ambiguous choice as a numbered decision (D1, D2, ...). Get explicit a
 
 **Rule:** If you think "I'll figure this out during implementation" — stop and decide now. The implementer should not be the decision-maker.
 
-### 0.3 Identify Deferrable Scope
+### 0.4 Identify Deferrable Scope
 
 List every sub-feature that could be cut without breaking the core user goal. Rank by effort, risk, and user impact. For Phase 3:
 
-| Rank | Cut | Effort Saved | Why Safe to Defer |
+| Rank | Cut | Effort | Why Safe to Defer |
 |:----:|-----|:---:|------|
 | 1 | Card History screen | 3h | Camera roll already serves as history |
 | 2 | Multi-entry merge | 1.5h | Serves no core use case |
@@ -74,15 +91,15 @@ List every sub-feature that could be cut without breaking the core user goal. Ra
 
 **Rule:** The core non-negotiable must work end-to-end. Everything else is deferrable.
 
-### 0.4 Design Backup/Restore Impact
+### 0.5 Design Backup/Restore Impact
 
 For any feature that stores user data, answer: what goes in the backup ZIP? Phase 3's answer: metadata only (~2KB per card), never rendered PNGs (~2MB each). Use "store the recipe, not the cake" — back up inputs, regenerate outputs on restore.
 
-### 0.5 Check Dependency APIs Against Design Assumptions
+### 0.6 Check Dependency APIs Against Design Assumptions
 
 `flutter_local_notifications` v21 removed `onDidReceiveLocalNotification` — a callback our design assumed existed based on pub.dev docs. **After `flutter pub add`, `grep` the installed package's source (not pub.dev) for the API you plan to use.** Run `flutter analyze` immediately.
 
-### 0.6 Write Test Cases Before Code
+### 0.7 Write Test Cases Before Code
 
 Write both automated and UAT cases in the design doc. Phase 3 specified 27 UAT + 44 unit/widget tests before implementation. **Design docs listing tests are not the tests — write the test files or coverage is zero.**
 
