@@ -79,6 +79,7 @@ class _SettingsScreenState extends State<SettingsScreen>
   Map<String, dynamic>? _customStyle;
   List<Map<String, dynamic>> _customStyles = [];
   bool _hasCustomStyle = false;
+  bool _voiceLoaded = false;
   SharedPreferences? _prefs;
 
   int _debugTapCount = 0;
@@ -984,11 +985,18 @@ class _SettingsScreenState extends State<SettingsScreen>
 
   Future<void> _loadVoiceSetting() async {
     _prefs = await SharedPreferences.getInstance();
-    if (mounted) setState(() {});
+    if (mounted) {
+      setState(() => _voiceLoaded = true);
+    }
   }
 
   Widget _buildVoiceToggle(bool isZh) {
-    final voiceEnabled = _prefs?.getBool('voice_notifications_enabled') ?? false;
+    // Read from SharedPreferences on every build via cached instance.
+    // This is synchronous — SharedPreferences caches values in memory
+    // after first load, so getBool returns the latest written value.
+    final voiceEnabled = _voiceLoaded
+        ? (_prefs?.getBool('voice_notifications_enabled') ?? false)
+        : false;
     return Column(
       children: [
         MergeSemantics(child: Semantics(
@@ -1012,15 +1020,18 @@ class _SettingsScreenState extends State<SettingsScreen>
         if (voiceEnabled)
           Padding(
             padding: const EdgeInsets.only(left: 72, right: 16),
-            child: OutlinedButton.icon(
-              icon: const Icon(Icons.play_arrow, size: 18),
-              label: Text(isZh ? '测试语音' : 'Test Voice'),
-              onPressed: () async {
-                await VoiceNotificationService.speak(
-                  isZh ? '你好，这是语音提醒测试' : 'Hello, this is a voice reminder test',
-                  language: isZh ? 'zh-CN' : 'en-US',
-                );
-              },
+            child: Semantics(
+              identifier: 'btn_test_voice',
+              child: OutlinedButton.icon(
+                icon: const Icon(Icons.play_arrow, size: 18),
+                label: Text(isZh ? '测试语音' : 'Test Voice'),
+                onPressed: () async {
+                  await VoiceNotificationService.speak(
+                    isZh ? '你好，这是语音提醒测试' : 'Hello, this is a voice reminder test',
+                    language: isZh ? 'zh-CN' : 'en-US',
+                  );
+                },
+              ),
             ),
           ),
       ],
