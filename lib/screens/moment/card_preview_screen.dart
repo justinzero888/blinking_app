@@ -3,10 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../models/note_card.dart';
-import '../../models/card_template.dart';
-import '../../providers/card_provider.dart';
 import '../../providers/locale_provider.dart';
-import '../../widgets/card_builder_sheet.dart';
 
 /// Full-screen preview of a rendered Keepsake card PNG.
 /// Share and edit actions available.
@@ -26,15 +23,21 @@ class CardPreviewScreen extends StatelessWidget {
         foregroundColor: Colors.white,
         title: Text(isZh ? '纪念预览' : 'Keepsake Preview'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.edit_outlined),
-            tooltip: isZh ? '编辑' : 'Edit',
-            onPressed: () => _handleEdit(context),
+          Semantics(
+            identifier: 'btn_edit_card',
+            child: IconButton(
+              icon: const Icon(Icons.edit_outlined),
+              tooltip: isZh ? '编辑' : 'Edit',
+              onPressed: () => _handleEdit(context),
+            ),
           ),
-          IconButton(
-            icon: const Icon(Icons.share),
-            tooltip: isZh ? '分享' : 'Share',
-            onPressed: () => _handleShare(context),
+          Semantics(
+            identifier: 'btn_share_card',
+            child: IconButton(
+              icon: const Icon(Icons.share),
+              tooltip: isZh ? '分享' : 'Share',
+              onPressed: () => _handleShare(context),
+            ),
           ),
         ],
       ),
@@ -97,18 +100,6 @@ class CardPreviewScreen extends StatelessWidget {
   }
 
   void _handleEdit(BuildContext context) {
-    final isZh = context.watch<LocaleProvider>().locale.languageCode == 'zh';
-    final cardProvider = context.read<CardProvider>();
-    final template = cardProvider.getTemplateById(card.templateId);
-
-    Navigator.pop(context);
-    CardBuilderSheet.show(
-      context,
-      entryId: card.entryIds.isNotEmpty ? card.entryIds.first : null,
-      initialContent: card.cardContent ?? '',
-      initialEmotion: card.emotion,
-      initialTags: card.displayTags,
-      entryDate: card.createdAt,
-    );
+    Navigator.pop(context, 'edit');
   }
 }

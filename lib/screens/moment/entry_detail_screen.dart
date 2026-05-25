@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../core/services/file_service.dart';
 import '../../models/entry.dart';
+import '../../models/note_card.dart';
 import '../../providers/entry_provider.dart';
 import '../../providers/locale_provider.dart';
 import '../../providers/tag_provider.dart';
@@ -47,6 +48,14 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        leading: Semantics(
+          identifier: 'btn_back_entry',
+          button: true,
+          onTap: () => Navigator.of(context).pop(),
+          child: BackButton(
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+        ),
         title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -86,10 +95,13 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
               ),
             ),
           ),
-          IconButton(
-            icon: const Icon(Icons.photo_library_outlined),
-            tooltip: isZh ? '保存为纪念' : 'Save as Keepsake',
-            onPressed: () => _handleSaveAsKeepsake(context, entry),
+          Semantics(
+            identifier: 'btn_save_keepsake',
+            child: IconButton(
+              icon: const Icon(Icons.photo_library_outlined),
+              tooltip: isZh ? '保存为纪念' : 'Save as Keepsake',
+              onPressed: () => _handleSaveAsKeepsake(context, entry),
+            ),
           ),
           IconButton(
             icon: const Icon(Icons.public_outlined),
@@ -144,7 +156,10 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
             ],
             // Keepsake badge
             const SizedBox(height: 16),
-            _KeepsakeBadge(entryId: entry.id),
+            _KeepsakeBadge(
+              entryId: entry.id,
+              onEditKeepsake: (card) => _handleEditKeepsake(context, card),
+            ),
           ],
         ),
       ),
@@ -253,11 +268,24 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
       entryDate: entry.createdAt,
     );
   }
+
+  void _handleEditKeepsake(BuildContext context, NoteCard card) {
+    final isZh = context.read<LocaleProvider>().locale.languageCode == 'zh';
+    CardBuilderSheet.show(
+      context,
+      entryId: card.entryIds.isNotEmpty ? card.entryIds.first : null,
+      initialContent: card.cardContent ?? '',
+      initialEmotion: card.emotion,
+      initialTags: card.displayTags,
+      entryDate: card.createdAt,
+    );
+  }
 }
 
 class _KeepsakeBadge extends StatelessWidget {
   final String entryId;
-  const _KeepsakeBadge({required this.entryId});
+  final void Function(NoteCard card) onEditKeepsake;
+  const _KeepsakeBadge({required this.entryId, required this.onEditKeepsake});
 
   @override
   Widget build(BuildContext context) {
@@ -270,20 +298,26 @@ class _KeepsakeBadge extends StatelessWidget {
     final templateName = template?.displayNameFor(isZh) ?? '';
 
     return Center(
-      child: ActionChip(
-        avatar: const Icon(Icons.photo_album, size: 18),
-        label: Text(
-          isZh ? '纪念 · $templateName' : 'Keepsake · $templateName',
-          style: const TextStyle(fontSize: 13),
+      child: Semantics(
+        identifier: 'badge_keepsake',
+        child: ActionChip(
+          avatar: const Icon(Icons.photo_album, size: 18),
+          label: Text(
+            isZh ? '纪念 · $templateName' : 'Keepsake · $templateName',
+            style: const TextStyle(fontSize: 13),
+          ),
+          onPressed: () async {
+            final result = await Navigator.push<String>(
+              context,
+              MaterialPageRoute(
+                builder: (_) => CardPreviewScreen(card: card),
+              ),
+            );
+            if (result == 'edit' && context.mounted) {
+              onEditKeepsake(card);
+            }
+          },
         ),
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => CardPreviewScreen(card: card),
-            ),
-          );
-        },
       ),
     );
   }
