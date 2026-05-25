@@ -79,7 +79,7 @@ class _SettingsScreenState extends State<SettingsScreen>
   Map<String, dynamic>? _customStyle;
   List<Map<String, dynamic>> _customStyles = [];
   bool _hasCustomStyle = false;
-  bool _voiceEnabled = false;
+  SharedPreferences? _prefs;
 
   int _debugTapCount = 0;
   DateTime _lastDebugTap = DateTime.now();
@@ -983,13 +983,12 @@ class _SettingsScreenState extends State<SettingsScreen>
   }
 
   Future<void> _loadVoiceSetting() async {
-    final prefs = await SharedPreferences.getInstance();
-    if (mounted) {
-      setState(() => _voiceEnabled = prefs.getBool('voice_notifications_enabled') ?? false);
-    }
+    _prefs = await SharedPreferences.getInstance();
+    if (mounted) setState(() {});
   }
 
   Widget _buildVoiceToggle(bool isZh) {
+    final voiceEnabled = _prefs?.getBool('voice_notifications_enabled') ?? false;
     return Column(
       children: [
         MergeSemantics(child: Semantics(
@@ -998,11 +997,10 @@ class _SettingsScreenState extends State<SettingsScreen>
             secondary: const Icon(Icons.volume_up_outlined),
             title: Text(isZh ? '语音提醒' : 'Voice Reminders'),
             subtitle: Text(isZh ? '提醒时如果应用打开，会朗读习惯名称' : 'Speak routine names at reminder time when app is open'),
-            value: _voiceEnabled,
+            value: voiceEnabled,
             onChanged: (value) async {
-              final prefs = await SharedPreferences.getInstance();
-              await prefs.setBool('voice_notifications_enabled', value);
-              setState(() => _voiceEnabled = value);
+              await _prefs?.setBool('voice_notifications_enabled', value);
+              setState(() {});
               if (value) {
                 await VoiceNotificationService.init();
               } else {
@@ -1011,21 +1009,18 @@ class _SettingsScreenState extends State<SettingsScreen>
             },
           ),
         )),
-        if (_voiceEnabled)
+        if (voiceEnabled)
           Padding(
             padding: const EdgeInsets.only(left: 72, right: 16),
-            child: Semantics(
-              identifier: 'btn_test_voice',
-              child: OutlinedButton.icon(
-                icon: const Icon(Icons.play_arrow, size: 18),
-                label: Text(isZh ? '测试语音' : 'Test Voice'),
-                onPressed: () async {
-                  await VoiceNotificationService.speak(
-                    isZh ? '你好，这是语音提醒测试' : 'Hello, this is a voice reminder test',
-                    language: isZh ? 'zh-CN' : 'en-US',
-                  );
-                },
-              ),
+            child: OutlinedButton.icon(
+              icon: const Icon(Icons.play_arrow, size: 18),
+              label: Text(isZh ? '测试语音' : 'Test Voice'),
+              onPressed: () async {
+                await VoiceNotificationService.speak(
+                  isZh ? '你好，这是语音提醒测试' : 'Hello, this is a voice reminder test',
+                  language: isZh ? 'zh-CN' : 'en-US',
+                );
+              },
             ),
           ),
       ],
