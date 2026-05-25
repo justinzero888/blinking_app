@@ -5,8 +5,8 @@ import '../models/card_template.dart';
 import '../models/note_card.dart';
 import '../providers/card_provider.dart';
 import '../providers/locale_provider.dart';
-import '../providers/llm_config_notifier.dart';
 import '../core/services/card_render_service.dart';
+import '../core/services/llm_service.dart';
 import 'card_template_picker.dart';
 
 /// Bottom sheet for building a Keepsake card.
@@ -332,13 +332,32 @@ class _CardBuilderSheetState extends State<CardBuilderSheet> {
   }
 
   Future<void> _handleAiRewrite() async {
+    final content = _contentController.text.trim();
+    if (content.isEmpty) return;
+
     setState(() => _isRewriting = true);
     try {
       final isZh = context.read<LocaleProvider>().locale.languageCode == 'zh';
-      final llmService = context.read<LlmConfigNotifier>();
-      // TODO: Wire real LlmService call when available
-      // For now, append a note that AI Rewrite will be available soon
-      await Future.delayed(const Duration(seconds: 1));
+      final llm = LlmService();
+      final rewritten = await llm.complete(
+        isZh
+            ? '请润色以下文字，保持原意，使表达更优美流畅（不超过150字）：\n\n$content'
+            : 'Please polish the following text. Keep the original meaning but make it more elegant and smooth (max 150 words):\n\n$content',
+        maxTokens: 300,
+        temperature: 0.7,
+      );
+      if (mounted) {
+        _contentController.text = rewritten.trim();
+        _contentController.selection = TextSelection.collapsed(offset: rewritten.trim().length);
+        setState(() {});
+      }
+    } catch (e) {
+      if (mounted) {
+        final isZh = context.read<LocaleProvider>().locale.languageCode == 'zh';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(isZh ? '润色失败: $e' : 'Rewrite failed: $e')),
+        );
+      }
     } finally {
       if (mounted) setState(() => _isRewriting = false);
     }

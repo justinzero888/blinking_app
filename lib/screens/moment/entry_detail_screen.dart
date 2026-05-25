@@ -332,15 +332,36 @@ class _MediaGrid extends StatefulWidget {
 }
 
 class _MediaGridState extends State<_MediaGrid> {
-  late final List<Future<String>> _pathFutures;
+  late List<Future<String>> _pathFutures;
   final _fileService = FileService();
 
   @override
   void initState() {
     super.initState();
+    _initFutures();
+  }
+
+  @override
+  void didUpdateWidget(_MediaGrid oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.mediaUrls.length != oldWidget.mediaUrls.length ||
+        !_listEquals(widget.mediaUrls, oldWidget.mediaUrls)) {
+      _initFutures();
+    }
+  }
+
+  void _initFutures() {
     _pathFutures = widget.mediaUrls.map((url) {
       return url.startsWith('/') ? Future.value(url) : _fileService.getFullPath(url);
     }).toList();
+  }
+
+  bool _listEquals(List<String> a, List<String> b) {
+    if (a.length != b.length) return false;
+    for (int i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
   }
 
   @override
