@@ -999,22 +999,35 @@ class _SettingsScreenState extends State<SettingsScreen>
       builder: (context, voiceEnabled, _) {
         return Column(
           children: [
-            Semantics(
-              identifier: 'toggle_voice_reminders',
-              child: SwitchListTile(
-                secondary: const Icon(Icons.volume_up_outlined),
-                title: Text(isZh ? '语音提醒' : 'Voice Reminders'),
-                subtitle: Text(isZh ? '提醒时如果应用打开，会朗读习惯名称' : 'Speak routine names at reminder time when app is open'),
-                value: voiceEnabled,
-                onChanged: (value) async {
-                  _voiceNotifier.value = value;
-                  await _prefs?.setBool('voice_notifications_enabled', value);
-                  if (value) {
-                    await VoiceNotificationService.init();
-                  } else {
-                    await VoiceNotificationService.stop();
-                  }
-                },
+            ListTile(
+              leading: const Icon(Icons.volume_up_outlined),
+              title: Text(isZh ? '语音提醒' : 'Voice Reminders'),
+              subtitle: Text(isZh ? '提醒时如果应用打开，会朗读习惯名称'
+                  : 'Speak routine names at reminder time when app is open'),
+              onTap: () {
+                final newValue = !voiceEnabled;
+                _voiceNotifier.value = newValue;
+                _prefs?.setBool('voice_notifications_enabled', newValue);
+                if (newValue) {
+                  VoiceNotificationService.init();
+                } else {
+                  VoiceNotificationService.stop();
+                }
+              },
+              trailing: Semantics(
+                identifier: 'toggle_voice_reminders',
+                child: Switch(
+                  value: voiceEnabled,
+                  onChanged: (value) async {
+                    _voiceNotifier.value = value;
+                    await _prefs?.setBool('voice_notifications_enabled', value);
+                    if (value) {
+                      await VoiceNotificationService.init();
+                    } else {
+                      await VoiceNotificationService.stop();
+                    }
+                  },
+                ),
               ),
             ),
             if (voiceEnabled)

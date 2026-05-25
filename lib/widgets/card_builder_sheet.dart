@@ -247,40 +247,52 @@ class _CardBuilderSheetState extends State<CardBuilderSheet> {
                               isZh ? '显示元素' : 'Show Elements',
                               style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
                             ),
-                            Semantics(
-                              identifier: 'toggle_show_mood',
-                              child: SwitchListTile(
-                                dense: true,
-                                title: Text(isZh ? '心情' : 'Mood'),
-                                value: _showMood,
-                                onChanged: (v) => setState(() => _showMood = v),
+                            ListTile(
+                              dense: true,
+                              title: Text(isZh ? '心情' : 'Mood'),
+                              onTap: () => setState(() => _showMood = !_showMood),
+                              trailing: Semantics(
+                                identifier: 'toggle_show_mood',
+                                child: Switch(
+                                  value: _showMood,
+                                  onChanged: (v) => setState(() => _showMood = v),
+                                ),
                               ),
                             ),
-                            Semantics(
-                              identifier: 'toggle_show_date',
-                              child: SwitchListTile(
-                                dense: true,
-                                title: Text(isZh ? '日期' : 'Date'),
-                                value: _showDate,
-                                onChanged: (v) => setState(() => _showDate = v),
+                            ListTile(
+                              dense: true,
+                              title: Text(isZh ? '日期' : 'Date'),
+                              onTap: () => setState(() => _showDate = !_showDate),
+                              trailing: Semantics(
+                                identifier: 'toggle_show_date',
+                                child: Switch(
+                                  value: _showDate,
+                                  onChanged: (v) => setState(() => _showDate = v),
+                                ),
                               ),
                             ),
-                            Semantics(
-                              identifier: 'toggle_show_tags',
-                              child: SwitchListTile(
-                                dense: true,
-                                title: Text(isZh ? '标签' : 'Tags'),
-                                value: _showTags,
-                                onChanged: (v) => setState(() => _showTags = v),
+                            ListTile(
+                              dense: true,
+                              title: Text(isZh ? '标签' : 'Tags'),
+                              onTap: () => setState(() => _showTags = !_showTags),
+                              trailing: Semantics(
+                                identifier: 'toggle_show_tags',
+                                child: Switch(
+                                  value: _showTags,
+                                  onChanged: (v) => setState(() => _showTags = v),
+                                ),
                               ),
                             ),
-                            Semantics(
-                              identifier: 'toggle_show_footer',
-                              child: SwitchListTile(
-                                dense: true,
-                                title: Text(isZh ? '水印' : 'Footer'),
-                                value: _showFooter,
-                                onChanged: (v) => setState(() => _showFooter = v),
+                            ListTile(
+                              dense: true,
+                              title: Text(isZh ? '水印' : 'Footer'),
+                              onTap: () => setState(() => _showFooter = !_showFooter),
+                              trailing: Semantics(
+                                identifier: 'toggle_show_footer',
+                                child: Switch(
+                                  value: _showFooter,
+                                  onChanged: (v) => setState(() => _showFooter = v),
+                                ),
                               ),
                             ),
                             const SizedBox(height: 8),

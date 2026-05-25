@@ -213,11 +213,11 @@ void main() {
       await tester.drag(listFinder, const Offset(0, -500));
       await tester.pump();
 
-      final switches = find.byType(SwitchListTile);
+      final switches = find.byType(Switch);
       expect(switches, findsNWidgets(4));
       await tester.tap(switches.first);
       await tester.pump();
-      expect(tester.widget<SwitchListTile>(switches.first).value, isFalse);
+      expect(tester.widget<Switch>(switches.first).value, isFalse);
     });
 
     testWidgets('empty content shows snackbar on save', (tester) async {
