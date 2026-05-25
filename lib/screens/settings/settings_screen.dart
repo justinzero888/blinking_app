@@ -999,7 +999,7 @@ class _SettingsScreenState extends State<SettingsScreen>
       builder: (context, voiceEnabled, _) {
         return Column(
           children: [
-            MergeSemantics(child: Semantics(
+            Semantics(
               identifier: 'toggle_voice_reminders',
               child: SwitchListTile(
                 secondary: const Icon(Icons.volume_up_outlined),
@@ -1016,7 +1016,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                   }
                 },
               ),
-            )),
+            ),
             if (voiceEnabled)
               Padding(
                 padding: const EdgeInsets.only(left: 72, right: 16),

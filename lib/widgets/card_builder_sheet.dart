@@ -247,7 +247,7 @@ class _CardBuilderSheetState extends State<CardBuilderSheet> {
                               isZh ? '显示元素' : 'Show Elements',
                               style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
                             ),
-                            MergeSemantics(child: Semantics(
+                            Semantics(
                               identifier: 'toggle_show_mood',
                               child: SwitchListTile(
                                 dense: true,
@@ -255,8 +255,8 @@ class _CardBuilderSheetState extends State<CardBuilderSheet> {
                                 value: _showMood,
                                 onChanged: (v) => setState(() => _showMood = v),
                               ),
-                            )),
-                            MergeSemantics(child: Semantics(
+                            ),
+                            Semantics(
                               identifier: 'toggle_show_date',
                               child: SwitchListTile(
                                 dense: true,
@@ -264,8 +264,8 @@ class _CardBuilderSheetState extends State<CardBuilderSheet> {
                                 value: _showDate,
                                 onChanged: (v) => setState(() => _showDate = v),
                               ),
-                            )),
-                            MergeSemantics(child: Semantics(
+                            ),
+                            Semantics(
                               identifier: 'toggle_show_tags',
                               child: SwitchListTile(
                                 dense: true,
@@ -273,8 +273,8 @@ class _CardBuilderSheetState extends State<CardBuilderSheet> {
                                 value: _showTags,
                                 onChanged: (v) => setState(() => _showTags = v),
                               ),
-                            )),
-                            MergeSemantics(child: Semantics(
+                            ),
+                            Semantics(
                               identifier: 'toggle_show_footer',
                               child: SwitchListTile(
                                 dense: true,
@@ -282,7 +282,7 @@ class _CardBuilderSheetState extends State<CardBuilderSheet> {
                                 value: _showFooter,
                                 onChanged: (v) => setState(() => _showFooter = v),
                               ),
-                            )),
+                            ),
                             const SizedBox(height: 8),
                           ],
                         ),
