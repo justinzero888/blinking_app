@@ -999,35 +999,51 @@ class _SettingsScreenState extends State<SettingsScreen>
       builder: (context, voiceEnabled, _) {
         return Column(
           children: [
-            ListTile(
-              leading: const Icon(Icons.volume_up_outlined),
-              title: Text(isZh ? '语音提醒' : 'Voice Reminders'),
-              subtitle: Text(isZh ? '提醒时如果应用打开，会朗读习惯名称'
-                  : 'Speak routine names at reminder time when app is open'),
-              onTap: () {
-                final newValue = !voiceEnabled;
-                _voiceNotifier.value = newValue;
-                _prefs?.setBool('voice_notifications_enabled', newValue);
-                if (newValue) {
-                  VoiceNotificationService.init();
-                } else {
-                  VoiceNotificationService.stop();
-                }
-              },
-              trailing: Semantics(
-                identifier: 'toggle_voice_reminders',
-                child: Switch(
-                  value: voiceEnabled,
-                  onChanged: (value) async {
-                    _voiceNotifier.value = value;
-                    await _prefs?.setBool('voice_notifications_enabled', value);
-                    if (value) {
-                      await VoiceNotificationService.init();
-                    } else {
-                      await VoiceNotificationService.stop();
-                    }
-                  },
-                ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              child: Row(
+                children: [
+                  const Icon(Icons.volume_up_outlined),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(isZh ? '语音提醒' : 'Voice Reminders'),
+                        Text(
+                          isZh ? '提醒时如果应用打开，会朗读习惯名称'
+                              : 'Speak routine names at reminder time when app is open',
+                          style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Semantics(
+                    identifier: 'toggle_voice_reminders',
+                    onTap: () {
+                      final newValue = !voiceEnabled;
+                      _voiceNotifier.value = newValue;
+                      _prefs?.setBool('voice_notifications_enabled', newValue);
+                      if (newValue) {
+                        VoiceNotificationService.init();
+                      } else {
+                        VoiceNotificationService.stop();
+                      }
+                    },
+                    child: Switch(
+                      value: voiceEnabled,
+                      onChanged: (value) async {
+                        _voiceNotifier.value = value;
+                        await _prefs?.setBool('voice_notifications_enabled', value);
+                        if (value) {
+                          await VoiceNotificationService.init();
+                        } else {
+                          await VoiceNotificationService.stop();
+                        }
+                      },
+                    ),
+                  ),
+                ],
               ),
             ),
             if (voiceEnabled)

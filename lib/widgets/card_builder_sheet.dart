@@ -247,53 +247,57 @@ class _CardBuilderSheetState extends State<CardBuilderSheet> {
                               isZh ? '显示元素' : 'Show Elements',
                               style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
                             ),
-                            ListTile(
-                              dense: true,
-                              title: Text(isZh ? '心情' : 'Mood'),
-                              onTap: () => setState(() => _showMood = !_showMood),
-                              trailing: Semantics(
-                                identifier: 'toggle_show_mood',
-                                child: Switch(
-                                  value: _showMood,
-                                  onChanged: (v) => setState(() => _showMood = v),
+                            Row(
+                              children: [
+                                Expanded(child: Text(isZh ? '心情' : 'Mood')),
+                                Semantics(
+                                  identifier: 'toggle_show_mood',
+                                  onTap: () => setState(() => _showMood = !_showMood),
+                                  child: Switch(
+                                    value: _showMood,
+                                    onChanged: (v) => setState(() => _showMood = v),
+                                  ),
                                 ),
-                              ),
+                              ],
                             ),
-                            ListTile(
-                              dense: true,
-                              title: Text(isZh ? '日期' : 'Date'),
-                              onTap: () => setState(() => _showDate = !_showDate),
-                              trailing: Semantics(
-                                identifier: 'toggle_show_date',
-                                child: Switch(
-                                  value: _showDate,
-                                  onChanged: (v) => setState(() => _showDate = v),
+                            Row(
+                              children: [
+                                Expanded(child: Text(isZh ? '日期' : 'Date')),
+                                Semantics(
+                                  identifier: 'toggle_show_date',
+                                  onTap: () => setState(() => _showDate = !_showDate),
+                                  child: Switch(
+                                    value: _showDate,
+                                    onChanged: (v) => setState(() => _showDate = v),
+                                  ),
                                 ),
-                              ),
+                              ],
                             ),
-                            ListTile(
-                              dense: true,
-                              title: Text(isZh ? '标签' : 'Tags'),
-                              onTap: () => setState(() => _showTags = !_showTags),
-                              trailing: Semantics(
-                                identifier: 'toggle_show_tags',
-                                child: Switch(
-                                  value: _showTags,
-                                  onChanged: (v) => setState(() => _showTags = v),
+                            Row(
+                              children: [
+                                Expanded(child: Text(isZh ? '标签' : 'Tags')),
+                                Semantics(
+                                  identifier: 'toggle_show_tags',
+                                  onTap: () => setState(() => _showTags = !_showTags),
+                                  child: Switch(
+                                    value: _showTags,
+                                    onChanged: (v) => setState(() => _showTags = v),
+                                  ),
                                 ),
-                              ),
+                              ],
                             ),
-                            ListTile(
-                              dense: true,
-                              title: Text(isZh ? '水印' : 'Footer'),
-                              onTap: () => setState(() => _showFooter = !_showFooter),
-                              trailing: Semantics(
-                                identifier: 'toggle_show_footer',
-                                child: Switch(
-                                  value: _showFooter,
-                                  onChanged: (v) => setState(() => _showFooter = v),
+                            Row(
+                              children: [
+                                Expanded(child: Text(isZh ? '水印' : 'Footer')),
+                                Semantics(
+                                  identifier: 'toggle_show_footer',
+                                  onTap: () => setState(() => _showFooter = !_showFooter),
+                                  child: Switch(
+                                    value: _showFooter,
+                                    onChanged: (v) => setState(() => _showFooter = v),
+                                  ),
                                 ),
-                              ),
+                              ],
                             ),
                             const SizedBox(height: 8),
                           ],
