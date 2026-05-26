@@ -1,0 +1,25 @@
+{
+  "commit": "REPLACE_WITH_SHORT_HASH",
+  "timestamp": "REPLACE_WITH_ISO_TIMESTAMP",
+  "summary": "12/15 passed, 2 new, 1 pre-existing",
+  "total_flows": 15,
+  "passed_flows": 12,
+  "failed_flows": 3,
+  "platforms": {
+    "iphone": { "passed": 15, "failed": 0 },
+    "ipad":   { "passed": 13, "failed": 2 },
+    "android":{ "passed": 15, "failed": 0 }
+  },
+  "failures": [
+    {
+      "flow": "REPLACE_WITH_FLOW_NAME",
+      "platform": "ipad",
+      "step": "REPLACE_WITH_STEP",
+      "error": "REPLACE_WITH_ERROR",
+      "severity": "P1-human",
+      "defect_id": "DEF-REPLACE",
+      "title": "REPLACE_WITH_DEFECT_TITLE",
+      "hierarchy_dump": ".builds/dumps/REPLACE.txt"
+    }
+  ]
+}

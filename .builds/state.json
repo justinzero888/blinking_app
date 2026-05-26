@@ -1,0 +1,9 @@
+{
+  "phase": "testing",
+  "last_build": null,
+  "last_results": null,
+  "open_defects": [],
+  "verified_defects": [],
+  "manual_uat": { "total": 8, "completed": 0 },
+  "maestro_flows": { "total": 22, "built": 0, "run": 0 }
+}

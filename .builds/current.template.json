@@ -1,0 +1,14 @@
+{
+  "commit": "REPLACE_WITH_SHORT_HASH",
+  "timestamp": "REPLACE_WITH_ISO_TIMESTAMP",
+  "fixes": ["DEF-..."],
+  "files_changed": ["path/to/file.dart"],
+  "sim_status": {
+    "iphone": "installed",
+    "ipad": "installed",
+    "android": "installed"
+  },
+  "analyze": "pass",
+  "tests": "558 pass, 2 flaky",
+  "flaky": 2
+}
