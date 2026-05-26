@@ -12,7 +12,7 @@ Personal memory/habit-tracking Flutter app (记忆闪烁). Path: `/Users/justinz
 - **Android:** compileSdk 36 / targetSdk 36 (via Flutter SDK)
 - **DB version:** 15 (`kSchemaVersion = 15` in `DatabaseService`)
 - **Lint:** `flutter analyze --no-pub` (target: 0 errors)
-- **Tests:** `flutter test` (556 tests, 554 passing, 2 pre-existing flaky)
+- **Tests:** `flutter test` (558 tests, 556 passing, 2 pre-existing flaky)
 - **Server config:** `https://blinkingchorus.com/api/config` — AI keys + model selection, updatable without app deploy
 - **AI Model:** DeepSeek `deepseek-chat-v3-0324` primary, Gemini `gemini-2.0-flash-001` failover (both trial + pro, configurable via KV secrets at `/api/config`)
 - **IAP Price:** $19.99 (non-consumable `blinking_pro`, entitlement `pro_access`)
@@ -280,6 +280,14 @@ Use `try { await launchUrl(uri); } catch (_) { ... }` pattern. Do NOT use `canLa
 | `addCustomerInfoUpdateListener` in RevenueCat | ✅ Done |
 | Platform version audit (Flutter 3.41.9, Xcode 26.4.1, SDK 36) | ✅ Done |
 | Voice notification for routines (flutter_tts, global + per-routine toggle, DB v14) | ✅ Done |
+| DEF-K-001: Content TextField accessibility identifier | ✅ Done |
+| DEF-K-002: Save button Semantics blocking tap | ✅ Done |
+| DEF-K-003: Edit button invalid context after Navigator.pop | ✅ Done |
+| DEF-V-001: Voice toggle accessibility + persistence (7 iterations) | ✅ Done (v7 — `Semantics(onTap:)`) |
+| Multi-photo crash: _MediaGridState stale _pathFutures | ✅ Done |
+| AI Rewrite button: wired LlmService.complete() | ✅ Done |
+| Double-nested MergeSemantics removed from all SwitchListTile wrappers | ✅ Done |
+| Playbook: 7-phase Feature Development Playbook (50+ lessons, 30 pitfalls) | ✅ Done |
 
 ### Pending
 | Priority | Item | Effort | Status |
@@ -338,3 +346,19 @@ Use `try { await launchUrl(uri); } catch (_) { ... }` pattern. Do NOT use `canLa
 | v1.2.0-dev | c09c08c | Phase 3 Day 15-16: CardPreviewScreen (pinch-zoom, share, edit, re-render placeholder), keepsake badge on EntryDetailScreen, 3 entry points (EntryDetail, ReflectionSession, Assistant). |
 | v1.2.0-dev | 7030132 | Phase 3 integration tests: full-flow keepsake lifecycle (9 cases — create, edit, re-render, multi-card, delete, template lookup, provider reload). |
 | v1.2.0-dev | 487a6db | Phase 3 UAT master document: 30 test cases (22 Maestro-automatable, 8 manual). |
+| v1.2.0-dev | 5cb8d7b | Session summary + lessons learned (10 topics) + CLAUDE.md update (version 1.2.0-dev, DB v15, 556→558 tests). |
+| v1.2.0-dev | 4275bf2 | Feature Development Playbook — 5 phases, quick-reference pitfalls. |
+| v1.2.0-dev | 52b8c2e | Playbook expanded: 7 phases, 50+ lessons from all sessions, 30 pitfalls, 3 categories. |
+| v1.2.0-dev | da93875 | Playbook Phase 0.1: Requirement Analysis & Competitive Research. |
+| v1.2.0-dev | 88843ca | DEF: Save button accessibility + gesture arena — moved outside DraggableScrollableSheet. |
+| v1.2.0-dev | bcb5dc9 | DEF: Save crash — lifecycle assertion in _renderOffscreen (OverlayEntry approach). |
+| v1.2.0-dev | 746ea91 | DEF-K-001/002/003 + DEF-V-001 v1 — content TF identifier, save button tap, voice state. |
+| v1.2.0-dev | 97ba984 | DEF-K-003: Edit button uses invalid context after Navigator.pop (result-driven fix). |
+| v1.2.0-dev | 4b4d1e5 | DEF: Multi-photo crash (_MediaGridState stale _pathFutures), AI Rewrite wired (LlmService). |
+| v1.2.0-dev | 494e140 | DEF-V-001 v2: voice toggle reads cached SharedPreferences on every build. |
+| v1.2.0-dev | 7675ef7 | DEF-V-001 v3: restore Semantics identifier + _voiceLoaded guard. |
+| v1.2.0-dev | 506c33d | DEF-V-001 v4: ValueNotifier as single source of truth for voice toggle. |
+| v1.2.0-dev | d71e889 | DEF-V-001 v5: remove double-nested MergeSemantics blocking toggle tap. |
+| v1.2.0-dev | d86f70c | DEF-V-001 v6: SwitchListTile → ListTile+Switch with identifier on Switch. |
+| v1.2.0-dev | 9b871ef | DEF-V-001 v7: add onTap to Semantics wrapper on Switch (fixes XCUITest accessibility). |
+| v1.2.0-dev | 29d60ad | Semantics regression guard test — onTap required on Switch identifier wrapper. |
