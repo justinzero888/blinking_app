@@ -114,3 +114,26 @@
 **Solution:** Switch from `BuildOwner.flushPaint` to `PipelineOwner.flushPaint`. Ensure the render object is attached to the pipeline owner before layout. Call `renderObject.layout()` → `pipelineOwner.flushLayout()` → `pipelineOwner.flushPaint()` → `renderObject.toImage()`.
 
 **Takeaway:** The sequence for off-screen capture is strictly: mount → attach pipeline → layout → flushLayout → flushPaint → toImage. Skipping any step produces `debugNeedsPaint` errors or missing content.
+
+---
+
+## 11. Automation Failures ≠ Customer Bugs — Ask Impact First
+
+**What happened:** DEF-V-001 (voice toggle accessibility) took 7 versions and consumed the majority of a day to fix. The defect manifested only in Maestro/XCTest automation — a `Semantics` wrapper was missing `onTap`, causing synthesized accessibility taps to fail. A real user tapping the physical toggle with their finger would never encounter this issue. The Switch's `onChanged` handler fired correctly for human touches through all 7 versions.
+
+**Root cause:** We treated every Maestro failure report with equal urgency, without asking: "Does this affect a human user?" The automation team reported "toggle not working" — but physical taps worked fine. The fix was a 1-line addition (`Semantics(onTap:)`) that only mattered for automated testing and VoiceOver users.
+
+**Cost:** ~7 commit iterations, multiple rebuilds, per-platform verification cycles, and significant context-switching away from feature work — all for an issue that had zero impact on sighted human users.
+
+**Prevention rule:**
+
+After every Maestro/UAT failure report, ask two questions before fixing:
+
+| Question | Why |
+|----------|-----|
+| **Does this affect a real human user?** | If a finger tap works but Maestro fails, it's an automation gap, not a user-facing bug |
+| **What's the customer experience impact?** | Categorize as: blocking (app crashes), degraded (feature broken), cosmetic (visual only), or automation-only |
+
+If the answer to #1 is "no" — classify as **P2 automation-gap**, fix in a batch at end-of-day, not immediately. If the answer is "yes" — classify by impact in #2.
+
+DEF-V-001 was automation-only through all 7 versions. It should have been fixed once, correctly, at end of day — not iterated 7 times throughout the day.

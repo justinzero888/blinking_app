@@ -334,6 +334,19 @@ Categorize every UAT case before writing flows:
 
 **Rule:** If a human needs to LOOK at the screen to verify correctness, it's manual. If the test can assert text presence, widget counts, or navigation events, it's automatable.
 
+### 4.3 Ask Customer Impact Before Fixing
+
+Before fixing any Maestro/UAT report, answer two questions:
+
+| Question | Why |
+|----------|-----|
+| **Does this affect a real human user?** | If finger taps work but Maestro fails, it's an automation gap — fix in batch, not urgently |
+| **What's the customer experience impact?** | Blocking > Degraded > Cosmetic > Automation-only |
+
+DEF-V-001 consumed 7 commit iterations over a full day because every Maestro report was treated with equal urgency. The actual fix was 1 line (`Semantics(onTap:)`) — but the physical toggle worked for human users through all 7 versions.
+
+**Rule:** Automation-only failures are **P2 — fix in batch at end of day**. Never let them derail feature work. Only drop everything for human-user-facing bugs (crash, data loss, feature broken).
+
 ---
 
 ## Phase 5: Build & Deploy
