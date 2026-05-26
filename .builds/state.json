@@ -4,6 +4,6 @@
   "last_results": null,
   "open_defects": [],
   "verified_defects": [],
-  "manual_uat": { "total": 8, "completed": 0 },
+  "manual_uat": { "total": 8, "completed": 0, "failed": 0, "tester": null, "last_run": null },
   "maestro_flows": { "total": 22, "built": 0, "run": 0 }
 }

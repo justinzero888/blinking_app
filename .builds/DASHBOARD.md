@@ -1,4 +1,4 @@
-# Build Dashboard — May 26, 2026 02:48 UTC
+# Build Dashboard — May 26, 2026 02:55 UTC
 
 ## Current Build
 - **Commit**: `—`
@@ -16,6 +16,12 @@
 | Manual UAT 0/8 | ❌ |
 | **Ship Gate** | ❌ BLOCKED |
 
+## Manual UAT
+- **Progress**: 0/8 completed
+- **Failed**: 0
+- **Tester**: —
+- **Last run**: —
+
 ## Platforms
 | Platform | Status |
 |----------|--------|
@@ -31,5 +37,5 @@
 
 ## What PM Should Know
 - Phase: **testing**. Commit `—` pushed.
-- — automated tests, 0 Maestro failures, 0/8 manual UAT.
+- — automated tests, 0 Maestro failures, 0/8 manual UAT done.
 - **Not ready.** Manual UAT + visual QA not complete

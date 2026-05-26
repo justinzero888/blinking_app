@@ -49,7 +49,14 @@ def main():
     # Manual UAT
     manual = state.get("manual_uat", {})
     manual_done = manual.get("completed", 0)
+    manual_failed = manual.get("failed", 0)
     manual_total = manual.get("total", 8)
+    manual_tester = manual.get("tester", "—")
+    manual_last = manual.get("last_run", "—")
+
+    # Manual UAT defects
+    manual_defects = state.get("open_defects", [])
+    manual_issues = [d for d in manual_defects if d.get("source") == "manual_uat"]
 
     # Defects
     open_defects = state.get("open_defects", [])
@@ -113,6 +120,12 @@ def main():
 | {gates[4][0]} | {icon(gates[4][1])} |
 | **Ship Gate** | {icon(all_pass)} {'ALL CLEAR' if all_pass else 'BLOCKED'} |
 
+## Manual UAT
+- **Progress**: {manual_done}/{manual_total} completed
+- **Failed**: {manual_failed}
+- **Tester**: {manual_tester}
+- **Last run**: {manual_last}
+
 ## Platforms
 | Platform | Status |
 |----------|--------|
@@ -128,7 +141,7 @@ def main():
 
 ## What PM Should Know
 - Phase: **{phase}**. Commit `{commit}` pushed{'with fixes: ' + fixes if fixes != 'none' else ''}.
-- {total_tests} automated tests, {failed_flows} Maestro failures, {manual_done}/{manual_total} manual UAT.
+- {total_tests} automated tests, {failed_flows} Maestro failures, {manual_done}/{manual_total} manual UAT done{' (' + str(manual_failed) + ' failures)' if manual_failed else ''}.
 - {'**Ready to ship.**' if all_pass else '**Not ready.** ' + ' '.join(b.replace(chr(10060), '') for b in blockers) if blockers else '**Running Maestro + manual UAT.**'}
 """
     output = os.path.join(BUILDS_DIR, "DASHBOARD.md")

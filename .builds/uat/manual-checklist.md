@@ -77,3 +77,17 @@
 
 **Tester:** _fill name_  
 **Date:** _fill date_
+
+---
+
+## After completing UAT: publish results
+
+The dev agent monitors `state.json` for changes. After completing manual UAT:
+
+1. Edit `uat/results.json` with passed/failed counts and any defects found
+2. Run:
+   ```
+   bash scripts/publish-manual-uat.sh <passed> <failed> <your_name>
+   ```
+3. This updates `state.json` and regenerates `DASHBOARD.md`
+4. The dev agent detects the state.json change on its next poll cycle

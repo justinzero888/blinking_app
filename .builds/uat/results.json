@@ -1,0 +1,17 @@
+{
+  "commit": "REPLACE_WITH_SHORT_HASH",
+  "timestamp": "REPLACE_WITH_ISO_TIMESTAMP",
+  "tester": "REPLACE_WITH_NAME",
+  "device": "iPhone (real)",
+  "total_cases": 8,
+  "passed": 0,
+  "failed": 0,
+  "defects": [
+    {
+      "case": "MV-1",
+      "description": "REPLACE — what went wrong",
+      "severity": "P1-human",
+      "hierarchy_dump": null
+    }
+  ]
+}
