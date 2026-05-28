@@ -6,7 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../models/models.dart';
 
 class DatabaseService {
-  static const int kSchemaVersion = 15;
+  static const int kSchemaVersion = 16;
   static final DatabaseService _instance = DatabaseService._internal();
   factory DatabaseService() => _instance;
   DatabaseService._internal();
@@ -254,6 +254,25 @@ class DatabaseService {
       await db.execute("INSERT INTO templates (id, name, name_en, icon, font_family, font_color, bg_color, is_built_in, created_at, layout, accent_color, text_area_opacity, text_backdrop_color, decoration_style) VALUES "
         "('tpl_landscape', '山水', 'Landscape', '🏔️', 'default', '#2C2C2C', '#D6E0E8', 1, datetime('now'), 'hero_image', '#6B7B8D', 0.85, 'rgba(214,224,232,0.85)', 'landscape')");
     }
+    if (oldVersion < 16) {
+      await db.execute('ALTER TABLE templates ADD COLUMN background_image_path TEXT');
+      await db.execute('ALTER TABLE templates ADD COLUMN text_padding_top REAL NOT NULL DEFAULT 120');
+      await db.execute('ALTER TABLE templates ADD COLUMN text_padding_bottom REAL NOT NULL DEFAULT 140');
+      await db.execute('ALTER TABLE templates ADD COLUMN text_padding_left REAL NOT NULL DEFAULT 80');
+      await db.execute('ALTER TABLE templates ADD COLUMN text_padding_right REAL NOT NULL DEFAULT 80');
+      await db.execute('ALTER TABLE templates ADD COLUMN base_font_size REAL NOT NULL DEFAULT 72');
+      await db.execute('ALTER TABLE templates ADD COLUMN font_weight_value INTEGER NOT NULL DEFAULT 500');
+      await db.execute('ALTER TABLE templates ADD COLUMN text_align_mode TEXT NOT NULL DEFAULT \'center\'');
+
+      await db.execute("UPDATE templates SET background_image_path='assets/cards/bg_ink_rhythm.jpg', bg_color='#F2EFE9', text_padding_top=180, text_padding_bottom=180, text_padding_left=140, text_padding_right=140, base_font_size=64, font_weight_value=400, text_align_mode='center', text_backdrop_color=NULL WHERE id='tpl_ink_rhythm' AND is_built_in=1");
+      await db.execute("UPDATE templates SET background_image_path='assets/cards/bg_plain_paper.jpg', bg_color='#F2EFE9', text_padding_top=120, text_padding_left=160, text_padding_right=160, base_font_size=36, font_weight_value=400, text_align_mode='left' WHERE id='tpl_plain_paper' AND is_built_in=1");
+      await db.execute("UPDATE templates SET background_image_path='assets/cards/bg_bamboo.jpg', text_padding_top=140, text_padding_bottom=200, text_padding_left=120, text_padding_right=120, base_font_size=60, font_weight_value=500, text_align_mode='center', text_backdrop_color=NULL WHERE id='tpl_bamboo' AND is_built_in=1");
+      await db.execute("UPDATE templates SET background_image_path='assets/cards/bg_moonlight.jpg', text_padding_top=200, text_padding_left=160, text_padding_right=160, base_font_size=52, font_weight_value=400, text_align_mode='center' WHERE id='tpl_moonlight' AND is_built_in=1");
+      await db.execute("UPDATE templates SET background_image_path='assets/cards/bg_porcelain.jpg', text_padding_top=120, text_padding_left=160, text_padding_right=160, base_font_size=56, font_weight_value=400, text_align_mode='center' WHERE id='tpl_porcelain' AND is_built_in=1");
+      await db.execute("UPDATE templates SET background_image_path='assets/cards/bg_tea.jpg', text_padding_top=200, text_padding_left=120, text_padding_right=120, base_font_size=56, font_weight_value=400, text_align_mode='left', text_backdrop_color=NULL WHERE id='tpl_tea' AND is_built_in=1");
+      await db.execute("UPDATE templates SET background_image_path='assets/cards/bg_seal.jpg', text_padding_top=200, text_padding_left=120, text_padding_right=120, base_font_size=62, font_weight_value=700, text_align_mode='center' WHERE id='tpl_seal' AND is_built_in=1");
+      await db.execute("UPDATE templates SET background_image_path='assets/cards/bg_landscape.jpg', text_padding_top=200, text_padding_left=140, text_padding_right=140, base_font_size=54, font_weight_value=500, text_align_mode='center', text_backdrop_color=NULL WHERE id='tpl_landscape' AND is_built_in=1");
+    }
   }
 
   Future<void> _onCreate(Database db, int version) async {
@@ -370,7 +389,15 @@ class DatabaseService {
         show_tags INTEGER NOT NULL DEFAULT 1,
         show_footer INTEGER NOT NULL DEFAULT 1,
         corner_style TEXT NOT NULL DEFAULT 'rounded',
-        decoration_style TEXT
+        decoration_style TEXT,
+        background_image_path TEXT,
+        text_padding_top REAL NOT NULL DEFAULT 120,
+        text_padding_bottom REAL NOT NULL DEFAULT 140,
+        text_padding_left REAL NOT NULL DEFAULT 80,
+        text_padding_right REAL NOT NULL DEFAULT 80,
+        base_font_size REAL NOT NULL DEFAULT 72,
+        font_weight_value INTEGER NOT NULL DEFAULT 500,
+        text_align_mode TEXT NOT NULL DEFAULT 'center'
       )
     ''');
 

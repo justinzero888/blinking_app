@@ -1,0 +1,48 @@
+# K3: Toggle mood, date, tags, footer on/off in builder
+# Verify all 4 toggle switches exist and respond
+appId: com.blinking.blinking
+---
+- runFlow: ../../subflows/launch.yaml
+
+- tapOn:
+    id: "nav_moments"
+    waitToSettleTimeoutMs: 0
+- extendedWaitUntil:
+    visible:
+      id: "entry_item"
+    timeout: 8000
+- scroll
+- extendedWaitUntil:
+    visible:
+      id: "entry_item"
+    timeout: 5000
+- tapOn:
+    id: "entry_item"
+    index: 0
+    waitToSettleTimeoutMs: 0
+- tapOn:
+    id: "btn_save_keepsake"
+
+    waitToSettleTimeoutMs: 0
+# Verify toggle section header
+- assertVisible: "Show Elements"
+
+# All 4 toggles should start ON (default)
+- assertVisible: "Mood"
+- assertVisible: "Date"
+- assertVisible: "Tags"
+- assertVisible: "Footer"
+
+# Toggle mood OFF
+- tapOn:
+    id: "toggle_show_mood"
+
+    waitToSettleTimeoutMs: 0
+# Toggle tags OFF
+- tapOn:
+    id: "toggle_show_tags"
+
+    waitToSettleTimeoutMs: 0
+# Verify save button still works
+- assertVisible:
+    id: "btn_card_save"

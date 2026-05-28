@@ -16,33 +16,43 @@ class CardPreviewScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final isZh = context.watch<LocaleProvider>().locale.languageCode == 'zh';
 
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
+    return PopScope(
+      canPop: true,
+      child: Scaffold(
         backgroundColor: Colors.black,
-        foregroundColor: Colors.white,
-        title: Text(isZh ? '纪念预览' : 'Keepsake Preview'),
-        actions: [
-          Semantics(
-            identifier: 'btn_edit_card',
+        appBar: AppBar(
+          backgroundColor: Colors.black,
+          foregroundColor: Colors.white,
+          leading: Semantics(
+            identifier: 'btn_card_preview_back',
             child: IconButton(
-              icon: const Icon(Icons.edit_outlined),
-              tooltip: isZh ? '编辑' : 'Edit',
-              onPressed: () => _handleEdit(context),
+              icon: const Icon(Icons.arrow_back),
+              onPressed: () => Navigator.pop(context),
             ),
           ),
-          Semantics(
-            identifier: 'btn_share_card',
-            child: IconButton(
-              icon: const Icon(Icons.share),
-              tooltip: isZh ? '分享' : 'Share',
-              onPressed: () => _handleShare(context),
+          title: Text(isZh ? '纪念预览' : 'Keepsake Preview'),
+          actions: [
+            Semantics(
+              identifier: 'btn_edit_card',
+              child: IconButton(
+                icon: const Icon(Icons.edit_outlined),
+                tooltip: isZh ? '编辑' : 'Edit',
+                onPressed: () => _handleEdit(context),
+              ),
             ),
-          ),
-        ],
-      ),
-      body: Center(
-        child: _buildImage(context),
+            Semantics(
+              identifier: 'btn_share_card',
+              child: IconButton(
+                icon: const Icon(Icons.share),
+                tooltip: isZh ? '分享' : 'Share',
+                onPressed: () => _handleShare(context),
+              ),
+            ),
+          ],
+        ),
+        body: Center(
+          child: _buildImage(context),
+        ),
       ),
     );
   }
@@ -55,6 +65,7 @@ class CardPreviewScreen extends StatelessWidget {
     }
 
     return InteractiveViewer(
+      panEnabled: false,
       minScale: 0.5,
       maxScale: 3.0,
       child: Image.file(

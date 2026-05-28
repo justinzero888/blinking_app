@@ -2,8 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../providers/locale_provider.dart';
+import '../../providers/ai_persona_provider.dart';
+import '../../core/services/storage_service.dart';
 import '../../core/services/purchases_service.dart';
 import '../purchase/paywall_screen.dart';
+
+void _onLocaleChanged(BuildContext context) {
+  final isZh = context.read<LocaleProvider>().isChinese;
+  try { context.read<AiPersonaProvider>().reload(); } catch (_) {}
+  try { context.read<StorageService>().reSeedLensesForLocale(isZh); } catch (_) {}
+}
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -301,8 +309,10 @@ class _ScreenOne extends StatelessWidget {
           const SizedBox(height: 40),
           // Language toggle
           TextButton.icon(
-            onPressed: () =>
-                context.read<LocaleProvider>().toggleLocale(),
+            onPressed: () async {
+              await context.read<LocaleProvider>().toggleLocale();
+              _onLocaleChanged(context);
+            },
             icon: const Icon(Icons.language, size: 18),
             label: Text(
               isZh ? 'English' : '中文',
@@ -331,29 +341,37 @@ class _ScreenTwo extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Text(
-            isZh ? '你能做什么' : "What's inside",
+            isZh ? '一切都在「今日」' : 'Everything in "My Day"',
             style: theme.textTheme.headlineSmall?.copyWith(
               fontWeight: FontWeight.bold,
             ),
           ),
           const SizedBox(height: 48),
           _FeatureCard(
+            emoji: '📅',
+            title: isZh ? '统一日历' : 'Unified Calendar',
+            description: isZh
+                ? '点击日历上的任意日期，查看你的永久历史记录。'
+                : 'Tap any date on your weekly calendar to view your permanent history log.',
+          ),
+          const SizedBox(height: 24),
+          _FeatureCard(
             emoji: '📝',
-            title: isZh ? '笔记' : 'Notes',
-            description: isZh ? '捕捉瞬间，随时编辑' : 'capture moments, edit them anytime',
+            title: isZh ? '闪烁笔记' : 'Blinking Notes',
+            description: isZh
+                ? '快速记录每日重点。独特的闪烁提醒，完成前不会消失。'
+                : 'Quickly write daily focus notes. They use our signature blinking mechanic to stay unmissable until checked off.',
           ),
           const SizedBox(height: 24),
           _FeatureCard(
-            emoji: '✅',
-            title: isZh ? '习惯' : 'Habits',
-            description: isZh ? '每日轻量打卡，保持节奏' : 'small daily check-ins',
+            emoji: '🔁',
+            title: isZh ? '习惯追踪与总结' : 'Habit Tracking & Summary',
+            description: isZh
+                ? '每日轻量打卡，开启本地语音提醒，保持生活节奏。'
+                : 'Monitor your routines daily and toggle local voice notifications to stay on track.',
           ),
-          const SizedBox(height: 24),
-          _FeatureCard(
-            emoji: '🤖',
-            title: isZh ? 'AI 反思' : 'AI Reflection',
-            description: isZh ? '智能助手帮你发现生活中的规律' : 'an AI that helps you see patterns',
-          ),
+          const SizedBox(height: 36),
+          _PrivacyCard(isZh: isZh),
         ],
       ),
     );
@@ -407,6 +425,47 @@ class _FeatureCard extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _PrivacyCard extends StatelessWidget {
+  final bool isZh;
+  const _PrivacyCard({required this.isZh});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF2E7D32).withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(16),
+        border: const Border(
+          left: BorderSide(color: Color(0xFF2E7D32), width: 3),
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Padding(
+            padding: EdgeInsets.only(top: 2),
+            child: Text('🔒', style: TextStyle(fontSize: 20)),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Text(
+              isZh
+                  ? '100% 私密与离线：你的笔记、习惯和日历历史完全在手机本地处理。零数据追踪、收集或上传到云端。'
+                  : '100% Private & Offline: Your notes, habits, and calendar history are processed entirely on your phone. Zero data is tracked, collected, or sent to a cloud server.',
+              style: TextStyle(
+                color: Colors.grey[700],
+                fontSize: 13,
+                height: 1.5,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

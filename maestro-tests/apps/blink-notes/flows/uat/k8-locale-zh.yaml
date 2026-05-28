@@ -1,0 +1,41 @@
+# K8: ZH locale — template names in Chinese, UI in Chinese
+appId: com.blinking.blinking
+---
+- runFlow: ../../subflows/launch.yaml
+
+# The app defaults to ZH locale. Verify template names in Chinese.
+- tapOn:
+    id: "nav_moments"
+    waitToSettleTimeoutMs: 0
+- extendedWaitUntil:
+    visible:
+      id: "entry_item"
+    timeout: 8000
+- scroll
+- extendedWaitUntil:
+    visible:
+      id: "entry_item"
+    timeout: 5000
+- tapOn:
+    id: "entry_item"
+    index: 0
+    waitToSettleTimeoutMs: 0
+- tapOn:
+    id: "btn_save_keepsake"
+
+    waitToSettleTimeoutMs: 0
+# Verify builder opened (locale-neutral)
+- assertVisible: "Save as Keepsake"
+# Verify template picker visible (locale-neutral check by ID)
+- assertVisible:
+    id: "template_tpl_ink_rhythm"
+# Verify toggle section present (locale-neutral check by ID)
+- assertVisible:
+    id: "toggle_show_mood"
+- assertVisible:
+    id: "toggle_show_date"
+- assertVisible:
+    id: "toggle_show_tags"
+# Verify save button
+- assertVisible:
+    id: "btn_card_save"

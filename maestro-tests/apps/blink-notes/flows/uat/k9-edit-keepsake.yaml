@@ -1,0 +1,79 @@
+# K9: Edit existing keepsake — badge → edit → re-save
+appId: com.blinking.blinking
+---
+- runFlow: ../../subflows/launch.yaml
+
+- tapOn:
+    id: "nav_moments"
+    waitToSettleTimeoutMs: 0
+- extendedWaitUntil:
+    visible:
+      id: "entry_item"
+    timeout: 8000
+- scroll
+- extendedWaitUntil:
+    visible:
+      id: "entry_item"
+    timeout: 5000
+- tapOn:
+    id: "entry_item"
+    index: 0
+    waitToSettleTimeoutMs: 0
+- tapOn:
+    id: "btn_save_keepsake"
+
+    waitToSettleTimeoutMs: 0
+# Create initial card with ink_rhythm
+- tapOn:
+    id: "btn_card_save"
+
+    waitToSettleTimeoutMs: 0
+- extendedWaitUntil:
+    visible: "Keepsake saved"
+    timeout: 15000
+
+# Tap badge → preview
+- tapOn:
+    id: "badge_keepsake"
+    waitToSettleTimeoutMs: 0
+- assertVisible: "Keepsake Preview"
+
+# Tap Edit button
+- tapOn:
+    id: "btn_edit_card"
+
+    waitToSettleTimeoutMs: 0
+# Builder re-opens for editing
+- assertVisible: "Save as Keepsake"
+
+# Wait for template picker to load before tapping off-screen template
+- assertVisible:
+    id: "template_tpl_ink_rhythm"
+
+# Swipe template picker left 2x to reveal seal (#7 of 8)
+- swipe:
+    start: "75%, 30%"
+    end: "25%, 30%"
+    duration: 400
+- swipe:
+    start: "75%, 30%"
+    end: "25%, 30%"
+    duration: 400
+
+# Tap seal (now visible after scrolling)
+- tapOn:
+    id: "template_tpl_seal"
+
+    waitToSettleTimeoutMs: 0
+# Re-save
+- tapOn:
+    id: "btn_card_save"
+
+    waitToSettleTimeoutMs: 0
+- extendedWaitUntil:
+    visible: "Keepsake saved"
+    timeout: 15000
+
+# Verify badge still present
+- assertVisible:
+    id: "badge_keepsake"

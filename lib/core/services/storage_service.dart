@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:ui';
 import 'package:meta/meta.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite/sqflite.dart';
@@ -83,20 +84,41 @@ class StorageService {
         await addTemplate(t);
       }
     }
+    // One-time cleanup: remove orphaned non-built-in templates with no customization
+    // (e.g. stale "自定义" copies from early dev builds)
+    final cleanedOrphans = _prefs.getBool('cleaned_orphan_templates');
+    if (cleanedOrphans != true) {
+      final allTemplates = await getTemplates();
+      for (final t in allTemplates) {
+        if (!t.isBuiltIn && t.customImagePath == null && t.backgroundImagePath == null) {
+          await deleteTemplate(t.id);
+        }
+      }
+      await _prefs.setBool('cleaned_orphan_templates', true);
+    }
 
     // Seed built-in lens sets matching the 4 personas
-    final isZh = _prefs.getString('language') == 'zh';
+    final isZh = (_prefs.getString('language') ?? _detectSystemIsZh()) == 'zh';
+    final lensLocale = _prefs.getString('lens_locale');
     final lensSets = await getLensSets();
-    if (lensSets.isEmpty) {
+    // Re-seed if locale changed since last seed (fixes labels and questions)
+    if (lensSets.isNotEmpty && lensLocale != (isZh ? 'zh' : 'en')) {
+      for (final ls in lensSets) {
+        if (ls.isBuiltin) await deleteLensSet(ls.id);
+      }
+    }
+    final currentLensSets = await getLensSets();
+    if (currentLensSets.isEmpty) {
       for (final ls in DefaultLensSets.defaults(isZh)) {
         await addLensSet(ls);
       }
       await setActiveLensSet(DefaultLensSets.defaultActiveSetId);
+      await _prefs.setString('lens_locale', isZh ? 'zh' : 'en');
     } else {
       // Existing users: ensure style-specific lenses exist for all 4 presets
       for (final style in ReflectionStyle.presets) {
         final lensId = 'lens_style_${style.id}';
-        if (!lensSets.any((s) => s.id == lensId)) {
+        if (!currentLensSets.any((s) => s.id == lensId)) {
           final lenses = style.lenses(isZh);
           await addLensSet(LensSet(
             id: lensId,
@@ -139,108 +161,176 @@ class StorageService {
             name: '墨韵',
             nameEn: 'Ink Rhythm',
             icon: '🖋️',
-            fontColor: '#2C2C2C',
-            bgColor: '#F5F0E8',
+            fontFamily: 'serif',
+            fontColor: '#1A1A1A',
+            bgColor: '#F2EFE9',
             isBuiltIn: true,
             createdAt: DateTime.now(),
             layout: CardLayout.heroImage,
             accentColor: '#C43A31',
             textAreaOpacity: 0.85,
-            textBackdropColor: 'rgba(245,240,232,0.85)',
-            decorationStyle: 'ink_wash'),
+            decorationStyle: 'ink_wash',
+            backgroundImagePath: 'assets/cards/bg_ink_rhythm.jpg',
+            textPaddingTop: 180,
+            textPaddingBottom: 180,
+            textPaddingLeft: 140,
+            textPaddingRight: 140,
+            baseFontSize: 64,
+            fontWeightValue: 400,
+            textAlignMode: TextAlignMode.center),
         CardTemplate(
             id: 'tpl_plain_paper',
             name: '素笺',
             nameEn: 'Plain Paper',
             icon: '📃',
+            fontFamily: 'serif',
             fontColor: '#2C2C2C',
-            bgColor: '#F5F0E8',
+            bgColor: '#F2EFE9',
             isBuiltIn: true,
             createdAt: DateTime.now(),
             layout: CardLayout.leftAligned,
             accentColor: '#C43A31',
             textAreaOpacity: 0.85,
-            decorationStyle: 'rice_paper'),
+            decorationStyle: 'rice_paper',
+            backgroundImagePath: 'assets/cards/bg_plain_paper.jpg',
+            textPaddingTop: 120,
+            textPaddingBottom: 140,
+            textPaddingLeft: 160,
+            textPaddingRight: 160,
+            baseFontSize: 36,
+            fontWeightValue: 400,
+            textAlignMode: TextAlignMode.left),
         CardTemplate(
             id: 'tpl_bamboo',
             name: '竹影',
             nameEn: 'Bamboo Shadow',
             icon: '🎋',
-            fontColor: '#2C2C2C',
+            fontFamily: 'serif',
+            fontColor: '#1A2E1A',
             bgColor: '#EDF5EC',
             isBuiltIn: true,
             createdAt: DateTime.now(),
             layout: CardLayout.heroImage,
             accentColor: '#7A9A6D',
             textAreaOpacity: 0.85,
-            textBackdropColor: 'rgba(237,245,236,0.85)',
-            decorationStyle: 'bamboo'),
+            decorationStyle: 'bamboo',
+            backgroundImagePath: 'assets/cards/bg_bamboo.jpg',
+            textPaddingTop: 140,
+            textPaddingBottom: 200,
+            textPaddingLeft: 120,
+            textPaddingRight: 120,
+            baseFontSize: 60,
+            fontWeightValue: 500,
+            textAlignMode: TextAlignMode.center),
         CardTemplate(
             id: 'tpl_moonlight',
             name: '月色',
             nameEn: 'Moonlight',
             icon: '🌙',
+            fontFamily: 'serif',
             fontColor: '#E8E4DF',
             bgColor: '#1B2838',
             isBuiltIn: true,
             createdAt: DateTime.now(),
             layout: CardLayout.centered,
             textAreaOpacity: 0.80,
-            decorationStyle: 'crescent'),
+            decorationStyle: 'crescent',
+            backgroundImagePath: 'assets/cards/bg_moonlight.jpg',
+            textPaddingTop: 200,
+            textPaddingBottom: 140,
+            textPaddingLeft: 160,
+            textPaddingRight: 160,
+            baseFontSize: 52,
+            fontWeightValue: 400,
+            textAlignMode: TextAlignMode.center),
         CardTemplate(
             id: 'tpl_porcelain',
             name: '青花',
             nameEn: 'Blue Porcelain',
             icon: '🏺',
-            fontColor: '#2B5F8A',
+            fontFamily: 'serif',
+            fontColor: '#1B4F6E',
             bgColor: '#FAFAF6',
             isBuiltIn: true,
             createdAt: DateTime.now(),
             layout: CardLayout.centered,
             accentColor: '#2B5F8A',
             textAreaOpacity: 0.85,
-            decorationStyle: 'porcelain'),
+            decorationStyle: 'porcelain',
+            backgroundImagePath: 'assets/cards/bg_porcelain.jpg',
+            textPaddingTop: 120,
+            textPaddingBottom: 140,
+            textPaddingLeft: 160,
+            textPaddingRight: 160,
+            baseFontSize: 56,
+            fontWeightValue: 400,
+            textAlignMode: TextAlignMode.center),
         CardTemplate(
             id: 'tpl_tea',
             name: '茶语',
             nameEn: 'Tea Whisper',
             icon: '🍵',
-            fontColor: '#5C4033',
+            fontFamily: 'serif',
+            fontColor: '#3E2723',
             bgColor: '#F5EDE3',
             isBuiltIn: true,
             createdAt: DateTime.now(),
             layout: CardLayout.heroImage,
             accentColor: '#D4A76A',
             textAreaOpacity: 0.85,
-            textBackdropColor: 'rgba(245,237,227,0.85)',
-            decorationStyle: 'tea'),
+            decorationStyle: 'tea',
+            backgroundImagePath: 'assets/cards/bg_tea.jpg',
+            textPaddingTop: 200,
+            textPaddingBottom: 140,
+            textPaddingLeft: 120,
+            textPaddingRight: 120,
+            baseFontSize: 56,
+            fontWeightValue: 400,
+            textAlignMode: TextAlignMode.left),
         CardTemplate(
             id: 'tpl_seal',
             name: '朱砂',
             nameEn: 'Cinnabar Seal',
             icon: '🔴',
-            fontColor: '#2C2C2C',
-            bgColor: '#F5F0E8',
+            fontFamily: 'serif',
+            fontColor: '#1A1A1A',
+            bgColor: '#FAFAFA',
             isBuiltIn: true,
             createdAt: DateTime.now(),
             layout: CardLayout.centered,
             accentColor: '#C43A31',
             textAreaOpacity: 0.85,
-            decorationStyle: 'seal'),
+            decorationStyle: 'seal',
+            backgroundImagePath: 'assets/cards/bg_seal.jpg',
+            textPaddingTop: 200,
+            textPaddingBottom: 140,
+            textPaddingLeft: 120,
+            textPaddingRight: 120,
+            baseFontSize: 62,
+            fontWeightValue: 700,
+            textAlignMode: TextAlignMode.center),
         CardTemplate(
             id: 'tpl_landscape',
             name: '山水',
             nameEn: 'Landscape',
             icon: '🏔️',
-            fontColor: '#2C2C2C',
+            fontFamily: 'serif',
+            fontColor: '#1A2430',
             bgColor: '#D6E0E8',
             isBuiltIn: true,
             createdAt: DateTime.now(),
             layout: CardLayout.heroImage,
             accentColor: '#6B7B8D',
             textAreaOpacity: 0.85,
-            textBackdropColor: 'rgba(214,224,232,0.85)',
-            decorationStyle: 'landscape'),
+            decorationStyle: 'landscape',
+            backgroundImagePath: 'assets/cards/bg_landscape.jpg',
+            textPaddingTop: 200,
+            textPaddingBottom: 140,
+            textPaddingLeft: 140,
+            textPaddingRight: 140,
+            baseFontSize: 54,
+            fontWeightValue: 500,
+            textAlignMode: TextAlignMode.center),
       ];
 
   /// System tags — always exist, locked from editing/deletion
@@ -1114,4 +1204,39 @@ class StorageService {
       reflections.length;
 
   static const int maxMoodReflectionsPerDay = 3;
+
+  /// Re-seeds built-in lens sets for the given locale. Call when language changes at runtime.
+  Future<void> reSeedLensesForLocale(bool isZh) async {
+    // Preserve current active persona's lens set before re-seeding
+    String? activeLensId;
+    try {
+      final currentActive = await getActiveLensSet();
+      if (currentActive != null) activeLensId = currentActive.id;
+    } catch (_) {}
+
+    final lensSets = await getLensSets();
+    for (final ls in lensSets) {
+      if (ls.isBuiltin) await deleteLensSet(ls.id);
+    }
+    final currentLensSets = await getLensSets();
+    if (currentLensSets.isEmpty) {
+      for (final ls in DefaultLensSets.defaults(isZh)) {
+        await addLensSet(ls);
+      }
+      // Restore the persona-specific lens set, not always Kael
+      if (activeLensId != null) {
+        await setActiveLensSet(activeLensId);
+      } else {
+        await setActiveLensSet(DefaultLensSets.defaultActiveSetId);
+      }
+    }
+    await _prefs.setString('lens_locale', isZh ? 'zh' : 'en');
+  }
+  bool _detectSystemIsZh() {
+    try {
+      return PlatformDispatcher.instance.locale.languageCode == 'zh';
+    } catch (_) {
+      return false;
+    }
+  }
 }

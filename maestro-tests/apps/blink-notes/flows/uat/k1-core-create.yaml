@@ -1,0 +1,72 @@
+# K1: Core keepsake creation flow
+# Entry → Save as Keepsake → pick template → Save → verify badge → preview
+appId: com.blinking.blinking
+---
+- runFlow: ../../subflows/launch.yaml
+
+# Navigate to Moment tab to see seed entries
+- tapOn:
+    id: "nav_moments"
+
+    waitToSettleTimeoutMs: 0
+# Tap first entry (today's entry: "今日阳光正好，微风不燥。")
+- extendedWaitUntil:
+    visible:
+      id: "entry_item"
+    timeout: 8000
+- scroll
+- extendedWaitUntil:
+    visible:
+      id: "entry_item"
+    timeout: 5000
+- tapOn:
+    id: "entry_item"
+    index: 0
+
+    waitToSettleTimeoutMs: 0
+# Tap Save as Keepsake button
+- tapOn:
+    id: "btn_save_keepsake"
+
+    waitToSettleTimeoutMs: 0
+# Verify builder sheet is open
+- assertVisible: "Save as Keepsake"
+- assertVisible: "Choose Template"
+
+# Pick the third template (竹影 — Bamboo Shadow)
+- tapOn:
+    id: "template_tpl_bamboo"
+
+    waitToSettleTimeoutMs: 0
+# Toggle mood OFF
+- tapOn:
+    id: "toggle_show_mood"
+
+    waitToSettleTimeoutMs: 0
+# Tap Save Keepsake
+- tapOn:
+    id: "btn_card_save"
+
+    waitToSettleTimeoutMs: 0
+# Wait for save to complete
+- extendedWaitUntil:
+    visible: "Keepsake saved"
+    timeout: 15000
+
+# Verify badge appears on entry detail
+- assertVisible:
+    id: "badge_keepsake"
+
+# Tap badge to open preview
+- tapOn:
+    id: "badge_keepsake"
+
+    waitToSettleTimeoutMs: 0
+# Verify preview screen with image
+- assertVisible: "Keepsake Preview"
+
+# Verify Edit and Share buttons
+- assertVisible:
+    id: "btn_edit_card"
+- assertVisible:
+    id: "btn_share_card"

@@ -1,0 +1,81 @@
+# K2: Cycle through all 8 templates in builder
+# Verify all 8 template thumbnails render and select
+appId: com.blinking.blinking
+---
+- runFlow: ../../subflows/launch.yaml
+
+# Navigate to Moment tab, tap first entry
+- tapOn:
+    id: "nav_moments"
+    waitToSettleTimeoutMs: 0
+- extendedWaitUntil:
+    visible:
+      id: "entry_item"
+    timeout: 8000
+- scroll
+- extendedWaitUntil:
+    visible:
+      id: "entry_item"
+    timeout: 5000
+- tapOn:
+    id: "entry_item"
+    index: 0
+
+    waitToSettleTimeoutMs: 0
+# Open keepsake builder
+- tapOn:
+    id: "btn_save_keepsake"
+    waitToSettleTimeoutMs: 0
+- assertVisible: "Save as Keepsake"
+
+# Verify first 4 template thumbnails (visible without scrolling)
+- assertVisible:
+    id: "template_tpl_ink_rhythm"
+- assertVisible:
+    id: "template_tpl_plain_paper"
+- assertVisible:
+    id: "template_tpl_bamboo"
+- assertVisible:
+    id: "template_tpl_moonlight"
+
+# Tap the 4 visible templates (1-4)
+- tapOn:
+    id: "template_tpl_ink_rhythm"
+    waitToSettleTimeoutMs: 0
+- tapOn:
+    id: "template_tpl_plain_paper"
+    waitToSettleTimeoutMs: 0
+- tapOn:
+    id: "template_tpl_bamboo"
+    waitToSettleTimeoutMs: 0
+- tapOn:
+    id: "template_tpl_moonlight"
+    waitToSettleTimeoutMs: 0
+
+# Swipe template picker left 2x to reveal templates 5-8 (off-screen to the right)
+- swipe:
+    start: "75%, 30%"
+    end: "25%, 30%"
+    duration: 400
+- swipe:
+    start: "75%, 30%"
+    end: "25%, 30%"
+    duration: 400
+
+# Tap off-screen templates 5-8 after scrolling
+- tapOn:
+    id: "template_tpl_porcelain"
+    waitToSettleTimeoutMs: 0
+- tapOn:
+    id: "template_tpl_tea"
+    waitToSettleTimeoutMs: 0
+- tapOn:
+    id: "template_tpl_seal"
+    waitToSettleTimeoutMs: 0
+- tapOn:
+    id: "template_tpl_landscape"
+    waitToSettleTimeoutMs: 0
+
+# Verify save button remains visible after cycling
+- assertVisible:
+    id: "btn_card_save"

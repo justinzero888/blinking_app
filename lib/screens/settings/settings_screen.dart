@@ -781,6 +781,28 @@ class _SettingsScreenState extends State<SettingsScreen>
         const Divider(),
         _buildSectionHeader(isZh ? '通知' : 'Notifications'),
         _buildVoiceToggle(isZh),
+        ValueListenableBuilder<bool>(
+          valueListenable: _voiceNotifier,
+          builder: (context, voiceEnabled, _) {
+            if (!voiceEnabled) return const SizedBox.shrink();
+            return Padding(
+              padding: const EdgeInsets.only(left: 72, right: 16, bottom: 4),
+              child: Semantics(
+                identifier: 'btn_test_voice',
+                child: OutlinedButton.icon(
+                  icon: const Icon(Icons.play_arrow, size: 18),
+                  label: Text(isZh ? '测试语音' : 'Test Voice'),
+                  onPressed: () async {
+                    await VoiceNotificationService.speak(
+                      isZh ? '你好，这是语音提醒测试' : 'Hello, this is a voice reminder test',
+                      language: isZh ? 'zh-CN' : 'en-US',
+                    );
+                  },
+                ),
+              ),
+            );
+          },
+        ),
         const Divider(),
         _buildSectionHeader(isZh ? '数据备份与迁移' : 'Data Portability'),
         MergeSemantics(
@@ -997,9 +1019,21 @@ class _SettingsScreenState extends State<SettingsScreen>
     return ValueListenableBuilder<bool>(
       valueListenable: _voiceNotifier,
       builder: (context, voiceEnabled, _) {
-        return Column(
-          children: [
-            Padding(
+        return GestureDetector(
+          excludeFromSemantics: true,
+          onTap: () {
+            final newValue = !voiceEnabled;
+            _voiceNotifier.value = newValue;
+            _prefs?.setBool('voice_notifications_enabled', newValue);
+            if (newValue) {
+              VoiceNotificationService.init();
+            } else {
+              VoiceNotificationService.stop();
+            }
+          },
+          child: Semantics(
+            identifier: 'toggle_voice_reminders',
+            child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               child: Row(
                 children: [
@@ -1018,52 +1052,22 @@ class _SettingsScreenState extends State<SettingsScreen>
                       ],
                     ),
                   ),
-                  Semantics(
-                    identifier: 'toggle_voice_reminders',
-                    onTap: () {
-                      final newValue = !voiceEnabled;
-                      _voiceNotifier.value = newValue;
-                      _prefs?.setBool('voice_notifications_enabled', newValue);
-                      if (newValue) {
-                        VoiceNotificationService.init();
+                  Switch(
+                    value: voiceEnabled,
+                    onChanged: (value) async {
+                      _voiceNotifier.value = value;
+                      await _prefs?.setBool('voice_notifications_enabled', value);
+                      if (value) {
+                        await VoiceNotificationService.init();
                       } else {
-                        VoiceNotificationService.stop();
+                        await VoiceNotificationService.stop();
                       }
                     },
-                    child: Switch(
-                      value: voiceEnabled,
-                      onChanged: (value) async {
-                        _voiceNotifier.value = value;
-                        await _prefs?.setBool('voice_notifications_enabled', value);
-                        if (value) {
-                          await VoiceNotificationService.init();
-                        } else {
-                          await VoiceNotificationService.stop();
-                        }
-                      },
-                    ),
                   ),
                 ],
               ),
             ),
-            if (voiceEnabled)
-              Padding(
-                padding: const EdgeInsets.only(left: 72, right: 16),
-                child: Semantics(
-                  identifier: 'btn_test_voice',
-                  child: OutlinedButton.icon(
-                    icon: const Icon(Icons.play_arrow, size: 18),
-                    label: Text(isZh ? '测试语音' : 'Test Voice'),
-                    onPressed: () async {
-                      await VoiceNotificationService.speak(
-                        isZh ? '你好，这是语音提醒测试' : 'Hello, this is a voice reminder test',
-                        language: isZh ? 'zh-CN' : 'en-US',
-                      );
-                    },
-                  ),
-                ),
-              ),
-          ],
+          ),
         );
       },
     );
@@ -1510,6 +1514,13 @@ class _SettingsScreenState extends State<SettingsScreen>
 
   // ============ LANGUAGE ============
 
+  void _onLocaleChanged(BuildContext context, bool isZh) {
+    // Reload persona with new locale
+    try { context.read<AiPersonaProvider>().reload(); } catch (_) {}
+    // Re-seed lens sets with new locale
+    try { context.read<StorageService>().reSeedLensesForLocale(isZh); } catch (_) {}
+  }
+
   void _showLanguageDialog(BuildContext context, LocaleProvider localeProvider) {
     final isZh = localeProvider.locale.languageCode == 'zh';
     showDialog(
@@ -1526,6 +1537,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                   : null,
               onTap: () {
                 localeProvider.setLocale(const Locale('zh'));
+                _onLocaleChanged(context, true);
                 Navigator.pop(context);
               },
             ),
@@ -1536,6 +1548,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                   : null,
               onTap: () {
                 localeProvider.setLocale(const Locale('en'));
+                _onLocaleChanged(context, false);
                 Navigator.pop(context);
               },
             ),

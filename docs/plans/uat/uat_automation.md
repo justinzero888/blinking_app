@@ -3,20 +3,22 @@
 > **Living document.** Add a row to the appropriate table every time a new feature or fix gets a Maestro flow.  
 > **Flow root:** `maestro-tests/apps/blink-notes/`  
 > **Run scripts:** `maestro-tests/ci/run-uat-iphone.sh` · `run-uat-ipad.sh` · `run-uat-android.sh`  
-> **Last full pass:** 2026-05-23 — iPhone 17/17 ✅ · iPad 12/12 ✅ · Android 17/17 ✅
+> **Last full pass:** 2026-05-23 — iPhone 17/17 ✅ · iPad 12/12 ✅ · Android 17/17 ✅  
+> **Phase 2 voice flows added:** 2026-05-23 — 5 new flows (v1–v4, s9); run scripts updated to 22 flows  
+> **Phase 3 keepsake flows added:** 2026-05-23 — 10 new flows (k1–k10); run scripts updated to 32/26 flows
 
 ---
 
 ## How to run
 
 ```bash
-# iPhone — all 17 flows
+# iPhone — all 32 flows
 ./ci/run-uat-iphone.sh --device E755BD80-D6A2-4D4B-9FFA-0BEA131AE1EA
 
-# iPad — 12 flows (share-sheet flows excluded; see §iPad UIPopover below)
+# iPad — 26 flows (share-sheet flows + k3-android excluded; see §iPad UIPopover below)
 ./ci/run-uat-ipad.sh --device 39B46CD1-C3B5-43C1-B527-A5BCFECEA773
 
-# Android
+# Android — all 32 flows
 ./ci/run-uat-android.sh --device emulator-5554
 ```
 
@@ -41,6 +43,19 @@
 | p1 | Persona switch — Kael→Elara→Rush→Marcus cycle | `flows/uat/p1-persona-switch.yaml` | ✅ | ✅ | ✅ | P-1 |
 | p2 | Custom persona — create style, save, verify snackbar | `flows/uat/p2-custom-persona.yaml` | ✅ | ✅ | ✅ | P-2 |
 
+### Voice Reminders + Import (Phase 2: V, S-9)
+
+| ID | Description | Flow file | iPhone | iPad | Android | Phase 2 ref |
+|----|-------------|-----------|:------:|:----:|:-------:|-------------|
+| v1 | Voice global toggle ON/OFF + Test Voice button tappable | `flows/uat/v1-voice-settings.yaml` | ✅ | ✅ | ✅ | V-1, V-2, V-3, V-25 |
+| v2 | Speak reminder visibility: no-reminder, global-off, global-on | `flows/uat/v2-voice-per-routine.yaml` | ✅ | ✅ | ✅ | V-4, V-5, V-6, V-7 |
+| v3 | Voice global setting persists via stopApp+launchApp | `flows/uat/v3-voice-persist.yaml` | ✅ | ✅ | ✅ | V-20, V-21, V-22 (partial — see note) |
+| v4 | Speak reminder toggle appears/disappears dynamically while typing | `flows/uat/v4-voice-dynamic.yaml` | ✅ | ✅ | ✅ | V-24 |
+| s9 | Import Habits button opens document picker, dismisses cleanly | `flows/uat/s9-habit-import.yaml` | ✅ | ✅ | ✅ | S-9 (partial — picker-launch only) |
+
+> **v3 note:** Per-routine `voiceEnabled` persistence (V-20 to V-22 full) requires tapping the routine's edit dialog after relaunch. The routine tile edit icon (`more_vert`) has no Semantics identifier and is not accessible to XCTest. The flow validates the SharedPreferences layer (global voice) and indirectly confirms the persistence infrastructure. Add `Semantics(identifier: 'btn_edit_routine')` to `_BuildRoutineTile`'s edit GestureDetector to unlock full coverage.  
+> **s9 note:** Full import with data verification requires pre-seeding `fixtures/routines_test.json` into the app container AFTER `clearState` runs. See `ci/run-uat-iphone.sh` for the `xcrun simctl` seeding instructions.
+
 ### Share / Export (Phase 1: S, A)
 
 > iPad share-sheet flows are excluded from `run-uat-ipad.sh`. See [iPad UIPopover](#ipad-uipopover) below.
@@ -57,18 +72,26 @@
 
 ### Keepsake Cards (Phase 3: K)
 
-> Full breakdown: [`keepsake-uat-catalog.md`](./keepsake-uat-catalog.md) — 20 automatable, 8 manual.
+> Semantics identifiers added 2026-05-23: `btn_save_keepsake`, `card_builder_content`, `template_tpl_*`, `toggle_show_mood/date/tags/footer`, `btn_card_save`, `badge_keepsake`, `btn_edit_card`, `btn_share_card`, `btn_reflection_save_keepsake`, `btn_assistant_save_keepsake`.  
+> Visual fidelity (gradients, motifs, colors) is manual per MV-1, MV-2, MV-3, MV-4. See phase3_uat.md.
 
-| ID | Description | Effort | Notes |
-|----|-------------|--------|-------|
-| k1-iphone | Create keepsake, badge visible, preview, share flow | Medium | Covers K-1, K-6, K-7, K-19 |
-| k2-ipad | Same on iPad | Low | K-2, K-19 excluded for iPad |
-| k3-templates-all | Browse all 8 templates, pick each | Medium | K-5 (flow only; visual fidelity manual) |
-| k4-toggles | All toggle combinations ON/OFF | Medium | K-11 to K-17 |
-| k5-locale | Template names EN↔ZH | Low | K-25, K-26 |
-| k6-edit | Edit existing keepsake | Low | K-20 |
-| k7-reflection | Create from AI reflection + Assistant | Medium | K-3, K-4 |
-| k8-android | Full flow on Android | Low | K-24 |
+| ID | Description | Flow file | iPhone | iPad | Android | Phase 3 ref |
+|----|-------------|-----------|:------:|:----:|:-------:|-------------|
+| k1 | Create keepsake from entry, badge visible, preview shows Edit+Share | `flows/uat/k1-core-create.yaml` | 🔲 | ⛔ | ⛔ | MK-1, MK-6, MK-7 |
+| k2 | Create keepsake on iPad (Moonlight template) | `flows/uat/k2-ipad-create.yaml` | ⛔ | 🔲 | ⛔ | MK-2 |
+| k3 | Create keepsake on Android + share sheet opens | `flows/uat/k3-android-create.yaml` | ⛔ | ⛔ | 🔲 | MK-24 |
+| k4 | Browse all 8 templates — tap each, no crash | `flows/uat/k4-template-browse.yaml` | 🔲 | 🔲 | 🔲 | MK-5 |
+| k5 | Toggle overlays ON/OFF (mood, date, tags, footer) — save both states | `flows/uat/k5-toggle-overlays.yaml` | 🔲 | 🔲 | 🔲 | MK-13, MK-14, MK-16, MK-17 |
+| k6 | Edit existing keepsake — change template, badge updates | `flows/uat/k6-edit-keepsake.yaml` | 🔲 | 🔲 | 🔲 | MK-18 |
+| k7 | Locale — EN/ZH builder labels and template names | `flows/uat/k7-locale.yaml` | 🔲 | 🔲 | 🔲 | MK-20, MK-21, MK-22, MK-23 |
+| k8 | AI reflection → Save as Keepsake | `flows/uat/k8-reflection-entry.yaml` | 🔲 | 🔲 | 🔲 | MK-3 |
+| k9 | Text-only entry → clean preview (no broken image) | `flows/uat/k9-photo-integration.yaml` | 🔲 | 🔲 | 🔲 | MK-12 |
+| k10 | Badge mapping: no-badge entry, correct template name, no system tag | `flows/uat/k10-badge-mapping.yaml` | 🔲 | 🔲 | 🔲 | MK-8, MK-9, MK-15 |
+
+> **k1 note:** iPhone only — Android/iPad have dedicated flows (k2, k3). k1 verifies the full entry→builder→badge→preview path.  
+> **k3 note:** Android share sheet (non-UIPopover) tested; excluded from iPad run.  
+> **k8 note:** MK-4 (Assistant chat → keepsake) requires `kUseMultiTurnChat=true`. Tracked in Future Automation Candidates as k8-assistant. k8 covers MK-3 (ReflectionSession path) only.  
+> **k9 note:** MK-10/MK-11 (photo as hero/inline) require a pre-seeded photo in the entry. Tracked as k9-photo-full in Future Automation Candidates. k9 covers MK-12 (text-only, no broken placeholder).
 
 ---
 
@@ -78,19 +101,22 @@ Cases from existing UAT documents that are **feasible to automate** but do not h
 
 | ID | Description | Effort | Phase ref | Notes |
 |----|-------------|--------|-----------|-------|
-| v-settings | Voice Reminders global toggle ON/OFF in Settings | Low | P2 V-1, V-2, V-3 | Navigate to Settings → General, assert SwitchListTile visible/toggleable |
-| v-per-routine | Per-routine "Speak reminder" toggle visibility rules | Medium | P2 V-4 to V-7 | Needs routine with/without reminder time set; assert toggle visible/hidden |
-| v-persist | Voice voiceEnabled persists across relaunch | Medium | P2 V-20, V-21, V-22 | Use `stopApp` + `launchApp` (no clearState) to simulate relaunch |
-| v-dynamic | Voice toggle appears live while typing reminder time | Low | P2 V-24 | Input "08:00" → assert toggle appears; clear → assert toggle gone |
-| v-test-btn | "Test Voice" button in Settings is tappable | Low | P2 V-25 | Tap button, assert no crash/error state (audio output not verifiable) |
-| p3-private | Private tag (#私密) entries excluded from AI context | Medium | P1 P-3 | Create tagged entry, open AI screen, assert entry text absent from context |
-| s9-import | Habit import (JSON) — routines appear after import | Medium | P1 S-9 | Requires test fixture JSON file placed in simulator's shared storage |
+| v3-full | v3 per-routine voiceEnabled DB persistence (V-20 to V-22 complete) | Low | P2 V-20, V-21, V-22 | Add `Semantics(identifier: 'btn_edit_routine')` to `_BuildRoutineTile` edit icon, then extend v3 flow to re-open edit dialog and assert toggle state |
+| s9-full | s9 full import — fixture seeded, picker navigated, snackbar asserted | Medium | P1 S-9 | Restructure run script to seed `fixtures/routines_test.json` post-clearState; s9 flow selects file and asserts "Import complete: 2 imported" |
+| k8-assistant | MK-4: Create keepsake from Assistant chat | Low | P3 MK-4 | k8 covers MK-3 (ReflectionSession). MK-4 path requires `kUseMultiTurnChat=true` routing to AssistantScreen and `btn_assistant_save_keepsake` (identifier already added) |
+| k9-photo-full | MK-10, MK-11: Photo as hero/inline background in keepsake | Medium | P3 MK-10, MK-11 | Seed a photo into the simulator camera roll pre-run; create entry with image_picker; open builder; verify image appears in preview |
 
 ---
 
 ## Manual-Only Cases
 
 These **cannot be automated with Maestro** due to fundamental platform or test-design constraints.
+
+### AI context exclusion (non-deterministic output)
+
+| Phase ref | Description | Blocker |
+|-----------|-------------|---------|
+| P1 P-3 | Private tag (#私密) entries excluded from AI context | LLM output is non-deterministic — Maestro cannot assert "entry text absent" from a generated reflection. Verify via unit test on the prompt-construction layer (assert private entries are excluded from the context slice passed to the LLM). |
 
 ### Backup restore (requires app reinstall)
 

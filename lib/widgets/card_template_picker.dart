@@ -44,24 +44,31 @@ class _CardTemplatePickerState extends State<CardTemplatePicker> {
       return const SizedBox.shrink();
     }
 
+    // Row instead of ListView so all 8 templates are always rendered and
+    // accessible in the XCTest/UIAutomator2 accessibility tree (lazy ListView
+    // only renders visible items, hiding off-screen templates from Maestro).
     return SizedBox(
       height: 110,
-      child: ListView.separated(
+      child: SingleChildScrollView(
         controller: _scrollController,
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16),
-        itemCount: templates.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 12),
-        itemBuilder: (context, index) {
-          final tpl = templates[index];
-          final isSelected = widget.selectedTemplate?.id == tpl.id;
-          return _TemplateThumbnail(
-            template: tpl,
-            isSelected: isSelected,
-            isZh: isZh,
-            onTap: () => widget.onTemplateSelected(tpl),
-          );
-        },
+        child: Row(
+          children: templates.asMap().entries.map((entry) {
+            final index = entry.key;
+            final tpl = entry.value;
+            final isSelected = widget.selectedTemplate?.id == tpl.id;
+            return Padding(
+              padding: EdgeInsets.only(left: index == 0 ? 0 : 12),
+              child: _TemplateThumbnail(
+                template: tpl,
+                isSelected: isSelected,
+                isZh: isZh,
+                onTap: () => widget.onTemplateSelected(tpl),
+              ),
+            );
+          }).toList(),
+        ),
       ),
     );
   }
@@ -86,7 +93,9 @@ class _TemplateThumbnail extends StatelessWidget {
     final fontColor = _parseColor(template.fontColor);
     final displayName = template.displayNameFor(isZh);
 
-    return GestureDetector(
+    return Semantics(
+      identifier: 'template_${template.id}',
+      child: GestureDetector(
       onTap: onTap,
       child: Container(
         width: 80,
@@ -118,6 +127,7 @@ class _TemplateThumbnail extends StatelessWidget {
             ),
           ],
         ),
+      ),
       ),
     );
   }

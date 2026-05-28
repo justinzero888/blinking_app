@@ -104,6 +104,57 @@ Production-only initialization (seed data) belongs in `main.dart` before `runApp
 
 Don't rely on re-computation alone. Persist computed values (e.g. `_previewDaysRemaining`) in `_saveState()` and check for stale cached state on init.
 
+### 12. Manual Testing: Always Get Clarification — Never Assume
+
+When the user reports a visual issue (yellow lines, wrong ratio, stuck screen), **do not guess what they see**. Ask clarifying questions before writing any code:
+
+```
+// ❌ DON'T — 7+ iterations wasted guessing "yellow lines"
+"I think it's the backdrop color. Let me change it."
+"I think it's the gradient. Let me change it."
+"I think it's the font. Let me change it."
+
+// ✅ DO — root cause found in 1 round
+"Are the yellow lines under ALL text (body, tags, dates, footer)?"
+→ "Yes, every piece of text has an underline."
+→ Root cause: inherited TextDecoration.underline from Overlay theme.
+→ Fix: add `decoration: TextDecoration.none` to all TextStyle.
+```
+
+**Rule**: For visual/manual testing feedback, ask the user to describe:
+1. Which elements are affected (body text only? tags? dates? footer?)
+2. What exactly it looks like (underline? backdrop? gradient band?)
+3. Does it appear on all templates or specific ones?
+
+**Never** iterate on a visual fix without clarifying what the user actually sees on screen.
+
+### 13. Off-Screen Rendering: OverlayEntry Is NOT Cross-Platform Reliable
+
+Card rendering (1080×1440 PNG capture) has three attempted pipelines. Only one is stable:
+
+| Pipeline | Status | Why |
+|----------|--------|-----|
+| `OverlayEntry` + `captureFromKey` | ✅ Works | Insert widget into app's overlay, capture. Position widget at `left: -2000` so it's never visible to the user even if `remove()` fails. |
+| `renderToFile` → `_renderOffscreen` | ❌ Device-only failure | Manual `PipelineOwner` + `BuildOwner` + `element.mount(null, null)` only works under `TestWidgetsFlutterBinding`, not production `WidgetsFlutterBinding`. |
+| `DecorationImage(MemoryImage)` | ❌ Android failure | Image decode is async; `RepaintBoundary.toImage()` captures before decode completes. |
+
+**Rule**: Always use `OverlayEntry` with `Positioned(left: -2000, top: 0)` wrapper + `try/finally` with `addPostFrameCallback` for removal. Never attempt manual pipeline creation for production rendering.
+
+**Cross-platform background images**: Pre-decode asset bytes via `rootBundle.load()` + `decodeImageFromList()` → pass `dart:ui Image` as `RawImage(image:)`. This avoids all async decode timing issues.
+
+**Always `flutter clean` before switching build targets** (simulator ↔ device). Building for device then simulator without cleaning produces "incompatible platform" dyld errors.
+
+### TODO: True Kaishu Font
+
+Currently using **MaShanZheng** (马山政体, xingshu/行书) mapped to `fontFamily: 'serif'` for all calligraphic templates. To upgrade to true kaishu/楷体:
+
+1. Download **LXGW WenKai** (霞鹜文楷) from https://github.com/lxgw/LxgwWenKai — free under SIL OFL
+2. Place `.ttf` in `assets/fonts/`
+3. Register in `pubspec.yaml` fonts section
+4. Add new `'kaishu'` case to `_resolveFontFamily()` in `card_render_service.dart`
+5. Set `fontFamily: 'kaishu'` on templates that need kaishu (e.g., 青花, 素笺)
+6. Keep `'serif'` → MaShanZheng for xingshu-style templates (墨韵, 竹影, etc.)
+
 ## Reference Files
 
 - **Development anti-patterns**: See [references/development.md](references/development.md) — detailed examples of cascading edits, async bugs, renames that missed files, stale seed data, notifications cancelled silently

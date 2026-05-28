@@ -57,6 +57,7 @@ class AiPersonaProvider extends ChangeNotifier {
   Future<void> _load() async {
     final prefs = await SharedPreferences.getInstance();
     styleId = prefs.getString('ai_style_id') ?? 'kael';
+    final isZh = prefs.getString('language') == 'zh';
 
     // Load all custom styles into the model cache
     final customList = prefs.getStringList('ai_custom_styles') ?? [];
@@ -67,10 +68,9 @@ class AiPersonaProvider extends ChangeNotifier {
 
     if (styleId.startsWith('custom_')) {
       final style = ReflectionStyle.byId(styleId);
-      name = style.name;
-      personality = style.persona(false);
+      name = style.displayName(isZh);
+      personality = style.persona(isZh);
       _customStyleEmoji = style.emoji;
-      // Use custom style's avatar — restore from base64 if file missing
       final index = int.tryParse(styleId.split('_').last);
       if (index != null && index < customStyles.length) {
         avatarPath = customStyles[index]['avatarPath'] as String?;
@@ -79,8 +79,18 @@ class AiPersonaProvider extends ChangeNotifier {
       }
     } else {
       final style = ReflectionStyle.byId(styleId);
-      name = prefs.getString('ai_assistant_name') ?? style.name;
-      personality = prefs.getString('ai_assistant_personality') ?? style.persona(false);
+      final savedName = prefs.getString('ai_assistant_name');
+      final savedPersonality = prefs.getString('ai_assistant_personality');
+      // Use locale-aware defaults. If saved values exist and differ from ALL
+      // built-in defaults, treat them as user customizations from Settings.
+      final allNames = ReflectionStyle.presets.expand((s) => [s.name, s.nameZh]).toSet();
+      final allPersonas = ReflectionStyle.presets.expand((s) => [s.personaEn, s.personaZh]).toSet();
+      name = (savedName != null && !allNames.contains(savedName))
+          ? savedName
+          : style.displayName(isZh);
+      personality = (savedPersonality != null && !allPersonas.contains(savedPersonality))
+          ? savedPersonality
+          : style.persona(isZh);
       avatarPath = prefs.getString('ai_avatar_path');
     }
     notifyListeners();
@@ -95,7 +105,7 @@ class AiPersonaProvider extends ChangeNotifier {
     await prefs.setString('ai_style_id', style.id);
 
     final isZh = prefs.getString('language') == 'zh';
-    name = style.name;
+    name = style.displayName(isZh);
     personality = isZh ? style.personaZh : style.personaEn;
 
     // Update avatar from custom style data or SharedPreferences

@@ -501,16 +501,19 @@ class _ReflectionSessionScreenState extends State<ReflectionSessionScreen> {
           Padding(
             padding: const EdgeInsets.only(bottom: 24),
             child: Center(
-              child: OutlinedButton.icon(
-                onPressed: () {
-                  final content = _cards.isNotEmpty ? _cards.first.card : '';
-                  CardBuilderSheet.show(
-                    context,
-                    initialContent: content,
-                  );
-                },
-                icon: const Icon(Icons.photo_album, size: 18),
-                label: Text(_isZh ? '保存为纪念' : 'Save as Keepsake'),
+              child: Semantics(
+                identifier: 'btn_reflection_save_keepsake',
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    final content = _cards.isNotEmpty ? _cards.first.card : '';
+                    CardBuilderSheet.show(
+                      context,
+                      initialContent: content,
+                    );
+                  },
+                  icon: const Icon(Icons.photo_album, size: 18),
+                  label: Text(_isZh ? '保存为纪念' : 'Save as Keepsake'),
+                ),
               ),
             ),
           ),

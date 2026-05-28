@@ -6,11 +6,11 @@ Personal memory/habit-tracking Flutter app (记忆闪烁). Path: `/Users/justinz
 
 - **Flutter SDK:** `^3.11.0` (currently 3.41.9 stable, Apr 29 2026)
 - **macOS:** 26.2 (Tahoe beta) — Xcode 26.4.1 GM for production builds
-- **Current version:** `1.2.0-dev` (v1.1.0+40 live on both stores; v1.2.0+41 target)
+- **Current version:** `1.2.0+42` (v1.1.0+40 live on both stores; v1.2.0+42 target)
 - **iOS App Store:** ✅ Live — [Blinking Notes](https://apps.apple.com/app/id6765900648) (Apple ID: 6765900648)
 - **Google Play:** ✅ Live (1.1.0+40)
 - **Android:** compileSdk 36 / targetSdk 36 (via Flutter SDK)
-- **DB version:** 15 (`kSchemaVersion = 15` in `DatabaseService`)
+- **DB version:** 16 (`kSchemaVersion = 16` in `DatabaseService`)
 - **Lint:** `flutter analyze --no-pub` (target: 0 errors)
 - **Tests:** `flutter test` (558 tests, 556 passing, 2 pre-existing flaky)
 - **Server config:** `https://blinkingchorus.com/api/config` — AI keys + model selection, updatable without app deploy
@@ -292,9 +292,10 @@ Use `try { await launchUrl(uri); } catch (_) { ... }` pattern. Do NOT use `canLa
 ### Pending
 | Priority | Item | Effort | Status |
 |----------|------|--------|--------|
-| P1 | Ship Keepsake cards in next release (v1.2.0+41) | ~1h | Code complete, needs build + UAT |
-| P1 | Write 10 Maestro UAT flows for Keepsake | ~2-3h | Not started |
-| P1 | Manual visual QA on real devices (8 cases) | ~1h | Not started |
+| P1 | Ship Keepsake cards in next release (v1.2.0+42) | ~1h | ✅ Built — IPA (46MB) + AAB (66MB) ready |
+| P1 | Write 10 Maestro UAT flows for Keepsake | ~2-3h | ✅ Done — k1–k10 in `maestro-tests/apps/blink-notes/flows/uat/`, iPhone 10/10, iPad 10/10 |
+| P1 | Manual visual QA on real devices (8 cases) | ~1h | ✅ Done — 24 cells verified by testing team |
+| P1 | Onboarding Screen 2 marketing alignment — "Everything in My Day" + privacy anchor | ~2h | ✅ Done — validated on sims |
 | P2 | Personas web page at blinkingchorus.com/personas | ~2h | Not started |
 | P2 | Habit template browse/import UI (separate from full backup) | ~2h | Not started |
 | P2 | Marketing plan (launch strategy, ASO) | TBD | Not started |

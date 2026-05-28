@@ -1,5 +1,10 @@
+import 'dart:io';
+import 'dart:typed_data';
+import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import '../models/card_template.dart';
 import '../models/note_card.dart';
@@ -216,6 +221,7 @@ class _CardBuilderSheetState extends State<CardBuilderSheet> {
                               identifier: 'card_builder_content',
                               child: TextField(
                                 controller: _contentController,
+                                autofocus: true,
                                 maxLines: 8,
                                 minLines: 4,
                                 decoration: InputDecoration(
@@ -357,14 +363,15 @@ class _CardBuilderSheetState extends State<CardBuilderSheet> {
       final llm = LlmService();
       final rewritten = await llm.complete(
         isZh
-            ? '请润色以下文字，保持原意，使表达更优美流畅（不超过150字）：\n\n$content'
-            : 'Please polish the following text. Keep the original meaning but make it more elegant and smooth (max 150 words):\n\n$content',
+            ? '润色以下文字。只返回润色后的文字，不要添加任何解释、评论或引号：\n\n$content'
+            : 'Polish the following text. Return ONLY the polished text — no explanations, no commentary, no quotes, no preamble:\n\n$content',
         maxTokens: 300,
         temperature: 0.7,
       );
       if (mounted) {
-        _contentController.text = rewritten.trim();
-        _contentController.selection = TextSelection.collapsed(offset: rewritten.trim().length);
+        final cleaned = _stripAiPreamble(rewritten);
+        _contentController.text = cleaned;
+        _contentController.selection = TextSelection.collapsed(offset: cleaned.length);
         setState(() {});
       }
     } catch (e) {
@@ -377,6 +384,69 @@ class _CardBuilderSheetState extends State<CardBuilderSheet> {
     } finally {
       if (mounted) setState(() => _isRewriting = false);
     }
+  }
+
+  /// Strips common LLM preamble/postamble patterns from rewritten text.
+  String _stripAiPreamble(String text) {
+    String cleaned = text.trim();
+
+    // Remove leading explanatory phrases (EN and ZH)
+    final enPrefixes = [
+      "Here's",
+      "Here is",
+      "Certainly!",
+      "Sure!",
+      "Of course!",
+    ];
+    final zhPrefixes = [
+      '这是',
+      '以下是',
+    ];
+
+    for (final prefix in [...enPrefixes, ...zhPrefixes]) {
+      if (cleaned.toLowerCase().startsWith(prefix.toLowerCase())) {
+        final periodIdx = cleaned.indexOf('.');
+        final colonFullIdx = cleaned.indexOf('：');
+        final colonHalfIdx = cleaned.indexOf(':');
+        final zhPeriodIdx = cleaned.indexOf('。');
+        final cutoff = [periodIdx, colonFullIdx, colonHalfIdx, zhPeriodIdx]
+            .where((i) => i > 0)
+            .fold<int>(cleaned.length, (a, b) => a < b ? a : b);
+        cleaned = cleaned.substring(cutoff + 1).trim();
+        // Strip leading dashes/separators that LLMs add after preamble
+        cleaned = cleaned.replaceFirst(RegExp(r'^[-—–\s]+'), '').trim();
+        break;
+      }
+    }
+
+    // Remove trailing commentary (EN and ZH)
+    final enSuffixes = [
+      'Let me know if',
+      'Let me know what',
+      'I hope this',
+      'This version enhances',
+      'This version maintains',
+      'This version preserves',
+      'Feel free to',
+    ];
+    final zhSuffixes = [
+      '如果需要',
+      '如果有需要',
+      '希望这个',
+      '这个版本',
+      '如果你需要',
+      '请告诉我',
+    ];
+
+    for (final suffix in [...enSuffixes, ...zhSuffixes]) {
+      final idx = cleaned.toLowerCase().indexOf(suffix.toLowerCase());
+      if (idx > 0 && idx < cleaned.length - suffix.length) {
+        cleaned = cleaned.substring(0, idx).trim();
+        break;
+      }
+    }
+
+    return cleaned.trim();
   }
 
   Future<void> _handleSave() async {
@@ -394,12 +464,29 @@ class _CardBuilderSheetState extends State<CardBuilderSheet> {
     try {
       final cardProvider = context.read<CardProvider>();
 
+      // Preload and decode background image for reliable cross-platform rendering
+      Uint8List? bgBytes;
+      ui.Image? decodedBg;
+      final bgPath = _selectedTemplate.backgroundImagePath;
+      if (bgPath != null && bgPath.startsWith('assets/')) {
+        try {
+          bgBytes = (await rootBundle.load(bgPath)).buffer.asUint8List();
+          decodedBg = await decodeImageFromList(bgBytes!);
+        } catch (_) {}
+      }
+
+      String? photoPath = widget.initialPhotoPath;
+      if (photoPath != null && !photoPath.startsWith('/')) {
+        final dir = await getApplicationDocumentsDirectory();
+        photoPath = '${dir.path}/$photoPath';
+      }
+
       String? renderedPath;
       if (widget._renderFn != null) {
-        // Test path: use injected mock renderer
         renderedPath = await widget._renderFn!(
           template: _selectedTemplate,
           content: content,
+          imagePath: photoPath,
           emotion: widget.initialEmotion,
           tags: widget.initialTags,
           date: widget.entryDate,
@@ -409,28 +496,41 @@ class _CardBuilderSheetState extends State<CardBuilderSheet> {
           showFooter: _showFooter,
         );
       } else {
-        // App path: render via OverlayEntry in the app's widget tree
         final key = GlobalKey();
         final entry = OverlayEntry(
-          builder: (_) => RepaintBoundary(
-            key: key,
-            child: CardRenderService.buildPreviewWidget(
-              template: _selectedTemplate,
-              content: content,
-              emotion: widget.initialEmotion,
-              tags: widget.initialTags,
-              date: widget.entryDate,
-              showMood: _showMood,
-              showDate: _showDate,
-              showTags: _showTags,
-              showFooter: _showFooter,
+          builder: (_) => Positioned(
+            left: -2000,
+            top: 0,
+            child: RepaintBoundary(
+              key: key,
+              child: CardRenderService.buildPreviewWidget(
+                template: _selectedTemplate,
+                content: content,
+                imagePath: photoPath,
+                emotion: widget.initialEmotion,
+                tags: widget.initialTags,
+                date: widget.entryDate,
+                showMood: _showMood,
+                showDate: _showDate,
+                showTags: _showTags,
+                showFooter: _showFooter,
+                backgroundImageBytes: bgBytes,
+                decodedBackgroundImage: decodedBg,
+              ),
             ),
           ),
         );
         Overlay.of(context).insert(entry);
-        await WidgetsBinding.instance.endOfFrame;
-        renderedPath = await CardRenderService.captureFromKey(key);
-        entry.remove();
+        try {
+          await WidgetsBinding.instance.endOfFrame;
+          renderedPath = await CardRenderService.captureFromKey(key);
+        } finally {
+          // Always schedule removal — even if captureFromKey throws — so the
+          // entry never permanently blocks the UI on iOS.
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            try { entry.remove(); } catch (_) {}
+          });
+        }
       }
 
       if (renderedPath == null) {

@@ -1,3 +1,5 @@
+import 'package:flutter/material.dart';
+
 enum CardLayout { heroImage, centered, leftAligned, twoColumn }
 
 extension CardLayoutExtension on CardLayout {
@@ -41,6 +43,40 @@ extension CardCornerStyleExtension on CardCornerStyle {
         return CardCornerStyle.pill;
       default:
         return CardCornerStyle.rounded;
+    }
+  }
+}
+
+enum TextAlignMode { left, center, right, justify }
+
+extension TextAlignModeExtension on TextAlignMode {
+  String get value => name;
+
+  static TextAlignMode fromString(String s) {
+    switch (s) {
+      case 'left':
+        return TextAlignMode.left;
+      case 'center':
+        return TextAlignMode.center;
+      case 'right':
+        return TextAlignMode.right;
+      case 'justify':
+        return TextAlignMode.justify;
+      default:
+        return TextAlignMode.center;
+    }
+  }
+
+  TextAlign toFlutter() {
+    switch (this) {
+      case TextAlignMode.left:
+        return TextAlign.left;
+      case TextAlignMode.center:
+        return TextAlign.center;
+      case TextAlignMode.right:
+        return TextAlign.right;
+      case TextAlignMode.justify:
+        return TextAlign.justify;
     }
   }
 }

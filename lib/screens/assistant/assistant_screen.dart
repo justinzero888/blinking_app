@@ -519,15 +519,18 @@ class _AssistantScreenState extends State<AssistantScreen> {
         ),
         actions: [
           if (_hasSavedReflection)
-            IconButton(
-              icon: const Icon(Icons.photo_album_outlined),
-              tooltip: isZh ? '保存为纪念' : 'Save as Keepsake',
-              onPressed: () {
-                CardBuilderSheet.show(
-                  context,
-                  initialContent: _lastSavedReflectionContent,
-                );
-              },
+            Semantics(
+              identifier: 'btn_assistant_save_keepsake',
+              child: IconButton(
+                icon: const Icon(Icons.photo_album_outlined),
+                tooltip: isZh ? '保存为纪念' : 'Save as Keepsake',
+                onPressed: () {
+                  CardBuilderSheet.show(
+                    context,
+                    initialContent: _lastSavedReflectionContent,
+                  );
+                },
+              ),
             ),
           if (hasRealMessages)
             IconButton(

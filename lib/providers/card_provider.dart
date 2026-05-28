@@ -21,7 +21,9 @@ class CardProvider extends ChangeNotifier {
 
   // Getters
   List<CardFolder> get folders => _folders;
-  List<CardTemplate> get templates => _templates;
+  List<CardTemplate> get templates => _templates
+      .where((t) => t.isBuiltIn || t.customImagePath != null || t.backgroundImagePath != null)
+      .toList();
   List<NoteCard> get cards => _cards;
   bool get isLoading => _isLoading;
 
@@ -116,21 +118,6 @@ class CardProvider extends ChangeNotifier {
       if (await determFile.exists()) await determFile.delete();
     }
     notifyListeners();
-  }
-
-  Future<CardTemplate> copyBuiltInTemplate(CardTemplate source, {bool isZh = true}) async {
-    final prefix = isZh ? '自定义' : 'Custom';
-    final copy = source.copyWith(
-      id: _uuid.v4(),
-      name: '$prefix — ${source.displayNameFor(isZh)}',
-      isBuiltIn: false,
-      sourceTemplateId: source.id,
-      createdAt: DateTime.now(),
-    );
-    await _storage.addTemplate(copy);
-    _templates.add(copy);
-    notifyListeners();
-    return copy;
   }
 
   List<NoteCard> getCardsInFolder(String folderId) {

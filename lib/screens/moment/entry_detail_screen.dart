@@ -249,7 +249,7 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
     return entryDay.isBefore(todayDay);
   }
 
-  void _handleSaveAsKeepsake(BuildContext context, Entry entry) {
+  Future<void> _handleSaveAsKeepsake(BuildContext context, Entry entry) async {
     final isZh = context.read<LocaleProvider>().locale.languageCode == 'zh';
     final tagProvider = context.read<TagProvider>();
     final tags = tagProvider.tags
@@ -258,7 +258,7 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
         .toList();
     final photoPath = entry.mediaUrls.isNotEmpty ? entry.mediaUrls.first : null;
 
-    CardBuilderSheet.show(
+    await CardBuilderSheet.show(
       context,
       entryId: entry.id,
       initialContent: entry.content,

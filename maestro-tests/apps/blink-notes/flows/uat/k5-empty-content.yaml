@@ -1,0 +1,47 @@
+# K5: Empty content shows snackbar on save attempt
+appId: com.blinking.blinking
+---
+- runFlow: ../../subflows/launch.yaml
+
+- tapOn:
+    id: "nav_moments"
+    waitToSettleTimeoutMs: 0
+- extendedWaitUntil:
+    visible:
+      id: "entry_item"
+    timeout: 8000
+- scroll
+- extendedWaitUntil:
+    visible:
+      id: "entry_item"
+    timeout: 5000
+- tapOn:
+    id: "entry_item"
+    index: 0
+    waitToSettleTimeoutMs: 0
+- extendedWaitUntil:
+    visible:
+      id: "btn_save_keepsake"
+    timeout: 10000
+- tapOn:
+    id: "btn_save_keepsake"
+
+    waitToSettleTimeoutMs: 0
+# Tap bottom-right of text field to place cursor at end, then erase backward.
+# text field bounds [106,419][714,539] on 820x1180 grid → bottom-right ≈ 87%,45%
+# Tapping bottom-right of multiline field places cursor after the last character.
+- tapOn:
+    id: "card_builder_content"
+    waitToSettleTimeoutMs: 0
+- tapOn:
+    point: "87%, 45%"
+    waitToSettleTimeoutMs: 0
+- eraseText: 300
+
+# Tap Save — should show validation snackbar
+- tapOn:
+    id: "btn_card_save"
+
+    waitToSettleTimeoutMs: 0
+# Verify snackbar: "Please enter some content" or "请输入内容"
+- assertVisible: "content"

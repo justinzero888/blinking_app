@@ -1,0 +1,59 @@
+# K6: Create keepsake, tap badge, preview shows Edit+Share, go back
+appId: com.blinking.blinking
+---
+- runFlow: ../../subflows/launch.yaml
+
+- tapOn:
+    id: "nav_moments"
+    waitToSettleTimeoutMs: 0
+- extendedWaitUntil:
+    visible:
+      id: "entry_item"
+    timeout: 8000
+- scroll
+- extendedWaitUntil:
+    visible:
+      id: "entry_item"
+    timeout: 5000
+- tapOn:
+    id: "entry_item"
+    index: 0
+    waitToSettleTimeoutMs: 0
+- tapOn:
+    id: "btn_save_keepsake"
+
+    waitToSettleTimeoutMs: 0
+# Save with default template
+- tapOn:
+    id: "btn_card_save"
+
+    waitToSettleTimeoutMs: 0
+- extendedWaitUntil:
+    visible: "Keepsake saved"
+    timeout: 15000
+
+# Tap keepsake badge on entry detail
+- tapOn:
+    id: "badge_keepsake"
+
+    waitToSettleTimeoutMs: 0
+# Preview screen shows
+- assertVisible: "Keepsake Preview"
+
+# Verify Edit button visible
+- assertVisible:
+    id: "btn_edit_card"
+
+# Verify Share button visible
+- assertVisible:
+    id: "btn_share_card"
+
+# Go back — swipe from left edge to trigger iOS interactive pop gesture
+- swipe:
+    start: "2%, 50%"
+    end: "60%, 50%"
+    duration: 400
+
+# Verify we're back at entry detail
+- assertVisible:
+    id: "btn_save_keepsake"

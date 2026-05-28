@@ -27,6 +27,16 @@ class CardTemplate {
   final CardCornerStyle cornerStyle;
   final String? decorationStyle; // ink_wash, bamboo, crescent, porcelain, tea, seal, landscape
 
+  // v1.3.0 per-template styling (Xiaohongshu-style customization)
+  final String? backgroundImagePath; // asset path e.g. 'assets/cards/bg_ink_rhythm.jpg' or file:// path
+  final double textPaddingTop; // distance from card top to text area (px at 1080×1440)
+  final double textPaddingBottom; // distance from text area bottom to overlay row
+  final double textPaddingLeft;
+  final double textPaddingRight;
+  final double baseFontSize; // max font size cap for this template (auto-sizer won't exceed this)
+  final int fontWeightValue; // 400/500/700 stored as int, maps to FontWeight
+  final TextAlignMode textAlignMode; // per-template text alignment
+
   const CardTemplate({
     required this.id,
     required this.name,
@@ -50,6 +60,14 @@ class CardTemplate {
     this.showFooter = true,
     this.cornerStyle = CardCornerStyle.rounded,
     this.decorationStyle,
+    this.backgroundImagePath,
+    this.textPaddingTop = 120,
+    this.textPaddingBottom = 140,
+    this.textPaddingLeft = 80,
+    this.textPaddingRight = 80,
+    this.baseFontSize = 72,
+    this.fontWeightValue = 500,
+    this.textAlignMode = TextAlignMode.center,
   });
 
   /// Returns a locale-aware display name.
@@ -88,6 +106,15 @@ class CardTemplate {
     CardCornerStyle? cornerStyle,
     String? decorationStyle,
     bool clearDecorationStyle = false,
+    String? backgroundImagePath,
+    bool clearBackgroundImage = false,
+    double? textPaddingTop,
+    double? textPaddingBottom,
+    double? textPaddingLeft,
+    double? textPaddingRight,
+    double? baseFontSize,
+    int? fontWeightValue,
+    TextAlignMode? textAlignMode,
   }) {
     return CardTemplate(
       id: id ?? this.id,
@@ -118,6 +145,16 @@ class CardTemplate {
       decorationStyle: clearDecorationStyle
           ? null
           : (decorationStyle ?? this.decorationStyle),
+      backgroundImagePath: clearBackgroundImage
+          ? null
+          : (backgroundImagePath ?? this.backgroundImagePath),
+      textPaddingTop: textPaddingTop ?? this.textPaddingTop,
+      textPaddingBottom: textPaddingBottom ?? this.textPaddingBottom,
+      textPaddingLeft: textPaddingLeft ?? this.textPaddingLeft,
+      textPaddingRight: textPaddingRight ?? this.textPaddingRight,
+      baseFontSize: baseFontSize ?? this.baseFontSize,
+      fontWeightValue: fontWeightValue ?? this.fontWeightValue,
+      textAlignMode: textAlignMode ?? this.textAlignMode,
     );
   }
 
@@ -144,6 +181,14 @@ class CardTemplate {
         'show_footer': showFooter ? 1 : 0,
         'corner_style': cornerStyle.value,
         'decoration_style': decorationStyle,
+        'background_image_path': backgroundImagePath,
+        'text_padding_top': textPaddingTop,
+        'text_padding_bottom': textPaddingBottom,
+        'text_padding_left': textPaddingLeft,
+        'text_padding_right': textPaddingRight,
+        'base_font_size': baseFontSize,
+        'font_weight_value': fontWeightValue,
+        'text_align_mode': textAlignMode.value,
       };
 
   factory CardTemplate.fromJson(Map<String, dynamic> json) => CardTemplate(
@@ -173,5 +218,15 @@ class CardTemplate {
             ? CardCornerStyleExtension.fromString(json['corner_style'] as String)
             : CardCornerStyle.rounded,
         decorationStyle: json['decoration_style'] as String?,
+        backgroundImagePath: json['background_image_path'] as String?,
+        textPaddingTop: (json['text_padding_top'] as num?)?.toDouble() ?? 120,
+        textPaddingBottom: (json['text_padding_bottom'] as num?)?.toDouble() ?? 140,
+        textPaddingLeft: (json['text_padding_left'] as num?)?.toDouble() ?? 80,
+        textPaddingRight: (json['text_padding_right'] as num?)?.toDouble() ?? 80,
+        baseFontSize: (json['base_font_size'] as num?)?.toDouble() ?? 72,
+        fontWeightValue: json['font_weight_value'] as int? ?? 500,
+        textAlignMode: json['text_align_mode'] != null
+            ? TextAlignModeExtension.fromString(json['text_align_mode'] as String)
+            : TextAlignMode.center,
       );
 }

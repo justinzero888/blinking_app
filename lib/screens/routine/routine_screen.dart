@@ -1400,20 +1400,23 @@ class _RoutineDialogWidgetState extends State<_RoutineDialogWidget> {
             const SizedBox(height: 12),
 
             // Reminder
-            TextField(
-              controller: _reminderController,
-              keyboardType: TextInputType.datetime,
-              maxLength: 5,
-              inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'[\d:]')),
-              ],
-              decoration: InputDecoration(
-                labelText: isZh ? '提醒时间 (可选)' : 'Reminder (optional)',
-                hintText: '08:00',
-                helperText: isZh ? '24小时格式，仅本地提醒' : '24-hour format, local only',
-                counterText: '',
+            MergeSemantics(child: Semantics(
+              identifier: 'input_routine_reminder',
+              child: TextField(
+                controller: _reminderController,
+                keyboardType: TextInputType.datetime,
+                maxLength: 5,
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(RegExp(r'[\d:]')),
+                ],
+                decoration: InputDecoration(
+                  labelText: isZh ? '提醒时间 (可选)' : 'Reminder (optional)',
+                  hintText: '08:00',
+                  helperText: isZh ? '24小时格式，仅本地提醒' : '24-hour format, local only',
+                  counterText: '',
+                ),
               ),
-            ),
+            )),
             const SizedBox(height: 4),
             // Voice toggle — only shown when global voice is enabled
             if (_reminderController.text.trim().isNotEmpty) ...[
@@ -1423,16 +1426,19 @@ class _RoutineDialogWidgetState extends State<_RoutineDialogWidget> {
                   final prefs = snapshot.data;
                   final globalVoice = prefs?.getBool('voice_notifications_enabled') ?? false;
                   if (!globalVoice) return const SizedBox.shrink();
-                  return SwitchListTile(
-                    dense: true,
-                    contentPadding: EdgeInsets.zero,
-                    title: Text(isZh ? '朗读提醒' : 'Speak reminder',
-                        style: const TextStyle(fontSize: 14)),
-                    subtitle: Text(isZh ? '提醒时如果应用打开，会朗读习惯名称' : 'Reads the routine aloud at reminder time when app is open',
-                        style: const TextStyle(fontSize: 12)),
-                    value: _voiceEnabled,
-                    onChanged: (v) => setState(() => _voiceEnabled = v),
-                  );
+                  return MergeSemantics(child: Semantics(
+                    identifier: 'toggle_speak_reminder',
+                    child: SwitchListTile(
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(isZh ? '朗读提醒' : 'Speak reminder',
+                          style: const TextStyle(fontSize: 14)),
+                      subtitle: Text(isZh ? '提醒时如果应用打开，会朗读习惯名称' : 'Reads the routine aloud at reminder time when app is open',
+                          style: const TextStyle(fontSize: 12)),
+                      value: _voiceEnabled,
+                      onChanged: (v) => setState(() => _voiceEnabled = v),
+                    ),
+                  ));
                 },
               ),
             ],

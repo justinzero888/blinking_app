@@ -1,0 +1,33 @@
+# K4: AI Rewrite button visible and tappable
+# Does not validate LLM response content (network-dependent)
+appId: com.blinking.blinking
+---
+- runFlow: ../../subflows/launch.yaml
+
+- tapOn:
+    id: "nav_moments"
+    waitToSettleTimeoutMs: 0
+- extendedWaitUntil:
+    visible:
+      id: "entry_item"
+    timeout: 8000
+- scroll
+- extendedWaitUntil:
+    visible:
+      id: "entry_item"
+    timeout: 5000
+- tapOn:
+    id: "entry_item"
+    index: 0
+    waitToSettleTimeoutMs: 0
+- tapOn:
+    id: "btn_save_keepsake"
+
+    waitToSettleTimeoutMs: 0
+# Verify AI Rewrite button is visible
+- assertVisible: "AI Rewrite"
+
+# Tap AI Rewrite to trigger (may fail offline — validates button wiring)
+- tapOn: "AI Rewrite"
+
+# Content field should remain visible

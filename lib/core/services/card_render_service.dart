@@ -1,7 +1,9 @@
 import 'dart:io';
+import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
 import '../../models/card_enums.dart';
@@ -33,6 +35,8 @@ class CardRenderService {
     bool? showTags,
     bool? showFooter,
     Map<String, dynamic>? styleOverrides,
+    Uint8List? backgroundImageBytes,
+    ui.Image? decodedBackgroundImage,
   }) {
     final config = _buildConfig(
       template,
@@ -41,6 +45,8 @@ class CardRenderService {
       showDate: showDate,
       showTags: showTags,
       showFooter: showFooter,
+      backgroundImageBytes: backgroundImageBytes,
+      decodedBackgroundImage: decodedBackgroundImage,
     );
     return _CardRenderWidget(
       template: template,
@@ -67,6 +73,8 @@ class CardRenderService {
     bool? showTags,
     bool? showFooter,
     Map<String, dynamic>? styleOverrides,
+    Uint8List? backgroundImageBytes,
+    ui.Image? decodedBackgroundImage,
   }) async {
     final widget = buildPreviewWidget(
       template: template,
@@ -80,6 +88,8 @@ class CardRenderService {
       showTags: showTags,
       showFooter: showFooter,
       styleOverrides: styleOverrides,
+      backgroundImageBytes: backgroundImageBytes,
+      decodedBackgroundImage: decodedBackgroundImage,
     );
 
     final image = await _renderOffscreen(widget);
@@ -135,9 +145,14 @@ class CardRenderService {
     );
     pipelineOwner.flushLayout();
     pipelineOwner.flushPaint();
-    element.unmount();
 
-    return renderObject.toImage(pixelRatio: 1.0);
+    final image = await renderObject.toImage(pixelRatio: 1.0);
+
+    try { element.unmount(); } catch (_) {}
+    try { renderObject.detach(); } catch (_) {}
+    try { pipelineOwner.dispose(); } catch (_) {}
+
+    return image;
   }
 
   static _CardConfig _buildConfig(
@@ -147,6 +162,8 @@ class CardRenderService {
     bool? showDate,
     bool? showTags,
     bool? showFooter,
+    Uint8List? backgroundImageBytes,
+    ui.Image? decodedBackgroundImage,
   }) {
     return _CardConfig(
       layout: template.layout,
@@ -167,6 +184,16 @@ class CardRenderService {
       showFooter: showFooter ?? template.showFooter,
       cornerStyle: template.cornerStyle,
       decorationStyle: template.decorationStyle,
+      backgroundImagePath: template.backgroundImagePath,
+      backgroundImageBytes: backgroundImageBytes,
+      decodedBackgroundImage: decodedBackgroundImage,
+      textPaddingTop: (styleOverrides?['text_padding_top'] as num?)?.toDouble() ?? template.textPaddingTop,
+      textPaddingBottom: (styleOverrides?['text_padding_bottom'] as num?)?.toDouble() ?? template.textPaddingBottom,
+      textPaddingLeft: (styleOverrides?['text_padding_left'] as num?)?.toDouble() ?? template.textPaddingLeft,
+      textPaddingRight: (styleOverrides?['text_padding_right'] as num?)?.toDouble() ?? template.textPaddingRight,
+      baseFontSize: (styleOverrides?['base_font_size'] as num?)?.toDouble() ?? template.baseFontSize,
+      fontWeightValue: (styleOverrides?['font_weight_value'] as int?) ?? template.fontWeightValue,
+      textAlignMode: template.textAlignMode,
     );
   }
 
@@ -206,9 +233,19 @@ class _CardConfig {
   final bool showTags;
   final bool showFooter;
   final CardCornerStyle cornerStyle;
-  final String? decorationStyle;
+    final String? decorationStyle;
+    final String? backgroundImagePath;
+    final Uint8List? backgroundImageBytes;
+    final ui.Image? decodedBackgroundImage;
+    final double textPaddingTop;
+    final double textPaddingBottom;
+    final double textPaddingLeft;
+    final double textPaddingRight;
+    final double baseFontSize;
+    final int fontWeightValue;
+    final TextAlignMode textAlignMode;
 
-  const _CardConfig({
+    _CardConfig({
     required this.layout,
     required this.bgColor,
     required this.fontColor,
@@ -222,6 +259,16 @@ class _CardConfig {
     required this.showFooter,
     required this.cornerStyle,
     this.decorationStyle,
+    this.backgroundImagePath,
+    this.backgroundImageBytes,
+    this.decodedBackgroundImage,
+    this.textPaddingTop = 120,
+    this.textPaddingBottom = 140,
+    this.textPaddingLeft = 80,
+    this.textPaddingRight = 80,
+    this.baseFontSize = 72,
+    this.fontWeightValue = 500,
+    this.textAlignMode = TextAlignMode.center,
   });
 }
 
@@ -247,14 +294,104 @@ class _CardRenderWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: CardRenderService._cardWidth.toDouble(),
-      height: CardRenderService._cardHeight.toDouble(),
-      child: DecoratedBox(
-        decoration: _buildBackground(),
-        child: _buildLayout(),
+    final borderRadius = _cornerRadius();
+    final hasBgImage = config.decodedBackgroundImage != null ||
+        config.backgroundImageBytes != null ||
+        (config.backgroundImagePath != null && config.backgroundImagePath!.startsWith('assets/'));
+
+    // When a background image is present, use solid bgColor as fallback (not gradient)
+    final bgDecoration = hasBgImage
+        ? BoxDecoration(color: config.bgColor)
+        : _buildBackground();
+
+    Decoration? imageDecoration;
+    if (config.backgroundImageBytes == null && config.backgroundImagePath != null &&
+        config.backgroundImagePath!.startsWith('assets/')) {
+      // AssetImage fallback for contexts where bytes aren't available
+      imageDecoration = BoxDecoration(
+        image: DecorationImage(
+          image: AssetImage(config.backgroundImagePath!),
+          fit: BoxFit.cover,
+          onError: (_, __) {},
+        ),
+        color: config.bgColor,
+      );
+    }
+
+    Widget child = _buildLayout();
+
+    // Pre-decoded image: use RawImage which paints instantly (no async decode)
+    if (config.decodedBackgroundImage != null) {
+      child = Stack(
+        fit: StackFit.expand,
+        children: [
+          RawImage(image: config.decodedBackgroundImage, fit: BoxFit.cover),
+          child,
+        ],
+      );
+    } else if (config.backgroundImageBytes != null) {
+      child = Stack(
+        fit: StackFit.expand,
+        children: [
+          Image.memory(config.backgroundImageBytes!, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const SizedBox.shrink()),
+          child,
+        ],
+      );
+    }
+
+    // File-based background images (Stack approach)
+    final fileBgPath = config.backgroundImagePath;
+    if (fileBgPath != null && (fileBgPath.startsWith('/') || fileBgPath.startsWith('file://'))) {
+      try {
+        final filePath = fileBgPath.startsWith('file://') ? fileBgPath.substring(7) : fileBgPath;
+        final file = File(filePath);
+        if (file.existsSync()) {
+          child = Stack(
+            fit: StackFit.expand,
+            children: [
+              Image.file(file, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const SizedBox.shrink()),
+              child,
+            ],
+          );
+        }
+      } catch (_) {}
+    }
+
+    return ClipRRect(
+      borderRadius: borderRadius,
+      child: SizedBox(
+        width: CardRenderService._cardWidth.toDouble(),
+        height: CardRenderService._cardHeight.toDouble(),
+        child: DecoratedBox(
+          decoration: imageDecoration ?? bgDecoration,
+          child: child,
+        ),
       ),
     );
+  }
+
+  BorderRadius _cornerRadius() {
+    switch (config.cornerStyle) {
+      case CardCornerStyle.sharp:
+        return BorderRadius.zero;
+      case CardCornerStyle.pill:
+        return const BorderRadius.all(Radius.circular(720));
+      case CardCornerStyle.rounded:
+      default:
+        return const BorderRadius.all(Radius.circular(24));
+    }
+  }
+
+  String? _resolveFontFamily() {
+    switch (template.fontFamily) {
+      case 'serif':
+        return 'MaShanZheng';
+      case 'mono':
+        return 'monospace';
+      case 'default':
+      default:
+        return null; // system default sans-serif
+    }
   }
 
   Decoration _buildBackground() {
@@ -272,8 +409,8 @@ class _CardRenderWidget extends StatelessWidget {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              Color(0xFFF5F0E8),
-              Color(0xFFD8D0C0),
+              Color(0xFFF2EFE9),
+              Color(0xFFD5CFC3),
             ],
           ),
         );
@@ -349,12 +486,25 @@ class _CardRenderWidget extends StatelessWidget {
       children: [
         if (imagePath != null) _buildFullBleedImage(),
         _buildDecorativeMotif(config.decorationStyle),
-        Center(child: _buildTextBlock(content)),
-        Positioned(
-          left: 40,
-          right: 40,
-          bottom: 60,
-          child: _buildOverlayRow(),
+        Padding(
+          padding: EdgeInsets.only(
+            left: config.textPaddingLeft,
+            top: config.textPaddingTop,
+            right: config.textPaddingRight,
+          ),
+          child: Column(
+            children: [
+              Expanded(
+                child: Center(
+                  child: _buildTextBlock(content),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 80),
+                child: _buildOverlayRow(),
+              ),
+            ],
+          ),
         ),
       ],
     );
@@ -369,12 +519,25 @@ class _CardRenderWidget extends StatelessWidget {
         if (imagePath != null) _buildFullBleedImage(),
         _buildDecorativeMotif(config.decorationStyle),
         if (config.decorationStyle == 'porcelain') _buildPorcelainBorders(),
-        Center(child: _buildTextBlock(content)),
-        Positioned(
-          left: 40,
-          right: 40,
-          bottom: 60,
-          child: _buildOverlayRow(),
+        Padding(
+          padding: EdgeInsets.only(
+            left: config.textPaddingLeft,
+            top: config.textPaddingTop,
+            right: config.textPaddingRight,
+          ),
+          child: Column(
+            children: [
+              Expanded(
+                child: Center(
+                  child: _buildTextBlock(content),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 80),
+                child: _buildOverlayRow(),
+              ),
+            ],
+          ),
         ),
       ],
     );
@@ -398,24 +561,25 @@ class _CardRenderWidget extends StatelessWidget {
         ),
         // Rice paper texture for 素笺
         if (config.decorationStyle == 'rice_paper') _buildRicePaperTexture(),
-        // Main content
         Padding(
-          padding: const EdgeInsets.only(left: 40, top: 80, right: 40),
+          padding: EdgeInsets.only(
+            left: config.textPaddingLeft,
+            top: config.textPaddingTop,
+            right: config.textPaddingRight,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(child: _buildTextBlock(content, align: TextAlign.left)),
+              Expanded(child: _buildTextBlock(content)),
               if (imagePath != null) _buildInlineImage(),
+              Padding(
+                padding: EdgeInsets.only(top: 16, bottom: config.textPaddingBottom - 60),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: _buildOverlayRow(),
+                ),
+              ),
             ],
-          ),
-        ),
-        Positioned(
-          left: 40,
-          right: 40,
-          bottom: 60,
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: _buildOverlayRow(),
           ),
         ),
       ],
@@ -425,23 +589,20 @@ class _CardRenderWidget extends StatelessWidget {
   // --- Two-Column Layout ---
 
   Widget _buildTwoColumnLayout() {
-    return Stack(
-      fit: StackFit.expand,
+    return Column(
       children: [
-        Column(
-          children: [
-            if (imagePath != null)
-              SizedBox(
-                height: CardRenderService._cardHeight * 0.4,
-                child: _buildHeroImage(),
-              ),
-            Expanded(child: _buildContentArea()),
-          ],
-        ),
-        Positioned(
-          left: 40,
-          right: 40,
-          bottom: 60,
+        if (imagePath != null)
+          SizedBox(
+            height: CardRenderService._cardHeight * 0.4,
+            child: _buildHeroImage(),
+          ),
+        Expanded(child: _buildContentArea()),
+        Padding(
+          padding: EdgeInsets.only(
+            left: config.textPaddingLeft,
+            right: config.textPaddingRight,
+            bottom: config.textPaddingBottom - 60,
+          ),
           child: _buildOverlayRow(),
         ),
       ],
@@ -450,7 +611,11 @@ class _CardRenderWidget extends StatelessWidget {
 
   Widget _buildContentArea() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 40),
+      padding: EdgeInsets.only(
+        left: config.textPaddingLeft,
+        top: imagePath != null ? 8 : config.textPaddingTop,
+        right: config.textPaddingRight,
+      ),
       child: _buildTextBlock(content),
     );
   }
@@ -458,16 +623,33 @@ class _CardRenderWidget extends StatelessWidget {
   // --- Image helpers ---
 
   Widget _buildFullBleedImage() {
-    return ClipRRect(
-      child: Image.file(
-        File(imagePath!),
-        fit: BoxFit.cover,
-        width: double.infinity,
-        height: double.infinity,
-        color: Colors.black.withValues(alpha: 0.15),
-        colorBlendMode: BlendMode.darken,
-        errorBuilder: (_, __, ___) => const SizedBox.shrink(),
-      ),
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        ClipRRect(
+          child: Image.file(
+            File(imagePath!),
+            fit: BoxFit.cover,
+            width: double.infinity,
+            height: double.infinity,
+            errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+          ),
+        ),
+        Positioned.fill(
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.black.withValues(alpha: 0.20),
+                  Colors.black.withValues(alpha: 0.50),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -497,57 +679,75 @@ class _CardRenderWidget extends StatelessWidget {
 
   // --- Text block ---
 
-  Widget _buildTextBlock(String text, {TextAlign align = TextAlign.center}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final effectiveText = text.trim().isEmpty ? '' : text.trim();
-          if (effectiveText.isEmpty) return const SizedBox.shrink();
+  Widget _buildTextBlock(String text) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final effectiveText = text.trim().isEmpty ? '' : text.trim();
+        if (effectiveText.isEmpty) return const SizedBox.shrink();
 
-          final fontSize = _findOptimalFontSize(
-            effectiveText,
-            constraints.maxWidth,
-            constraints.maxHeight,
-          );
+        final hasBgImage = config.decodedBackgroundImage != null ||
+            config.backgroundImageBytes != null ||
+            (config.backgroundImagePath != null && config.backgroundImagePath!.startsWith('assets/'));
 
-          final hasBackdrop = config.textBackdropColor != null;
+        // Never render colored text backdrop when background image is present
+        final hasBackdrop = !hasBgImage && config.textBackdropColor != null;
+        final double innerMaxWidth = hasBackdrop
+            ? constraints.maxWidth - 40
+            : constraints.maxWidth;
+        final double innerMaxHeight = hasBackdrop
+            ? constraints.maxHeight - 40
+            : constraints.maxHeight;
 
-          Widget textWidget = Text(
-            effectiveText,
-            textAlign: align,
-            style: TextStyle(
-              fontSize: fontSize,
-              color: config.fontColor,
-              height: 1.5,
-              fontWeight: FontWeight.w400,
-            ),
-            maxLines: null,
-            overflow: TextOverflow.visible,
-          );
+        final fontSize = _findOptimalFontSize(
+          effectiveText,
+          innerMaxWidth,
+          innerMaxHeight,
+          maxFontSize: config.baseFontSize,
+        );
 
-          if (hasBackdrop) {
-            textWidget = Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: config.textBackdropColor!.withValues(
-                  alpha: config.textAreaOpacity,
-                ),
-                borderRadius: BorderRadius.circular(16),
+        final resolvedFontFamily = _resolveFontFamily();
+        final align = config.textAlignMode.toFlutter();
+        final fontWeight = FontWeight.values.firstWhere(
+          (w) => w.index == config.fontWeightValue ~/ 100 - 1,
+          orElse: () => FontWeight.w500,
+        );
+
+        Widget textWidget = Text(
+          effectiveText,
+          textAlign: align,
+          style: TextStyle(
+            fontSize: fontSize,
+            fontFamily: resolvedFontFamily,
+            color: config.fontColor,
+            height: 1.6,
+            fontWeight: fontWeight,
+            decoration: TextDecoration.none,
+          ),
+          maxLines: null,
+          overflow: TextOverflow.visible,
+        );
+
+        if (hasBackdrop) {
+          textWidget = Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: config.textBackdropColor!.withValues(
+                alpha: config.textAreaOpacity,
               ),
-              child: textWidget,
-            );
-          }
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: textWidget,
+          );
+        }
 
-          return Center(child: textWidget);
-        },
-      ),
+        return Center(child: textWidget);
+      },
     );
   }
 
-  double _findOptimalFontSize(String text, double maxWidth, double maxHeight) {
+  double _findOptimalFontSize(String text, double maxWidth, double maxHeight, {double maxFontSize = 96}) {
     double low = CardRenderService._minFontSize.toDouble();
-    double high = CardRenderService._maxFontSize.toDouble();
+    double high = maxFontSize.clamp(CardRenderService._minFontSize.toDouble(), CardRenderService._maxFontSize.toDouble());
     double best = low;
 
     while (low <= high) {
@@ -576,13 +776,13 @@ class _CardRenderWidget extends StatelessWidget {
     final items = <Widget>[];
 
     if (config.showMood && emotion != null && emotion!.isNotEmpty) {
-      items.add(Text(emotion!, style: const TextStyle(fontSize: 24)));
+      items.add(Text(emotion!, style: const TextStyle(fontSize: 28, decoration: TextDecoration.none)));
       items.add(const SizedBox(width: 8));
     }
     if (config.showDate && date != null) {
       items.add(Text(
         '${date!.year}-${date!.month.toString().padLeft(2, '0')}-${date!.day.toString().padLeft(2, '0')}',
-        style: TextStyle(fontSize: 18, color: config.fontColor.withValues(alpha: 0.6)),
+        style: TextStyle(fontSize: 18, color: config.fontColor.withValues(alpha: 0.4), fontWeight: FontWeight.w300, decoration: TextDecoration.none),
       ));
       items.add(const SizedBox(width: 8));
     }
@@ -594,7 +794,7 @@ class _CardRenderWidget extends StatelessWidget {
       if (displayTags.isNotEmpty) {
         items.add(Text(
           displayTags.map((t) => '#$t').join(' '),
-          style: TextStyle(fontSize: 16, color: config.fontColor.withValues(alpha: 0.5)),
+          style: TextStyle(fontSize: 18, color: config.fontColor.withValues(alpha: 0.4), decoration: TextDecoration.none),
         ));
         items.add(const SizedBox(width: 8));
       }
@@ -602,7 +802,7 @@ class _CardRenderWidget extends StatelessWidget {
     if (config.showFooter) {
       items.add(Text(
         config.footerText,
-        style: TextStyle(fontSize: 14, color: config.fontColor.withValues(alpha: 0.4)),
+        style: TextStyle(fontSize: 15, color: config.fontColor.withValues(alpha: 0.35), decoration: TextDecoration.none),
       ));
     }
 
@@ -611,7 +811,7 @@ class _CardRenderWidget extends StatelessWidget {
     return Wrap(
       alignment: WrapAlignment.center,
       crossAxisAlignment: WrapCrossAlignment.center,
-      spacing: 4,
+      spacing: 8,
       runSpacing: 4,
       children: items,
     );
@@ -654,8 +854,8 @@ class _CardRenderWidget extends StatelessWidget {
 
   Widget _buildBambooLeaf() {
     return Positioned(
-      right: 40,
-      bottom: 120,
+      right: 20,
+      bottom: 180,
       child: CustomPaint(
         size: const Size(160, 100),
         painter: _BambooPainter(config.accentColor ?? const Color(0xFF7A9A6D)),
@@ -664,24 +864,24 @@ class _CardRenderWidget extends StatelessWidget {
   }
 
   Widget _buildSealStamp() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.only(bottom: 100),
-        child: Container(
-          width: 60,
-          height: 60,
-          decoration: BoxDecoration(
-            border: Border.all(color: config.accentColor ?? const Color(0xFFC43A31), width: 2),
-            borderRadius: BorderRadius.circular(4),
-          ),
-          child: Center(
-            child: Text(
-              '印',
-              style: TextStyle(
-                fontSize: 28,
-                color: config.accentColor ?? const Color(0xFFC43A31),
-                fontWeight: FontWeight.bold,
-              ),
+    return Positioned(
+      right: 80,
+      bottom: 200,
+      child: Container(
+        width: 72,
+        height: 72,
+        decoration: BoxDecoration(
+          border: Border.all(color: config.accentColor ?? const Color(0xFFC43A31), width: 3),
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: Center(
+          child: Text(
+            '印',
+            style: TextStyle(
+              fontSize: 36,
+              color: config.accentColor ?? const Color(0xFFC43A31),
+              fontWeight: FontWeight.bold,
+              decoration: TextDecoration.none,
             ),
           ),
         ),
@@ -702,7 +902,7 @@ class _CardRenderWidget extends StatelessWidget {
       left: 0,
       right: 0,
       bottom: 0,
-      height: CardRenderService._cardHeight * 0.5,
+      height: CardRenderService._cardHeight * 0.30,
       child: CustomPaint(
         painter: _MountainPainter(),
       ),
@@ -734,7 +934,7 @@ class _CrescentPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = const Color(0x14FFFFFF)
+      ..color = const Color(0x40FFFFFF)
       ..style = PaintingStyle.fill;
     final outerPath = Path()..addOval(Rect.fromCircle(center: Offset(size.width * 0.6, size.height * 0.5), radius: 45));
     final innerPath = Path()..addOval(Rect.fromCircle(center: Offset(size.width * 0.75, size.height * 0.35), radius: 45));
@@ -753,14 +953,18 @@ class _BambooPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = color.withValues(alpha: 0.15)
+      ..color = color.withValues(alpha: 0.20)
       ..style = PaintingStyle.fill;
-    final path = Path()
-      ..moveTo(size.width, size.height * 0.3)
-      ..quadraticBezierTo(size.width * 0.7, size.height * 0.1, size.width * 0.6, 0)
-      ..quadraticBezierTo(size.width * 0.5, size.height * 0.2, size.width * 0.8, size.height * 0.5)
-      ..close();
-    canvas.drawPath(path, paint);
+    // Draw 3 leaves at different angles
+    for (int i = 0; i < 3; i++) {
+      final dx = size.width * (0.7 + i * 0.12);
+      final path = Path()
+        ..moveTo(size.width, size.height * 0.3)
+        ..quadraticBezierTo(dx, size.height * 0.1, size.width * 0.6, 0)
+        ..quadraticBezierTo(size.width * 0.5, size.height * 0.2, size.width * 0.8, size.height * 0.5)
+        ..close();
+      canvas.drawPath(path, paint);
+    }
   }
 
   @override
@@ -774,9 +978,9 @@ class _SteamPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = color.withValues(alpha: 0.08)
+      ..color = color.withValues(alpha: 0.12)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 2;
+      ..strokeWidth = 4;
 
     for (int i = 0; i < 3; i++) {
       final path = Path();
@@ -796,9 +1000,9 @@ class _MountainPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paints = [
-      Paint()..color = const Color(0xFF6B7B8D).withValues(alpha: 0.12),
-      Paint()..color = const Color(0xFF8A9BA8).withValues(alpha: 0.10),
-      Paint()..color = const Color(0xFFA0B0B8).withValues(alpha: 0.08),
+      Paint()..color = const Color(0xFF6B7B8D).withValues(alpha: 0.18),
+      Paint()..color = const Color(0xFF8A9BA8).withValues(alpha: 0.15),
+      Paint()..color = const Color(0xFFA0B0B8).withValues(alpha: 0.12),
     ];
 
     final offsets = [0.0, 30.0, 60.0];
@@ -825,8 +1029,8 @@ class _RicePaperPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = const Color(0x08C43A31)
-      ..strokeWidth = 0.5;
+      ..color = const Color(0x12C43A31)
+      ..strokeWidth = 1.0;
     for (double y = 0; y < size.height; y += 8) {
       canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
     }

@@ -1,0 +1,37 @@
+appId: com.blinking.blinking
+---
+- launchApp:
+    clearState: true
+
+# Onboarding page 1 — intro screen
+- extendedWaitUntil:
+    visible:
+      text: "Continue"
+    timeout: 20000
+- tapOn:
+    text: "Continue"
+    waitToSettleTimeoutMs: 0
+
+# Onboarding page 2 — "Your life is fragments of time"
+- extendedWaitUntil:
+    visible:
+      text: "Continue"
+    timeout: 10000
+- tapOn:
+    text: "Continue"
+    waitToSettleTimeoutMs: 0
+
+# Onboarding page 3 — "Everything in My Day" features overview
+- extendedWaitUntil:
+    visible:
+      text: "Skip"
+    timeout: 15000
+- tapOn:
+    text: "Skip"
+    waitToSettleTimeoutMs: 0
+
+# Verify home screen loaded
+- extendedWaitUntil:
+    visible:
+      text: "My Day"
+    timeout: 15000

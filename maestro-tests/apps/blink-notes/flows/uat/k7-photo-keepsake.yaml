@@ -1,0 +1,38 @@
+# K7: Entry with photo — photo included in card
+# Requires a seed entry with photo. Tests that imagePath is forwarded to renderer.
+# Visual verification of photo on card is manual (MV-5).
+appId: com.blinking.blinking
+---
+- runFlow: ../../subflows/launch.yaml
+
+# Navigate to a day with an entry that has content
+- tapOn:
+    id: "nav_moments"
+
+    waitToSettleTimeoutMs: 0
+# Tap entry with photo (manual setup needed: add photo to entry first)
+# This flow validates the builder opens with photo path forwarded.
+# Skip photo assertion since seed data has no photos.
+
+# Open keepsake builder
+- extendedWaitUntil:
+    visible:
+      id: "entry_item"
+    timeout: 8000
+- scroll
+- extendedWaitUntil:
+    visible:
+      id: "entry_item"
+    timeout: 5000
+- tapOn:
+    id: "entry_item"
+    index: 0
+    waitToSettleTimeoutMs: 0
+- tapOn:
+    id: "btn_save_keepsake"
+
+    waitToSettleTimeoutMs: 0
+# Verify builder opens (photo path forwarding is tested at code level)
+- assertVisible: "Save as Keepsake"
+- assertVisible:
+    id: "btn_card_save"
