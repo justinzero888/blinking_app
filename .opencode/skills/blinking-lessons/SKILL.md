@@ -144,6 +144,22 @@ Card rendering (1080×1440 PNG capture) has three attempted pipelines. Only one 
 
 **Always `flutter clean` before switching build targets** (simulator ↔ device). Building for device then simulator without cleaning produces "incompatible platform" dyld errors.
 
+### 14. Production vs Development Assets — Keep Raw Files Out of the Bundle
+
+When generating optimized assets (e.g., converting PNG to JPG for size), move the raw source files to a separate directory OUTSIDE the `assets/` tree. Flutter bundles EVERY file in declared asset directories — including raw intermediate files.
+
+```
+// ❌ DON'T — both PNG and JPG bundled, 22MB wasted
+assets/cards/bg_ink_rhythm.png  (2.2MB raw)
+assets/cards/bg_ink_rhythm.jpg  (0.9MB optimized)
+
+// ✅ DO — only JPGs in assets, raw PNGs in dev/
+assets/cards/bg_ink_rhythm.jpg  (0.9MB optimized)
+dev/cards-raw/bg_ink_rhythm.png (2.2MB raw, not bundled)
+```
+
+**Result:** AAB went from 85MB → 66MB, IPA from 62MB → 46MB just by removing raw PNGs from the asset bundle.
+
 ### TODO: True Kaishu Font
 
 Currently using **MaShanZheng** (马山政体, xingshu/行书) mapped to `fontFamily: 'serif'` for all calligraphic templates. To upgrade to true kaishu/楷体:
