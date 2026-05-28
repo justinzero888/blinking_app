@@ -160,6 +160,23 @@ dev/cards-raw/bg_ink_rhythm.png (2.2MB raw, not bundled)
 
 **Result:** AAB went from 85MB → 66MB, IPA from 62MB → 46MB just by removing raw PNGs from the asset bundle.
 
+### 15. Every Build Must Increment the Version Number
+
+**Any** change that produces a new binary requires a new build number. This includes bug fixes, asset changes, removing files, or rebuilding for a different target.
+
+```
+// ❌ DON'T — same build number, different binary
+Fix bug → rebuild IPA/AAB → same version 1.2.0+42
+→ App Store rejects: "build 42 already exists"
+→ Google Play rejects: "versionCode 42 already used"
+
+// ✅ DO — increment every time
+Fix bug → bump to 1.2.0+43 → rebuild IPA/AAB
+→ Clean submission
+```
+
+**Rule:** If `flutter build ipa` or `flutter build appbundle` runs, the build number MUST be higher than any previously submitted build. No exceptions — Apple and Google both enforce this.
+
 ### TODO: True Kaishu Font
 
 Currently using **MaShanZheng** (马山政体, xingshu/行书) mapped to `fontFamily: 'serif'` for all calligraphic templates. To upgrade to true kaishu/楷体:
