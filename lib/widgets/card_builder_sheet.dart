@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
@@ -482,18 +481,6 @@ class _CardBuilderSheetState extends State<CardBuilderSheet> {
         photoPath = '${dir.path}/$photoPath';
       }
 
-      // Pre-decode photo for reliable off-screen rendering (avoids async decode in PipelineOwner)
-      ui.Image? decodedPhoto;
-      if (photoPath != null) {
-        try {
-          final photoFile = File(photoPath);
-          if (photoFile.existsSync()) {
-            final photoBytes = await photoFile.readAsBytes();
-            decodedPhoto = await decodeImageFromList(photoBytes);
-          }
-        } catch (_) {}
-      }
-
       String? renderedPath;
       if (widget._renderFn != null) {
         renderedPath = await widget._renderFn!(
@@ -509,21 +496,41 @@ class _CardBuilderSheetState extends State<CardBuilderSheet> {
           showFooter: _showFooter,
         );
       } else {
-        renderedPath = await CardRenderService.renderToFile(
-          template: _selectedTemplate,
-          content: content,
-          imagePath: photoPath,
-          emotion: widget.initialEmotion,
-          tags: widget.initialTags,
-          date: widget.entryDate,
-          showMood: _showMood,
-          showDate: _showDate,
-          showTags: _showTags,
-          showFooter: _showFooter,
-          backgroundImageBytes: bgBytes,
-          decodedBackgroundImage: decodedBg,
-          decodedPhoto: decodedPhoto,
+        final key = GlobalKey();
+        final entry = OverlayEntry(
+          builder: (_) => Positioned(
+            left: -2000,
+            top: 0,
+            child: RepaintBoundary(
+              key: key,
+              child: CardRenderService.buildPreviewWidget(
+                template: _selectedTemplate,
+                content: content,
+                imagePath: photoPath,
+                emotion: widget.initialEmotion,
+                tags: widget.initialTags,
+                date: widget.entryDate,
+                showMood: _showMood,
+                showDate: _showDate,
+                showTags: _showTags,
+                showFooter: _showFooter,
+                backgroundImageBytes: bgBytes,
+                decodedBackgroundImage: decodedBg,
+              ),
+            ),
+          ),
         );
+        Overlay.of(context).insert(entry);
+        try {
+          await WidgetsBinding.instance.endOfFrame;
+          renderedPath = await CardRenderService.captureFromKey(key);
+        } finally {
+          // Always schedule removal — even if captureFromKey throws — so the
+          // entry never permanently blocks the UI on iOS.
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            try { entry.remove(); } catch (_) {}
+          });
+        }
       }
 
       if (renderedPath == null) {
