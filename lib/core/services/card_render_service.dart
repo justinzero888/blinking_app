@@ -37,6 +37,7 @@ class CardRenderService {
     Map<String, dynamic>? styleOverrides,
     Uint8List? backgroundImageBytes,
     ui.Image? decodedBackgroundImage,
+    ui.Image? decodedPhoto,
   }) {
     final config = _buildConfig(
       template,
@@ -47,6 +48,7 @@ class CardRenderService {
       showFooter: showFooter,
       backgroundImageBytes: backgroundImageBytes,
       decodedBackgroundImage: decodedBackgroundImage,
+      decodedPhoto: decodedPhoto,
     );
     return _CardRenderWidget(
       template: template,
@@ -75,6 +77,7 @@ class CardRenderService {
     Map<String, dynamic>? styleOverrides,
     Uint8List? backgroundImageBytes,
     ui.Image? decodedBackgroundImage,
+    ui.Image? decodedPhoto,
   }) async {
     final widget = buildPreviewWidget(
       template: template,
@@ -90,6 +93,7 @@ class CardRenderService {
       styleOverrides: styleOverrides,
       backgroundImageBytes: backgroundImageBytes,
       decodedBackgroundImage: decodedBackgroundImage,
+      decodedPhoto: decodedPhoto,
     );
 
     final image = await _renderOffscreen(widget);
@@ -164,6 +168,7 @@ class CardRenderService {
     bool? showFooter,
     Uint8List? backgroundImageBytes,
     ui.Image? decodedBackgroundImage,
+    ui.Image? decodedPhoto,
   }) {
     return _CardConfig(
       layout: template.layout,
@@ -187,6 +192,7 @@ class CardRenderService {
       backgroundImagePath: template.backgroundImagePath,
       backgroundImageBytes: backgroundImageBytes,
       decodedBackgroundImage: decodedBackgroundImage,
+      decodedPhoto: decodedPhoto,
       textPaddingTop: (styleOverrides?['text_padding_top'] as num?)?.toDouble() ?? template.textPaddingTop,
       textPaddingBottom: (styleOverrides?['text_padding_bottom'] as num?)?.toDouble() ?? template.textPaddingBottom,
       textPaddingLeft: (styleOverrides?['text_padding_left'] as num?)?.toDouble() ?? template.textPaddingLeft,
@@ -237,6 +243,7 @@ class _CardConfig {
     final String? backgroundImagePath;
     final Uint8List? backgroundImageBytes;
     final ui.Image? decodedBackgroundImage;
+    final ui.Image? decodedPhoto;
     final double textPaddingTop;
     final double textPaddingBottom;
     final double textPaddingLeft;
@@ -262,6 +269,7 @@ class _CardConfig {
     this.backgroundImagePath,
     this.backgroundImageBytes,
     this.decodedBackgroundImage,
+    this.decodedPhoto,
     this.textPaddingTop = 120,
     this.textPaddingBottom = 140,
     this.textPaddingLeft = 80,
@@ -622,18 +630,26 @@ class _CardRenderWidget extends StatelessWidget {
 
   // --- Image helpers ---
 
+  Widget _buildPhoto({BoxFit fit = BoxFit.cover, double? width, double? height}) {
+    if (config.decodedPhoto != null) {
+      return RawImage(image: config.decodedPhoto, fit: fit, width: width, height: height);
+    }
+    if (imagePath == null) return const SizedBox.shrink();
+    return Image.file(
+      File(imagePath!),
+      fit: fit,
+      width: width,
+      height: height,
+      errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+    );
+  }
+
   Widget _buildFullBleedImage() {
     return Stack(
       fit: StackFit.expand,
       children: [
         ClipRRect(
-          child: Image.file(
-            File(imagePath!),
-            fit: BoxFit.cover,
-            width: double.infinity,
-            height: double.infinity,
-            errorBuilder: (_, __, ___) => const SizedBox.shrink(),
-          ),
+          child: _buildPhoto(fit: BoxFit.cover, width: double.infinity, height: double.infinity),
         ),
         Positioned.fill(
           child: Container(
@@ -654,12 +670,7 @@ class _CardRenderWidget extends StatelessWidget {
   }
 
   Widget _buildHeroImage() {
-    return Image.file(
-      File(imagePath!),
-      fit: BoxFit.cover,
-      width: double.infinity,
-      errorBuilder: (_, __, ___) => const SizedBox.shrink(),
-    );
+    return _buildPhoto(fit: BoxFit.cover, width: double.infinity);
   }
 
   Widget _buildInlineImage() {
@@ -667,12 +678,7 @@ class _CardRenderWidget extends StatelessWidget {
       padding: const EdgeInsets.only(top: 20),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(12),
-        child: Image.file(
-          File(imagePath!),
-          width: 200,
-          fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => const SizedBox.shrink(),
-        ),
+        child: _buildPhoto(fit: BoxFit.cover, width: 200, height: 200),
       ),
     );
   }
