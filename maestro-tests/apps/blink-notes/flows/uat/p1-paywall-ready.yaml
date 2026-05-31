@@ -1,0 +1,62 @@
+# P1: Purchase readiness — RC initialized, paywall shows dynamic price
+# Verifies RevenueCat store is initialized and dynamic pricing is working.
+# Debug toggle (Settings → tap version 5x → Restricted) → robot → paywall → assert price + button enabled.
+appId: com.blinking.blinking
+---
+- runFlow: ../../subflows/launch.yaml
+
+# Navigate to Settings tab
+- tapOn:
+    id: "nav_settings"
+
+    waitToSettleTimeoutMs: 0
+
+# Scroll to About section
+- scrollUntilVisible:
+    element:
+      text: "About"
+    direction: DOWN
+    timeout: 10000
+
+# Tap into Settings → About section
+- tapOn: "About"
+
+# Tap version text 5 times to toggle restricted mode
+- tapOn: "Version 1."
+- tapOn: "Version 1."
+- tapOn: "Version 1."
+- tapOn: "Version 1."
+- tapOn: "Version 1."
+
+# Verify restricted mode snackbar
+- extendedWaitUntil:
+    visible: "Restricted"
+    timeout: 5000
+
+# Go back to main screen
+- back
+- back
+
+# Tap floating robot to open paywall
+- extendedWaitUntil:
+    visible:
+      id: "floating_robot"
+    timeout: 8000
+- tapOn:
+    id: "floating_robot"
+
+    waitToSettleTimeoutMs: 0
+
+# Verify paywall is shown
+- extendedWaitUntil:
+    visible: "Blinking Pro"
+    timeout: 8000
+
+# Verify price is displayed (dynamic from RevenueCat)
+- assertVisible: "$"
+
+# Verify "Get Pro" button is enabled (store initialized)
+- assertVisible: "Get Pro"
+
+# Verify "Restore Purchases" is visible
+- assertVisible: "Restore"

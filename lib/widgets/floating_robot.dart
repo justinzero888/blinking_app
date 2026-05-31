@@ -6,6 +6,7 @@ import '../providers/locale_provider.dart';
 import '../providers/llm_config_notifier.dart';
 import '../providers/entry_provider.dart';
 import '../core/services/entitlement_service.dart';
+import '../core/services/purchases_service.dart';
 import '../core/config/constants.dart';
 import '../screens/assistant/assistant_screen.dart';
 import '../screens/reflection/reflection_session_screen.dart';
@@ -145,6 +146,7 @@ class _FloatingRobotWidgetState extends State<FloatingRobotWidget>
 
   void _onLongPress() {
     final entitlement = context.read<EntitlementService>();
+    final price = context.read<PurchasesService>().proPriceString ?? '\$7.99';
     final isZh = Localizations.localeOf(context).languageCode == 'zh';
     final renderBox = context.findRenderObject() as RenderBox;
     final position = renderBox.localToGlobal(Offset.zero);
@@ -190,7 +192,7 @@ class _FloatingRobotWidgetState extends State<FloatingRobotWidget>
           PopupMenuItem(
             height: 36,
             child: Text(
-              isZh ? '获取 Pro — \$19.99 一次购买' : 'Get Pro — \$19.99 once',
+              isZh ? '获取 Pro — $price 一次购买' : 'Get Pro — $price once',
               style: TextStyle(
                   color: Theme.of(context).colorScheme.primary,
                   fontWeight: FontWeight.w600),

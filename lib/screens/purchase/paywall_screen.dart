@@ -24,6 +24,8 @@ class _PaywallScreenState extends State<PaywallScreen> {
     final theme = Theme.of(context);
     final purchases = context.watch<PurchasesService>();
     final storeReady = purchases.isInitialized;
+    final price = purchases.proPriceString ?? '\$7.99';
+    final getProLabel = isZh ? '获取 Pro — $price' : 'Get Pro — $price';
 
     return Scaffold(
       backgroundColor: theme.colorScheme.surface,
@@ -76,7 +78,7 @@ class _PaywallScreenState extends State<PaywallScreen> {
 
                 // Price
                 Text(
-                  '\$19.99',
+                  price,
                   textAlign: TextAlign.center,
                   style: theme.textTheme.displaySmall?.copyWith(
                     fontWeight: FontWeight.bold,
@@ -110,7 +112,7 @@ class _PaywallScreenState extends State<PaywallScreen> {
                             ),
                           )
                         : Text(
-                            isZh ? '获取 Pro — \$19.99' : 'Get Pro — \$19.99',
+                            getProLabel,
                             style: const TextStyle(
                               fontSize: 17,
                               fontWeight: FontWeight.bold,

@@ -17,13 +17,13 @@ fi
 
 FLOW_DIR="$(dirname "$0")/../apps/blink-notes/flows/uat"
 
-echo "=== Android UAT — Keepsake Flows ==="
+echo "=== Android UAT — Keepsake + Purchase Flows ==="
 echo "Device: $DEVICE"
 
 PASS=0
 FAIL=0
 
-for flow in k1-core-create k2-template-cycle k3-toggle-elements k4-ai-rewrite k5-empty-content k6-badge-preview k7-photo-keepsake k8-locale-zh k9-edit-keepsake k10-three-entry-points; do
+for flow in k1-core-create k2-template-cycle k3-toggle-elements k4-ai-rewrite k5-empty-content k6-badge-preview k7-photo-keepsake k8-locale-zh k9-edit-keepsake k10-three-entry-points p1-paywall-ready; do
   echo ""
   echo "--- $flow ---"
   if maestro test --device "$DEVICE" "$FLOW_DIR/$flow.yaml"; then

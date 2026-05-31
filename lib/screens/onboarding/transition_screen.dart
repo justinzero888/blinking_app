@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../providers/locale_provider.dart';
+import '../../core/services/purchases_service.dart';
 import '../purchase/paywall_screen.dart';
 
 class TransitionScreen extends StatelessWidget {
@@ -22,6 +23,7 @@ class TransitionScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isZh = context.watch<LocaleProvider>().locale.languageCode == 'zh';
+    final price = context.watch<PurchasesService>().proPriceString ?? '\$7.99';
     final theme = Theme.of(context);
 
     return Scaffold(
@@ -124,7 +126,7 @@ class TransitionScreen extends StatelessWidget {
                     ),
                   ),
                   child: Text(
-                    isZh ? '获取 Pro — \$19.99' : 'Get Pro — \$19.99',
+                    isZh ? '获取 Pro — $price' : 'Get Pro — $price',
                     style: const TextStyle(
                       fontSize: 17,
                       fontWeight: FontWeight.bold,

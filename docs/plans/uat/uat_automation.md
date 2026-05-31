@@ -5,7 +5,8 @@
 > **Run scripts:** `maestro-tests/ci/run-uat-iphone.sh` · `run-uat-ipad.sh` · `run-uat-android.sh`  
 > **Last full pass:** 2026-05-23 — iPhone 17/17 ✅ · iPad 12/12 ✅ · Android 17/17 ✅  
 > **Phase 2 voice flows added:** 2026-05-23 — 5 new flows (v1–v4, s9); run scripts updated to 22 flows  
-> **Phase 3 keepsake flows added:** 2026-05-23 — 10 new flows (k1–k10); run scripts updated to 32/26 flows
+> **Phase 3 keepsake flows added:** 2026-05-23 — 10 new flows (k1–k10); run scripts updated to 32/26 flows  
+> **v1.2.0+44 purchase/price flow added:** 2026-05-31 — 1 new flow (p1); run scripts now 33/27 flows
 
 ---
 
@@ -92,6 +93,17 @@
 > **k3 note:** Android share sheet (non-UIPopover) tested; excluded from iPad run.  
 > **k8 note:** MK-4 (Assistant chat → keepsake) requires `kUseMultiTurnChat=true`. Tracked in Future Automation Candidates as k8-assistant. k8 covers MK-3 (ReflectionSession path) only.  
 > **k9 note:** MK-10/MK-11 (photo as hero/inline) require a pre-seeded photo in the entry. Tracked as k9-photo-full in Future Automation Candidates. k9 covers MK-12 (text-only, no broken placeholder).
+
+### Purchase & Pricing (v1.2.0+44)
+
+> **Changes:** Dynamic pricing from RevenueCat offerings, `_lastError` propagation on missing API key, crash guard in release builds.  
+> **New flow added:** 2026-05-31 — p1 for purchase readiness validation.
+
+| ID | Description | Flow file | iPhone | iPad | Android | Ref |
+|----|-------------|-----------|:------:|:----:|:-------:|-----|
+| p1 | Paywall loaded — RC initialized, price displayed, "Get Pro" enabled | `flows/uat/p1-paywall-ready.yaml` | 🔲 | 🔲 | 🔲 | M-1, M-6 |
+
+> **p1 note:** Requires debug toggle (5-tap version text) to enter restricted mode. The flow verifies RC store initialization by asserting "Get Pro" is enabled (no "Store unavailable" warning). Price text contains `$` but exact value depends on RC offerings sync.
 
 ---
 

@@ -28,10 +28,22 @@ void main() {
         expect(service.isInitialized, isFalse);
       });
 
+      test('init with empty key sets lastError', () async {
+        final service = PurchasesServiceMock();
+        await service.init(unifiedKey: '');
+        expect(service.lastError, equals('No RevenueCat API key configured'));
+      });
+
       test('init with null key does not initialize', () async {
         final service = PurchasesServiceMock();
         await service.init(unifiedKey: null);
         expect(service.isInitialized, isFalse);
+      });
+
+      test('init with null key sets lastError', () async {
+        final service = PurchasesServiceMock();
+        await service.init(unifiedKey: null);
+        expect(service.lastError, equals('No RevenueCat API key configured'));
       });
 
       test('init does not reinitialize if already initialized', () async {
@@ -40,6 +52,25 @@ void main() {
         await service.init(unifiedKey: 'key2');
 
         expect(service.initCallCount, 1);
+      });
+    });
+
+    group('proPriceString', () {
+      test('returns price when set', () {
+        final service = PurchasesServiceMock();
+        service.setMockPriceString('\$7.99');
+        expect(service.proPriceString, equals('\$7.99'));
+      });
+
+      test('returns null when not set', () {
+        final service = PurchasesServiceMock();
+        expect(service.proPriceString, isNull);
+      });
+
+      test('returns localized price for different currency', () {
+        final service = PurchasesServiceMock();
+        service.setMockPriceString('¥58.00');
+        expect(service.proPriceString, equals('¥58.00'));
       });
     });
 
@@ -349,6 +380,13 @@ class PurchasesServiceMock {
   String? get lastError => _lastError;
   List<String> get availableProducts => _mockOfferings;
 
+  String? _mockPriceString;
+  String? get proPriceString => _mockPriceString;
+
+  void setMockPriceString(String? price) {
+    _mockPriceString = price;
+  }
+
   Future<void> init({
     String? appleApiKey,
     String? googleApiKey,
@@ -361,6 +399,7 @@ class PurchasesServiceMock {
     final platformKey = unifiedKey ?? (googleApiKey ?? appleApiKey);
 
     if (platformKey == null || platformKey.isEmpty) {
+      _lastError = 'No RevenueCat API key configured';
       return;
     }
 

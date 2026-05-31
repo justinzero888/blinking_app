@@ -25,6 +25,12 @@ class PurchasesService extends ChangeNotifier {
   Offerings? get offerings => _offerings;
   String? get lastError => _lastError;
 
+  String? get proPriceString {
+    return _offerings?.current?.availablePackages
+        .map((p) => p.storeProduct.priceString)
+        .firstOrNull;
+  }
+
   Future<void> init({
     String? appleApiKey,
     String? googleApiKey,
@@ -37,7 +43,11 @@ class PurchasesService extends ChangeNotifier {
             ? googleApiKey
             : appleApiKey);
 
-    if (platformKey == null || platformKey.isEmpty) return;
+    if (platformKey == null || platformKey.isEmpty) {
+      _lastError = 'No RevenueCat API key configured';
+      notifyListeners();
+      return;
+    }
 
     try {
       await Purchases.configure(

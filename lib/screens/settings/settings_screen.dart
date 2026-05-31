@@ -23,6 +23,7 @@ import '../../core/config/theme.dart';
 import '../../core/services/storage_service.dart';
 import '../../core/services/export_service.dart';
 import '../../core/services/entitlement_service.dart';
+import '../../core/services/purchases_service.dart';
 import '../../core/services/soft_prompt_service.dart';
 import '../../core/services/file_service.dart';
 import '../../models/reflection_style.dart';
@@ -249,6 +250,7 @@ class _SettingsScreenState extends State<SettingsScreen>
 
   Widget _buildAITab(bool isZh) {
     final entitlement = context.watch<EntitlementService>();
+    final price = context.watch<PurchasesService>().proPriceString ?? '\$7.99';
 
     if (entitlement.isRestricted) {
       return ListView(
@@ -282,7 +284,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                         MaterialPageRoute(builder: (_) => const PaywallScreen()),
                       );
                     },
-                    child: Text(isZh ? '获取 Pro — \$19.99' : 'Get Pro — \$19.99'),
+                    child: Text(isZh ? '获取 Pro — $price' : 'Get Pro — $price'),
                   ),
                 ),
               ],
@@ -1075,6 +1077,7 @@ class _SettingsScreenState extends State<SettingsScreen>
 
   Widget _buildEntitlementBanner(bool isZh) {
     final entitlement = context.watch<EntitlementService>();
+    final price = context.watch<PurchasesService>().proPriceString ?? '\$7.99';
     final state = entitlement.currentState;
 
     // PREVIEW — full access trial active
@@ -1137,7 +1140,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                   },
                   icon: const Icon(Icons.workspace_premium, size: 16),
                   label: Text(
-                    isZh ? '获取 Blinking Pro — \$19.99' : 'Get Blinking Pro — \$19.99',
+                    isZh ? '获取 Blinking Pro — $price' : 'Get Blinking Pro — $price',
                     style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
                   ),
                   style: FilledButton.styleFrom(
@@ -1246,8 +1249,8 @@ class _SettingsScreenState extends State<SettingsScreen>
                 icon: const Icon(Icons.workspace_premium, size: 18),
                 label: Text(
                   isZh
-                      ? '获取 Blinking Pro — \$19.99 一次购买，终身使用'
-                      : 'Get Blinking Pro — \$19.99 once, lifetime access',
+                      ? '获取 Blinking Pro — $price 一次购买，终身使用'
+                      : 'Get Blinking Pro — $price once, lifetime access',
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
                 style: FilledButton.styleFrom(
