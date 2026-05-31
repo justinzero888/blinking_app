@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
@@ -523,6 +524,13 @@ class _CardBuilderSheetState extends State<CardBuilderSheet> {
         Overlay.of(context).insert(entry);
         try {
           await WidgetsBinding.instance.endOfFrame;
+          final completer = Completer<void>();
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              completer.complete();
+            });
+          });
+          await completer.future;
           renderedPath = await CardRenderService.captureFromKey(key);
         } finally {
           // Always schedule removal — even if captureFromKey throws — so the
