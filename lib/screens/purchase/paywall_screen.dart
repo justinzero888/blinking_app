@@ -337,7 +337,9 @@ class _PaywallScreenState extends State<PaywallScreen> {
     }
 
     // Refresh customer info to sync latest entitlements
-    await service.refreshCustomerInfo();
+    try {
+      await service.refreshCustomerInfo();
+    } catch (_) {}
     if (!mounted) return;
 
     if (service.isPro || info != null) {

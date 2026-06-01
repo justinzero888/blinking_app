@@ -109,9 +109,8 @@ class PurchasesService extends ChangeNotifier {
           const Duration(seconds: 30),
           onTimeout: () => throw TimeoutException('Offerings refresh timed out'),
         );
-        notifyListeners();
-      } catch (_) {
-        // Non-fatal: proceed with cached offerings if the refresh fails.
+      } catch (e) {
+        debugPrint('[PurchasesService] Offerings refresh failed (using cached): $e');
       }
 
       Package? pkg;
