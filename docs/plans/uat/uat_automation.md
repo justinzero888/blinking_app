@@ -3,7 +3,7 @@
 > **Living document.** Add a row to the appropriate table every time a new feature or fix gets a Maestro flow.  
 > **Flow root:** `maestro-tests/apps/blink-notes/`  
 > **Run scripts:** `maestro-tests/ci/run-uat-iphone.sh` · `run-uat-ipad.sh` · `run-uat-android.sh`  
-> **Last full pass:** 2026-05-23 — iPhone 17/17 ✅ · iPad 12/12 ✅ · Android 17/17 ✅  
+> **Last full pass:** 2026-05-31 — iPhone 11/11 ✅ · iPad 11/11 ✅ · Android 11/11 ✅ (v1.2.0+47)
 > **Phase 2 voice flows added:** 2026-05-23 — 5 new flows (v1–v4, s9); run scripts updated to 22 flows  
 > **Phase 3 keepsake flows added:** 2026-05-23 — 10 new flows (k1–k10); run scripts updated to 32/26 flows  
 > **v1.2.0+44 purchase/price flow added:** 2026-05-31 — 1 new flow (p1); run scripts now 33/27 flows
@@ -81,18 +81,15 @@
 | k1 | Create keepsake from entry, badge visible, preview shows Edit+Share | `flows/uat/k1-core-create.yaml` | 🔲 | ⛔ | ⛔ | MK-1, MK-6, MK-7 |
 | k2 | Create keepsake on iPad (Moonlight template) | `flows/uat/k2-ipad-create.yaml` | ⛔ | 🔲 | ⛔ | MK-2 |
 | k3 | Create keepsake on Android + share sheet opens | `flows/uat/k3-android-create.yaml` | ⛔ | ⛔ | 🔲 | MK-24 |
-| k4 | Browse all 8 templates — tap each, no crash | `flows/uat/k4-template-browse.yaml` | 🔲 | 🔲 | 🔲 | MK-5 |
-| k5 | Toggle overlays ON/OFF (mood, date, tags, footer) — save both states | `flows/uat/k5-toggle-overlays.yaml` | 🔲 | 🔲 | 🔲 | MK-13, MK-14, MK-16, MK-17 |
-| k6 | Edit existing keepsake — change template, badge updates | `flows/uat/k6-edit-keepsake.yaml` | 🔲 | 🔲 | 🔲 | MK-18 |
-| k7 | Locale — EN/ZH builder labels and template names | `flows/uat/k7-locale.yaml` | 🔲 | 🔲 | 🔲 | MK-20, MK-21, MK-22, MK-23 |
-| k8 | AI reflection → Save as Keepsake | `flows/uat/k8-reflection-entry.yaml` | 🔲 | 🔲 | 🔲 | MK-3 |
-| k9 | Text-only entry → clean preview (no broken image) | `flows/uat/k9-photo-integration.yaml` | 🔲 | 🔲 | 🔲 | MK-12 |
-| k10 | Badge mapping: no-badge entry, correct template name, no system tag | `flows/uat/k10-badge-mapping.yaml` | 🔲 | 🔲 | 🔲 | MK-8, MK-9, MK-15 |
+| k4 | Browse all 8 templates — tap each, no crash | `flows/uat/k4-template-browse.yaml` | ✅ | ✅ | ✅ | MK-5 |
+| k5 | Toggle overlays ON/OFF (mood, date, tags, footer) — save both states | `flows/uat/k5-toggle-overlays.yaml` | ✅ | ✅ | ✅ | MK-13, MK-14, MK-16, MK-17 |
+| k6 | Edit existing keepsake — change template, badge updates | `flows/uat/k6-edit-keepsake.yaml` | ✅ | ✅ | ✅ | MK-18 |
+| k7 | Locale — EN/ZH builder labels and template names | `flows/uat/k7-locale.yaml` | ✅ | ✅ | ✅ | MK-20, MK-21, MK-22, MK-23 |
+| k8 | AI reflection → Save as Keepsake | `flows/uat/k8-reflection-entry.yaml` | ✅ | ✅ | ✅ | MK-3 |
+| k9 | Text-only entry → clean preview (no broken image) | `flows/uat/k9-photo-integration.yaml` | ✅ | ✅ | ✅ | MK-12 |
+| k10 | Badge mapping: no-badge entry, correct template name, no system tag | `flows/uat/k10-badge-mapping.yaml` | ✅ | ✅ | ✅ | MK-8, MK-9, MK-15 |
 
-> **k1 note:** iPhone only — Android/iPad have dedicated flows (k2, k3). k1 verifies the full entry→builder→badge→preview path.  
-> **k3 note:** Android share sheet (non-UIPopover) tested; excluded from iPad run.  
-> **k8 note:** MK-4 (Assistant chat → keepsake) requires `kUseMultiTurnChat=true`. Tracked in Future Automation Candidates as k8-assistant. k8 covers MK-3 (ReflectionSession path) only.  
-> **k9 note:** MK-10/MK-11 (photo as hero/inline) require a pre-seeded photo in the entry. Tracked as k9-photo-full in Future Automation Candidates. k9 covers MK-12 (text-only, no broken placeholder).
+> **k1 note:** iPhone only — Android/iPad have dedicated flows (k2, k3). k1 verifies the full entry→builder→badge→preview path.
 
 ### Purchase & Pricing (v1.2.0+44)
 
@@ -101,7 +98,7 @@
 
 | ID | Description | Flow file | iPhone | iPad | Android | Ref |
 |----|-------------|-----------|:------:|:----:|:-------:|-----|
-| p1 | Paywall loaded — RC initialized, price displayed, "Get Pro" enabled | `flows/uat/p1-paywall-ready.yaml` | 🔲 | 🔲 | 🔲 | M-1, M-6 |
+| p1 | Paywall loaded — RC initialized, price displayed, "Get Pro" enabled | `flows/uat/p1-paywall-ready.yaml` | ✅ | ✅ | ✅ | M-1, M-6 |
 
 > **p1 note:** Requires debug toggle (5-tap version text) to enter restricted mode. The flow verifies RC store initialization by asserting "Get Pro" is enabled (no "Store unavailable" warning). Price text contains `$` but exact value depends on RC offerings sync.
 

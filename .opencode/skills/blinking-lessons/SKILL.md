@@ -17,6 +17,7 @@ Mandatory checks and workflows when working on the Blinking Notes Flutter app. T
 ```
 flutter analyze --no-pub    # must be 0 errors
 flutter test                # must all pass
+flutter clean && cd ios && pod install && cd ..    # before any iOS sim build
 ```
 
 ## Development Workflow
@@ -31,7 +32,7 @@ Issue Reported
     ├── 5. Implement — minimal change
     │       flutter analyze → verify 0 errors
     │       flutter test → verify all pass
-    ├── 6. Push to Sims — build for all 3 simulators, install fresh
+    ├── 6. Push to Sims — clean-build for all 3 simulators (iOS: `flutter clean && cd ios && pod install && cd ..`), uninstall fresh, install, launch
     ├── 7. UAT on Sims — execute test cases on iPhone, iPad, Android
     └── 8. Build Production — only after UAT passes on all 3
 ```
@@ -176,6 +177,56 @@ Fix bug → bump to 1.2.0+43 → rebuild IPA/AAB
 ```
 
 **Rule:** If `flutter build ipa` or `flutter build appbundle` runs, the build number MUST be higher than any previously submitted build. No exceptions — Apple and Google both enforce this.
+
+### 16. Always Clean-Build for iOS Simulator
+
+Native frameworks (`purchases_flutter`'s `objective_c.framework`, FFI libraries) are embedded by CocoaPods. A dirty `flutter build ios --simulator` may skip the CocoaPods link step, leaving native frameworks absent from the app bundle — causing runtime crashes with "Failed to load dynamic library."
+
+```
+// ❌ DON'T — native frameworks may be missing
+flutter build ios --simulator
+
+// ✅ DO — guarantee native frameworks are linked
+flutter clean
+cd ios && pod install && cd ..
+flutter build ios --simulator
+```
+
+(Android is immune — Gradle handles native library packaging without CocoaPods.)
+
+### 17. Don't "Improve" a Working Pipeline Without Production Verification
+
+When a rendering pipeline works in production but is flaky on certain platforms, the fix is to stabilize the existing approach — not to replace it. In v1.2.0+45 and +46, the working OverlayEntry pipeline was replaced with:
+- v45: Double postFrameCallback (no effect)
+- v46: `renderToFile` → `_renderOffscreen` (Lesson 13 violation — doesn't work in production)
+
+Both broke cross-platform. The v43 OverlayEntry pipeline (reverted in v47) was the tested-and-working baseline.
+
+**Rule:** If a pipeline passes UAT on all targets, do not redesign it. Fix the specific failure mode (iOS compositor culling, timing) within the existing architecture.
+
+### 18. renderToFile / _renderOffscreen Is Test-Only — Never Use in Production
+
+`_renderOffscreen()` creates a manual `PipelineOwner` + `BuildOwner` with `element.mount(null, null)`. This **only** works under `TestWidgetsFlutterBinding`. In production `WidgetsFlutterBinding`, the manual pipeline fails to resolve inherited widgets and layout constraints.
+
+This was already documented as **Lesson 13** but was violated in v46. Re-confirmed.
+
+**Rule:** Treat `_renderOffscreen` and `renderToFile` as `@visibleForTesting`. The OverlayEntry approach is the only production-safe off-screen rendering pipeline.
+
+### 19. Version Bumps Are for Release Builds Only
+
+Simulator builds for UAT testing do not need version bumps. Only increment the build number when producing an IPA/AAB for TestFlight, beta, or production. This avoids burning build numbers on debugging iterations.
+
+```
+// ❌ DON'T — wasteful
+Fix bug on sim → bump version → rebuild sim
+Fix another bug → bump version → rebuild sim
+
+// ✅ DO
+Sim iterations: same version, rebuild and push
+Ready for release: bump version ONCE, build IPA + AAB
+```
+
+**Rule:** `flutter build ipa` or `flutter build appbundle` → must increment. `flutter build ios --simulator` → no increment needed.
 
 ### TODO: True Kaishu Font
 

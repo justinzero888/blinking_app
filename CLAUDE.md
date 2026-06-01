@@ -6,16 +6,16 @@ Personal memory/habit-tracking Flutter app (记忆闪烁). Path: `/Users/justinz
 
 - **Flutter SDK:** `^3.11.0` (currently 3.41.9 stable, Apr 29 2026)
 - **macOS:** 26.2 (Tahoe beta) — Xcode 26.4.1 GM for production builds
-- **Current version:** `1.2.0+42` (v1.1.0+40 live on both stores; v1.2.0+42 target)
+- **Current version:** `1.2.0+47` (v1.1.0+40 live on both stores; v1.2.0+47 dev)
 - **iOS App Store:** ✅ Live — [Blinking Notes](https://apps.apple.com/app/id6765900648) (Apple ID: 6765900648)
 - **Google Play:** ✅ Live (1.1.0+40)
 - **Android:** compileSdk 36 / targetSdk 36 (via Flutter SDK)
 - **DB version:** 16 (`kSchemaVersion = 16` in `DatabaseService`)
 - **Lint:** `flutter analyze --no-pub` (target: 0 errors)
-- **Tests:** `flutter test` (558 tests, 556 passing, 2 pre-existing flaky)
+- **Tests:** `flutter test` (563 tests, 561 passing, 2 pre-existing flaky)
 - **Server config:** `https://blinkingchorus.com/api/config` — AI keys + model selection, updatable without app deploy
 - **AI Model:** DeepSeek `deepseek-chat-v3-0324` primary, Gemini `gemini-2.0-flash-001` failover (both trial + pro, configurable via KV secrets at `/api/config`)
-- **IAP Price:** $19.99 (non-consumable `blinking_pro`, entitlement `pro_access`)
+- **IAP Price:** $7.99 (non-consumable `blinking_pro`, entitlement `pro_access`) — dynamic pricing via `PurchasesService.proPriceString`
 - **Personas:** Kael (📝 Factual, default), Elara (🌿 Warm), Rush (⚡ Unfiltered), Marcus (⚔️ Stoic)
 - **AI Keys:** Server-configurable via OpenRouter. Streaming enabled for perceived speed (0.6s first token)
 - **Feedback email:** `blinkingfeedback@gmail.com`
@@ -363,3 +363,8 @@ Use `try { await launchUrl(uri); } catch (_) { ... }` pattern. Do NOT use `canLa
 | v1.2.0-dev | d86f70c | DEF-V-001 v6: SwitchListTile → ListTile+Switch with identifier on Switch. |
 | v1.2.0-dev | 9b871ef | DEF-V-001 v7: add onTap to Semantics wrapper on Switch (fixes XCUITest accessibility). |
 | v1.2.0-dev | 29d60ad | Semantics regression guard test — onTap required on Switch identifier wrapper. |
+| v1.2.0+44 | 3e3f67b | RC crash guard + dynamic pricing ($19.99→$7.99) from RevenueCat offerings, 563 tests. |
+| v1.2.0+45 | 8a76364 | DEF-M-001 attempt 1: double postFrameCallback (broken on iOS). |
+| v1.2.0+46 | 50242ee | DEF-M-001 attempt 2: renderToFile pipeline (broken on all platforms). |
+| v1.2.0+47 | 94c8268 | Revert card save to v43 OverlayEntry pipeline — all UAT passes. Clean build fix (pod install). |
+| v1.2.0+47 | efd9ebf | Remove AI Rewrite CTA from card builder — not aligned with product strategy. |
