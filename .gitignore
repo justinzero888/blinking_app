@@ -41,3 +41,5 @@ scripts/benchmark_locale.py
 scripts/benchmark_personas.dart
 scripts/benchmark_personas.sh
 test/custom_persona_benchmark.py
+dev/cards-raw/
+*.bak

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
@@ -104,7 +105,10 @@ class PurchasesService extends ChangeNotifier {
       // Stale offerings (fetched at app startup) cause silent dismissal on iOS and
       // a permanent hang on Android when product prices have changed since last fetch.
       try {
-        _offerings = await Purchases.getOfferings();
+        _offerings = await Purchases.getOfferings().timeout(
+          const Duration(seconds: 30),
+          onTimeout: () => throw TimeoutException('Offerings refresh timed out'),
+        );
         notifyListeners();
       } catch (_) {
         // Non-fatal: proceed with cached offerings if the refresh fails.
