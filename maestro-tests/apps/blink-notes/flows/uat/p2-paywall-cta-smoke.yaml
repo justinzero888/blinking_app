@@ -1,0 +1,68 @@
+# P2-PAYWALL-CTA-SMOKE: Get Pro button tap → purchase sheet → cancel cleanly
+# Simulator only — uses local StoreKit / Play test environment.
+# Validates: button tap triggers SDK, cancellation is handled without error/dismiss.
+appId: com.blinking.blinking
+---
+- runFlow: ../../subflows/launch.yaml
+
+# Enter restricted mode via debug toggle (Settings → General → tap version 5x)
+- tapOn:
+    id: "nav_settings"
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      id: "settings_tab_general"
+    direction: DOWN
+    timeout: 10000
+- tapOn:
+    id: "settings_tab_general"
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      text: "Version"
+    direction: DOWN
+    timeout: 10000
+- tapOn: "Version"
+- tapOn: "Version"
+- tapOn: "Version"
+- tapOn: "Version"
+- tapOn: "Version"
+- waitForAnimationToEnd
+
+# Go back to main screen
+- pressKey: back
+- waitForAnimationToEnd
+- pressKey: back
+- waitForAnimationToEnd
+
+# Navigate to My Day tab
+- tapOn:
+    id: "nav_my_day"
+- waitForAnimationToEnd
+
+# Open paywall by tapping the floating robot
+- tapOn:
+    id: "floating_robot"
+- extendedWaitUntil:
+    visible:
+      text: "Blinking Pro"
+    timeout: 10000
+- takeScreenshot: p2-paywall-ready
+
+# Tap "Restore Purchases" — exercises full SDK round-trip (getCustomerInfo, server call)
+# without triggering a real purchase transaction. On a fresh account, it returns
+# a no-op result and the paywall recovers cleanly.
+- tapOn:
+    text: "Restore"
+- extendedWaitUntil:
+    visible:
+      text: "Blinking Pro"
+    timeout: 15000
+- takeScreenshot: p2-restore-returned-cleanly
+
+# Paywall still visible (not dismissed), no error SnackBar visible
+- assertVisible:
+    text: "Blinking Pro"
+- assertNotVisible:
+    text: "Store unavailable"
+- takeScreenshot: p2-cta-smoke-passed

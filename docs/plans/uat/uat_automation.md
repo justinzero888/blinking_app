@@ -99,6 +99,9 @@
 | ID | Description | Flow file | iPhone | iPad | Android | Ref |
 |----|-------------|-----------|:------:|:----:|:-------:|-----|
 | p1 | Paywall loaded — RC initialized, price displayed, "Get Pro" enabled | `flows/uat/p1-paywall-ready.yaml` | ✅ | ✅ | ✅ | M-1, M-6 |
+| p2 | Paywall CTA smoke — Restore round-trip, cancel recovery, no crash | `flows/uat/p2-paywall-cta-smoke.yaml` | 🔲 | 🔲 | 🔲 | M-7 |
+
+> **p2 note:** Simulator only — uses local StoreKit/Play test environment. Taps "Restore Purchases" instead of "Get Pro" to avoid native OS payment sheet that Maestro cannot traverse. Validates SDK round-trip + error recovery.
 
 > **p1 note:** Requires debug toggle (5-tap version text) to enter restricted mode. The flow verifies RC store initialization by asserting "Get Pro" is enabled (no "Store unavailable" warning). Price text contains `$` but exact value depends on RC offerings sync.
 
