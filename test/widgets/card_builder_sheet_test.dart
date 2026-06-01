@@ -278,14 +278,15 @@ void main() {
       expect(fakeCardProvider.cards.first.entryIds, contains('entry_1'));
     });
 
-    testWidgets('AI Rewrite button is visible', (tester) async {
+    testWidgets('AI Rewrite button is not visible', (tester) async {
       await _pumpSheet(tester, _buildSheetApp(
         initialContent: 'Test',
         templates: templates,
         cardProvider: _FakeCardProvider(templates),
       ));
 
-      expect(find.text('AI 润色'), findsOneWidget);
+      expect(find.text('AI Rewrite'), findsNothing);
+      expect(find.text('AI 润色'), findsNothing);
     });
   });
 }

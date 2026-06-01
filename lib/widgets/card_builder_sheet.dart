@@ -11,11 +11,10 @@ import '../models/note_card.dart';
 import '../providers/card_provider.dart';
 import '../providers/locale_provider.dart';
 import '../core/services/card_render_service.dart';
-import '../core/services/llm_service.dart';
 import 'card_template_picker.dart';
 
 /// Bottom sheet for building a Keepsake card.
-/// Template picker, content editor, AI Rewrite, toggle overlays, Save.
+/// Template picker, content editor, toggle overlays, Save.
 class CardBuilderSheet extends StatefulWidget {
   final String? entryId;
   final String initialContent;
@@ -108,7 +107,6 @@ class _CardBuilderSheetState extends State<CardBuilderSheet> {
   bool _showTags = true;
   bool _showFooter = true;
   bool _isSaving = false;
-  bool _isRewriting = false;
 
   @override
   void initState() {
@@ -231,23 +229,6 @@ class _CardBuilderSheetState extends State<CardBuilderSheet> {
                               ),
                             ),
                             const SizedBox(height: 8),
-                            // AI Rewrite button
-                            SizedBox(
-                              width: double.infinity,
-                              child: OutlinedButton.icon(
-                                onPressed: _isRewriting ? null : _handleAiRewrite,
-                                icon: _isRewriting
-                                    ? const SizedBox(
-                                        width: 16, height: 16,
-                                        child: CircularProgressIndicator(strokeWidth: 2),
-                                      )
-                                    : const Icon(Icons.auto_awesome, size: 18),
-                                label: Text(_isRewriting
-                                    ? (isZh ? '润色中...' : 'Rewriting...')
-                                    : (isZh ? 'AI 润色' : 'AI Rewrite')),
-                              ),
-                            ),
-                            const SizedBox(height: 16),
                             // Toggle row
                             Text(
                               isZh ? '显示元素' : 'Show Elements',
@@ -351,102 +332,6 @@ class _CardBuilderSheetState extends State<CardBuilderSheet> {
         ],
       ),
     );
-  }
-
-  Future<void> _handleAiRewrite() async {
-    final content = _contentController.text.trim();
-    if (content.isEmpty) return;
-
-    setState(() => _isRewriting = true);
-    try {
-      final isZh = context.read<LocaleProvider>().locale.languageCode == 'zh';
-      final llm = LlmService();
-      final rewritten = await llm.complete(
-        isZh
-            ? '润色以下文字。只返回润色后的文字，不要添加任何解释、评论或引号：\n\n$content'
-            : 'Polish the following text. Return ONLY the polished text — no explanations, no commentary, no quotes, no preamble:\n\n$content',
-        maxTokens: 300,
-        temperature: 0.7,
-      );
-      if (mounted) {
-        final cleaned = _stripAiPreamble(rewritten);
-        _contentController.text = cleaned;
-        _contentController.selection = TextSelection.collapsed(offset: cleaned.length);
-        setState(() {});
-      }
-    } catch (e) {
-      if (mounted) {
-        final isZh = context.read<LocaleProvider>().locale.languageCode == 'zh';
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(isZh ? '润色失败: $e' : 'Rewrite failed: $e')),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isRewriting = false);
-    }
-  }
-
-  /// Strips common LLM preamble/postamble patterns from rewritten text.
-  String _stripAiPreamble(String text) {
-    String cleaned = text.trim();
-
-    // Remove leading explanatory phrases (EN and ZH)
-    final enPrefixes = [
-      "Here's",
-      "Here is",
-      "Certainly!",
-      "Sure!",
-      "Of course!",
-    ];
-    final zhPrefixes = [
-      '这是',
-      '以下是',
-    ];
-
-    for (final prefix in [...enPrefixes, ...zhPrefixes]) {
-      if (cleaned.toLowerCase().startsWith(prefix.toLowerCase())) {
-        final periodIdx = cleaned.indexOf('.');
-        final colonFullIdx = cleaned.indexOf('：');
-        final colonHalfIdx = cleaned.indexOf(':');
-        final zhPeriodIdx = cleaned.indexOf('。');
-        final cutoff = [periodIdx, colonFullIdx, colonHalfIdx, zhPeriodIdx]
-            .where((i) => i > 0)
-            .fold<int>(cleaned.length, (a, b) => a < b ? a : b);
-        cleaned = cleaned.substring(cutoff + 1).trim();
-        // Strip leading dashes/separators that LLMs add after preamble
-        cleaned = cleaned.replaceFirst(RegExp(r'^[-—–\s]+'), '').trim();
-        break;
-      }
-    }
-
-    // Remove trailing commentary (EN and ZH)
-    final enSuffixes = [
-      'Let me know if',
-      'Let me know what',
-      'I hope this',
-      'This version enhances',
-      'This version maintains',
-      'This version preserves',
-      'Feel free to',
-    ];
-    final zhSuffixes = [
-      '如果需要',
-      '如果有需要',
-      '希望这个',
-      '这个版本',
-      '如果你需要',
-      '请告诉我',
-    ];
-
-    for (final suffix in [...enSuffixes, ...zhSuffixes]) {
-      final idx = cleaned.toLowerCase().indexOf(suffix.toLowerCase());
-      if (idx > 0 && idx < cleaned.length - suffix.length) {
-        cleaned = cleaned.substring(0, idx).trim();
-        break;
-      }
-    }
-
-    return cleaned.trim();
   }
 
   Future<void> _handleSave() async {
