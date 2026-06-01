@@ -33,8 +33,9 @@ Issue Reported
     │       flutter analyze → verify 0 errors
     │       flutter test → verify all pass
     ├── 6. Push to Sims — clean-build for all 3 simulators (iOS: `flutter clean && cd ios && pod install && cd ..`), uninstall fresh, install, launch
-    ├── 7. UAT on Sims — execute test cases on iPhone, iPad, Android
-    └── 8. Build Production — only after UAT passes on all 3
+    ├── 7. UAT on Sims — execute Maestro test cases on iPhone, iPad, Android
+    ├── 8. Local Device Test — build release IPA/APK, install on real iPhone + Android via USB, verify purchase flow end-to-end (Gate 0)
+    └── 9. Build Production + Store Upload — only after UAT on sims AND local device test pass on all platforms
 ```
 
 ## Critical Rules
@@ -258,6 +259,20 @@ When store prices change after a build is deployed to testing, the cached `_offe
 - OR: run real-device purchase test (Layer 3 checklist) on the EXISTING build — the offerings refresh fix should handle it, but verify on real device before proceeding
 
 **Pre-submission gate:** No build may be submitted to TestFlight, Closed Testing, or production without completing `docs/plans/uat/real-device-purchase-checklist.md` on a real device. Simulator StoreKit environment does NOT validate live store integration.
+
+### 21. Local Real-Device Test Before Any Store Upload
+
+Never upload to TestFlight or Play Store without first testing on a real device connected via USB/WiFi. Direct `flutter build` + local install catches RevenueCat SDK issues, missing native frameworks, and purchase flow bugs in minutes — instead of waiting hours for store review and propagation.
+
+```
+// ❌ WRONG — blind upload, hope it works
+Sim UAT → upload to TestFlight → test → fail → rebuild → upload again → ...
+
+// ✅ CORRECT — local device test catches 99% of IAP issues instantly
+Sim UAT → flutter build + local install on real device → test purchase → pass → upload
+```
+
+See `docs/process/pre-store-submission-gates.md` for the full 3-gate process applicable to any Flutter app with IAP.
 
 ### TODO: True Kaishu Font
 
