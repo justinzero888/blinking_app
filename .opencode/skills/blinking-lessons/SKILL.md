@@ -228,6 +228,37 @@ Ready for release: bump version ONCE, build IPA + AAB
 
 **Rule:** `flutter build ipa` or `flutter build appbundle` → must increment. `flutter build ios --simulator` → no increment needed.
 
+### 20. Price Changes After Build Cut Break Purchase Flow
+
+**Recurring issue** — happened in May 7 (TestFlight "No offerings", RevenueCat credentials), and again June 1 (stale offerings cache after $19.99→$7.99).
+
+When store prices change after a build is deployed to testing, the cached `_offerings` snapshot (fetched once at `init()`) contains stale `StoreProduct` references. `Purchases.purchase()` with a stale reference:
+- **iOS**: StoreKit2 rejects → maps to `PURCHASE_CANCELLED` → silent dismiss (user thinks button is broken)
+- **Android**: Play returns empty results → billing flow never launches → `await` never resolves → button permanently frozen
+
+**Code fix (in place):** `purchaseProduct()` now refreshes offerings before every purchase. This is defense-in-depth — the code handles stale products, but shouldn't be relied upon as the only safeguard.
+
+**Process rules:**
+
+```
+// ✅ CORRECT — price change before build
+1. Change price in App Store Connect + Play Console
+2. Wait for propagation (minutes to hours)
+3. flutter clean && flutter build ipa && flutter build appbundle
+4. Upload to TestFlight / Closed Testing
+
+// ❌ WRONG — price change after build (causes this bug)
+1. Build + deploy to testing
+2. Change price in stores
+3. Existing build cached stale StoreProduct → purchase breaks
+```
+
+**If price MUST change after build cut:**
+- Rebuild + redeploy (must be a new build number)
+- OR: run real-device purchase test (Layer 3 checklist) on the EXISTING build — the offerings refresh fix should handle it, but verify on real device before proceeding
+
+**Pre-submission gate:** No build may be submitted to TestFlight, Closed Testing, or production without completing `docs/plans/uat/real-device-purchase-checklist.md` on a real device. Simulator StoreKit environment does NOT validate live store integration.
+
 ### TODO: True Kaishu Font
 
 Currently using **MaShanZheng** (马山政体, xingshu/行书) mapped to `fontFamily: 'serif'` for all calligraphic templates. To upgrade to true kaishu/楷体:
