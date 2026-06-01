@@ -100,6 +100,16 @@ class PurchasesService extends ChangeNotifier {
     notifyListeners();
 
     try {
+      // Refresh offerings before purchase to get current StoreProduct references.
+      // Stale offerings (fetched at app startup) cause silent dismissal on iOS and
+      // a permanent hang on Android when product prices have changed since last fetch.
+      try {
+        _offerings = await Purchases.getOfferings();
+        notifyListeners();
+      } catch (_) {
+        // Non-fatal: proceed with cached offerings if the refresh fails.
+      }
+
       Package? pkg;
 
       // Try current offering first
@@ -152,7 +162,14 @@ class PurchasesService extends ChangeNotifier {
         return null;
       }
 
-      final result = await Purchases.purchase(PurchaseParams.package(pkg));
+      final result = await Purchases.purchase(PurchaseParams.package(pkg))
+          .timeout(
+        const Duration(seconds: 90),
+        onTimeout: () => throw PlatformException(
+          code: 'PURCHASE_TIMEOUT',
+          message: 'Purchase timed out — please try again.',
+        ),
+      );
       final customerInfo = result.customerInfo;
 
       if (customerInfo.entitlements.active.containsKey('pro_access')) {
