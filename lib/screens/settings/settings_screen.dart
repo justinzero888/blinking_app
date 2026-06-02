@@ -1011,6 +1011,14 @@ class _SettingsScreenState extends State<SettingsScreen>
             ),
           ),
         ),
+        if (kDebugMode)
+          Consumer<EntitlementService>(
+            builder: (context, entSvc, _) => Semantics(
+              identifier: 'debug_entitlement_state',
+              label: entSvc.isRestricted ? 'entitlement:restricted' : 'entitlement:other',
+              child: const SizedBox.shrink(),
+            ),
+          ),
         const SizedBox(height: 32),
       ],
     );

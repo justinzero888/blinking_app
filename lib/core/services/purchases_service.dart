@@ -90,30 +90,49 @@ class PurchasesService extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Debug only: logs out RC identity (clears Keychain cache) and re-initializes.
+  /// Debug only: switches RC identity to a fresh anonymous-style user.
   /// Forces a completely fresh customer record — use when sandbox pro_access
   /// is stuck from previous tests.
+  ///
+  /// Uses logOut() + logIn() instead of a second configure() call.
+  /// configure() called on an already-configured SDK hangs indefinitely on
+  /// some RC SDK versions; logIn() is the correct post-configure identity API.
   Future<void> resetIdentity() async {
-    final appUserId = await Purchases.getCustomerInfo().then((i) => i.originalAppUserId);
+    String appUserId;
+    try {
+      appUserId = await Purchases.getCustomerInfo()
+          .timeout(const Duration(seconds: 10))
+          .then((i) => i.originalAppUserId);
+    } catch (e) {
+      debugPrint('[PurchasesService] resetIdentity: getCustomerInfo failed: $e');
+      appUserId = 'unknown_${DateTime.now().millisecondsSinceEpoch}';
+    }
     debugPrint('[PurchasesService] Current RC appUserID: $appUserId');
+
     try { await Purchases.logOut(); } catch (_) {}
+
     _initialized = false;
     _customerInfo = null;
     _offerings = null;
     _lastError = null;
-    if (_storedKey != null) {
-      // Use a fresh random appUserID to avoid identifierForVendor merge
-      await Purchases.configure(
-        PurchasesConfiguration(_storedKey!)
-          ..appUserID = '${appUserId}_${DateTime.now().millisecondsSinceEpoch}',
-      );
-      try {
-        _customerInfo = await Purchases.getCustomerInfo();
-        _offerings = await Purchases.getOfferings();
-      } catch (_) {}
-      _initialized = true;
-      notifyListeners();
+
+    // logIn() switches to a new user on the already-configured SDK.
+    // This avoids calling configure() twice, which hangs indefinitely.
+    final newId = '${appUserId}_${DateTime.now().millisecondsSinceEpoch}';
+    try {
+      final result = await Purchases.logIn(newId)
+          .timeout(const Duration(seconds: 15));
+      _customerInfo = result.customerInfo;
+    } catch (e) {
+      debugPrint('[PurchasesService] resetIdentity: logIn failed: $e');
     }
+    try {
+      _offerings = await Purchases.getOfferings()
+          .timeout(const Duration(seconds: 15));
+    } catch (_) {}
+
+    _initialized = true;
+    notifyListeners();
   }
 
   Future<CustomerInfo?> purchaseProduct(String productId) async {

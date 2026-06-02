@@ -36,12 +36,13 @@ appId: com.blinking.blinking
     id: "btn_debug_toggle"
 - tapOn:
     id: "btn_debug_toggle"
-# resetIdentity() makes 3 RC network calls before writing restricted state — wait for
-# the snackbar which fires only after the full async chain (logOut → configure → init) completes
+# Wait for EntitlementService to commit restricted state after the full async chain:
+# logOut → logIn → getCustomerInfo → getOfferings → svc.init() → setState
+# debug_entitlement_state Semantics label flips to "entitlement:restricted" once done.
 - extendedWaitUntil:
     visible:
-      text: "Switched to restricted mode"
-    timeout: 40000
+      text: "entitlement:restricted"
+    timeout: 30000
 - takeScreenshot: p1-restricted-mode-active
 
 # Navigate to My Day -- FloatingRobotWidget is visible on the home screen
