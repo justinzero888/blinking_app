@@ -1,0 +1,19 @@
+appId: com.blinking.blinking
+---
+# Dismiss OS-level system dialogs that appear on fresh install (clearState: true).
+# All taps are optional — dialogs may or may not appear depending on platform/OS version.
+
+# iOS: "Allow Notifications?" — tap Allow
+- tapOn:
+    text: "Allow"
+    optional: true
+
+# iOS: full photo library access prompt
+- tapOn:
+    text: "Allow Access to All Photos"
+    optional: true
+
+# Android 13+: notification permission dialog
+- tapOn:
+    text: "Allow"
+    optional: true

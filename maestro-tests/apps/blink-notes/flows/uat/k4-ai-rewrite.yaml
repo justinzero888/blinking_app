@@ -1,5 +1,5 @@
-# K4: AI Rewrite button visible and tappable
-# Does not validate LLM response content (network-dependent)
+# K4: Content field is editable — type custom text, verify it appears
+# (AI Rewrite was removed in v1.2.0+47)
 appId: com.blinking.blinking
 ---
 - runFlow: ../../subflows/launch.yaml
@@ -22,12 +22,22 @@ appId: com.blinking.blinking
     waitToSettleTimeoutMs: 0
 - tapOn:
     id: "btn_save_keepsake"
-
     waitToSettleTimeoutMs: 0
-# Verify AI Rewrite button is visible
-- assertVisible: "AI Rewrite"
 
-# Tap AI Rewrite to trigger (may fail offline — validates button wiring)
-- tapOn: "AI Rewrite"
+# Verify content field is present
+- assertVisible:
+    id: "card_builder_content"
 
-# Content field should remain visible
+# Clear existing content and type new text
+- tapOn:
+    id: "card_builder_content"
+    waitToSettleTimeoutMs: 0
+- eraseText: 1000
+- inputText: "Edited by UAT"
+
+# Verify typed text is visible in the field
+- assertVisible: "Edited by UAT"
+
+# Verify Save button is still present (field interaction didn't break layout)
+- assertVisible:
+    id: "btn_card_save"

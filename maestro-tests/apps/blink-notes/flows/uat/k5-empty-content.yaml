@@ -36,7 +36,7 @@ appId: com.blinking.blinking
 - tapOn:
     point: "87%, 45%"
     waitToSettleTimeoutMs: 0
-- eraseText: 300
+- eraseText: 1000
 
 # Tap Save — should show validation snackbar
 - tapOn:

@@ -1000,7 +1000,7 @@ class _SettingsScreenState extends State<SettingsScreen>
               leading: const Icon(Icons.info),
               title: const Text('Blinking (记忆闪烁)'),
               subtitle: Text(isZh ? '版本 ${AppConstants.appVersion}' : 'Version ${AppConstants.appVersion}'),
-              onTap: () => _debugToggleEntitlement(),
+              onTap: kDebugMode ? () => _debugToggleEntitlement() : null,
             ),
           ),
         ),
