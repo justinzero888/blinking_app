@@ -54,14 +54,14 @@ flutter clean && flutter pub get
 # iOS (build first, survives Android build)
 flutter build ipa --release \
   --dart-define=RC_API_KEY=appl_vgTGaiNtCARgmdgOzpJcZyITNAT \
-  --dart-define=TRIAL_API_KEY=$TRIAL_API_KEY661281c570108621d57a9a9f26d63c8cb0ef7daf0b8bf3b5c8a5fce \
-  --dart-define=PRO_API_KEY=$PRO_API_KEY2290404d73920592916a5ac9092cfc94443620123fb216745ad3d
+  --dart-define=TRIAL_API_KEY=$TRIAL_API_KEY \
+  --dart-define=PRO_API_KEY=$PRO_API_KEY
 
 # Android (build second, never clean between)
 flutter build appbundle --release \
   --dart-define=RC_API_KEY=goog_ITjNhBQowFMaFwdyZYvaCGqqioitim \
-  --dart-define=TRIAL_API_KEY=$TRIAL_API_KEY661281c570108621d57a9a9f26d63c8cb0ef7daf0b8bf3b5c8a5fce \
-  --dart-define=PRO_API_KEY=$PRO_API_KEY2290404d73920592916a5ac9092cfc94443620123fb216745ad3d
+  --dart-define=TRIAL_API_KEY=$TRIAL_API_KEY \
+  --dart-define=PRO_API_KEY=$PRO_API_KEY
 ```
 
 ---
