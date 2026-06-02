@@ -101,7 +101,7 @@ class BlinkingApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) {
           final service = EntitlementService();
           SharedPreferences.getInstance().then((prefs) {
-            service.init(prefs);
+            service.init(prefs, isPro: purchasesService.isPro);
           });
           return service;
         }),

@@ -336,10 +336,9 @@ class _PaywallScreenState extends State<PaywallScreen> {
       return;
     }
 
-    // Refresh customer info to sync latest entitlements
-    try {
-      await service.refreshCustomerInfo();
-    } catch (_) {}
+    // _customerInfo was set from the purchase result in purchaseProduct() —
+    // it is the most authoritative source. Don't refreshCustomerInfo()
+    // which can overwrite it with a pre-sync server state.
     if (!mounted) return;
 
     if (service.isPro || info != null) {

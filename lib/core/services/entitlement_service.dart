@@ -41,17 +41,26 @@ class EntitlementService extends ChangeNotifier {
   bool _initialized = false;
   bool _initInProgress = false;
 
-  Future<void> init(SharedPreferences prefs) async {
+  Future<void> init(SharedPreferences prefs, {bool isPro = false}) async {
     _prefs = prefs;
 
     _jwt = prefs.getString(_jwtKey);
     _state = _parseState(prefs.getString(_stateKey));
     _previewDaysRemaining = prefs.getInt(_previewDaysKey) ?? 0;
 
+    // RC is the single source of truth — if RC says user is Pro,
+    // override any local state (handles reinstall, device transfer, stale prefs)
+    if (isPro && _state != EntitlementState.paid) {
+      _state = EntitlementState.paid;
+      _saveState();
+    }
+
     // Apply local logic immediately for all states.
     // Server calls are async and defer notifyListeners() — we want the UI
     // to show the correct state right away.
-    _applyLocalPreview();
+    if (_state != EntitlementState.paid) {
+      _applyLocalPreview();
+    }
 
     // Then try server in background (non-blocking for UI purposes)
     if (_state == EntitlementState.preview && _jwt == null) {
