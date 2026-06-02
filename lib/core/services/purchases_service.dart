@@ -18,6 +18,7 @@ class PurchasesService extends ChangeNotifier {
   Offerings? _offerings;
   CustomerInfo? _customerInfo;
   String? _lastError;
+  String? _storedKey;
 
   bool get isInitialized => _initialized;
   bool get isPurchasing => _purchasing;
@@ -43,6 +44,8 @@ class PurchasesService extends ChangeNotifier {
         (defaultTargetPlatform == TargetPlatform.android
             ? googleApiKey
             : appleApiKey);
+
+    _storedKey = platformKey;
 
     if (platformKey == null || platformKey.isEmpty) {
       _lastError = 'No RevenueCat API key configured';
@@ -85,6 +88,20 @@ class PurchasesService extends ChangeNotifier {
     }
     _initialized = true;
     notifyListeners();
+  }
+
+  /// Debug only: logs out RC identity (clears Keychain cache) and re-initializes.
+  /// Forces a completely fresh customer record — use when sandbox pro_access
+  /// is stuck from previous tests.
+  Future<void> resetIdentity() async {
+    try { await Purchases.logOut(); } catch (_) {}
+    _initialized = false;
+    _customerInfo = null;
+    _offerings = null;
+    _lastError = null;
+    if (_storedKey != null) {
+      await init(unifiedKey: _storedKey);
+    }
   }
 
   Future<CustomerInfo?> purchaseProduct(String productId) async {

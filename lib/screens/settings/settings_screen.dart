@@ -129,13 +129,14 @@ class _SettingsScreenState extends State<SettingsScreen>
       final svc = context.read<EntitlementService>();
       await svc.init(prefs);
     } else {
-      // Force restricted to test paywall
+      // Force restricted to test paywall — also clear RC identity to force fresh customer
       await prefs.remove('entitlement_jwt');
       await prefs.setString('entitlement_state', 'restricted');
       await prefs.setBool('entitlement_was_preview', true);
       await prefs.setInt('entitlement_preview_days', 0);
-      // Set preview_started to an old date so _applyLocalPreview skips
       await prefs.setString('entitlement_preview_started', '2020-01-01T00:00:00.000');
+      // Reset RevenueCat identity: logOut clears Keychain cache, re-init creates fresh customer
+      await context.read<PurchasesService>().resetIdentity();
       final svc = context.read<EntitlementService>();
       await svc.init(prefs);
     }
