@@ -5,6 +5,7 @@ import '../../providers/locale_provider.dart';
 import '../../providers/ai_persona_provider.dart';
 import '../../core/services/storage_service.dart';
 import '../../core/services/purchases_service.dart';
+import '../../core/services/entitlement_service.dart';
 import '../purchase/paywall_screen.dart';
 
 void _onLocaleChanged(BuildContext context) {
@@ -75,6 +76,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isPaid = context.watch<EntitlementService>().isPaid;
     return Scaffold(
       body: SafeArea(
         child: Column(
@@ -209,7 +211,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                                   ),
                                 ),
                                 child: Text(
-                                  _isZh ? '开始试用' : 'Start your trial',
+                                  isPaid
+                                      ? (_isZh ? '继续' : 'Continue')
+                                      : (_isZh ? '开始试用' : 'Start your trial'),
                                   style: const TextStyle(
                                     fontSize: 17,
                                     fontWeight: FontWeight.bold,
@@ -480,6 +484,7 @@ class _ScreenThree extends StatelessWidget {
     final theme = Theme.of(context);
     final isZh = context.watch<LocaleProvider>().locale.languageCode == 'zh';
     final price = context.watch<PurchasesService>().proPriceString ?? '\$7.99';
+    final isPaid = context.watch<EntitlementService>().isPaid;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 36),
@@ -504,28 +509,30 @@ class _ScreenThree extends StatelessWidget {
               ),
               borderRadius: BorderRadius.circular(20),
             ),
-            child: Column(
-              children: [
-                const Text('✨', style: TextStyle(fontSize: 36)),
-                const SizedBox(height: 12),
-                Text(
-                  isZh ? '全功能试用' : 'Full access trial',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 22,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  isZh
-                      ? '试用期间全部功能解锁'
-                      : 'All features unlocked during trial',
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 14,
-                  ),
-                ),
+                child: Column(
+                  children: [
+                    const Text('✨', style: TextStyle(fontSize: 36)),
+                    const SizedBox(height: 12),
+                    Text(
+                      isPaid
+                          ? (isZh ? '已解锁 Pro' : 'Pro Unlocked')
+                          : (isZh ? '全功能试用' : 'Full access trial'),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 22,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      isPaid
+                          ? (isZh ? '所有功能已永久解锁' : 'All features permanently unlocked')
+                          : (isZh ? '试用期间全部功能解锁' : 'All features unlocked during trial'),
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 14,
+                      ),
+                    ),
               ],
             ),
           ),
