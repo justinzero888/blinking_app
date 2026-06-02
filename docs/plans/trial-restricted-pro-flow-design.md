@@ -71,8 +71,8 @@
 
 | State | Key | Source |
 |-------|-----|--------|
-| Trial (preview) | `sk-or-v1-e902497ff66128...` | `--dart-define=TRIAL_API_KEY` |
-| Pro (paid) | `sk-or-v1-e75d7a22513229...` | `--dart-define=PRO_API_KEY` |
+| Trial (preview) | `$TRIAL_API_KEY66128...` | `--dart-define=TRIAL_API_KEY` |
+| Pro (paid) | `$PRO_API_KEY229...` | `--dart-define=PRO_API_KEY` |
 
 - Both keys route through `https://openrouter.ai/api/v1`
 - Model: `qwen/qwen3.5-flash-02-23`
@@ -186,13 +186,13 @@
 ```bash
 # iOS (with auto-restore + trial key)
 flutter run -d "iPhone 17 Pro" --debug \
-  --dart-define=TRIAL_API_KEY="sk-or-v1-e902497ff66128..." \
-  --dart-define=PRO_API_KEY="sk-or-v1-e75d7a22513229..." \
+  --dart-define=TRIAL_API_KEY="$TRIAL_API_KEY66128..." \
+  --dart-define=PRO_API_KEY="$PRO_API_KEY229..." \
   --dart-define=AUTO_RESTORE="/path/to/auto_restore.zip"
 
 # Android (with auto-restore + trial key)
 flutter run -d emulator-5554 --debug \
-  --dart-define=TRIAL_API_KEY="sk-or-v1-e902497ff66128..." \
-  --dart-define=PRO_API_KEY="sk-or-v1-e75d7a22513229..." \
+  --dart-define=TRIAL_API_KEY="$TRIAL_API_KEY66128..." \
+  --dart-define=PRO_API_KEY="$PRO_API_KEY229..." \
   --dart-define=AUTO_RESTORE="/data/local/tmp/auto_restore.zip"
 ```

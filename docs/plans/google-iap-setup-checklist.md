@@ -72,8 +72,8 @@
 |---|-------|-------|----|
 | 5.1 | AndroidManifest BILLING permission | `com.android.vending.BILLING` present | |
 | 5.2 | Build key: `--dart-define=RC_API_KEY=` | `goog_ITjNhBQowFMaFwdyZYvaCGqqioi` | |
-| 5.3 | Trial AI key: `--dart-define=TRIAL_API_KEY=` | `sk-or-v1-e902497ff...` | |
-| 5.4 | Pro AI key: `--dart-define=PRO_API_KEY=` | `sk-or-v1-e75d7a22513...` | |
+| 5.3 | Trial AI key: `--dart-define=TRIAL_API_KEY=` | `$TRIAL_API_KEY...` | |
+| 5.4 | Pro AI key: `--dart-define=PRO_API_KEY=` | `$PRO_API_KEY...` | |
 | 5.5 | AAB built | `build/app/outputs/bundle/release/app-release.aab` (49.9MB) | |
 | 5.6 | Version | `1.1.0-beta.8+26` | |
 | 5.7 | APK for test (sideload won't work for IAP) | Built, but use Play Store install | |

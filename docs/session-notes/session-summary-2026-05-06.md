@@ -61,8 +61,8 @@ Major session focused on IAP setup, revenue integration, bug fixes, and launch r
 ### Key Changes
 - **Default state:** `_parseState(null)` now returns `preview` (was `restricted`), enabling 21-day trial on fresh install
 - **AI Key management:**
-  - Preview (trial): uses `TRIAL_API_KEY` (OpenRouter `sk-or-v1-e902497ff...`)
-  - Paid/Restricted: uses `PRO_API_KEY` (OpenRouter `sk-or-v1-e75d7a22513...`)
+  - Preview (trial): uses `TRIAL_API_KEY` (OpenRouter `$TRIAL_API_KEY...`)
+  - Paid/Restricted: uses `PRO_API_KEY` (OpenRouter `$PRO_API_KEY...`)
   - BYOK always overrides built-in keys
 - **`_applyLocalPreview()` guard:** Skips if `paid` or `restricted`, allows `preview`
 - **Settings banners:**
