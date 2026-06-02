@@ -1014,10 +1014,9 @@ class _SettingsScreenState extends State<SettingsScreen>
         ),
         if (kDebugMode)
           Consumer<EntitlementService>(
-            builder: (context, entSvc, _) => Semantics(
-              identifier: 'debug_entitlement_state',
-              label: entSvc.isRestricted ? 'entitlement:restricted' : 'entitlement:other',
-              child: const SizedBox.shrink(),
+            builder: (context, entSvc, _) => Text(
+              entSvc.isRestricted ? 'entitlement:restricted' : 'entitlement:other',
+              style: const TextStyle(fontSize: 1, color: Color(0x01000000)),
             ),
           ),
         const SizedBox(height: 32),
