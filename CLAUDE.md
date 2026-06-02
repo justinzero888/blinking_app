@@ -40,10 +40,20 @@ Provider tree (defined in `lib/app.dart`):
 | `JarProvider` | `ProxyProvider<EntryProvider>` | Emotion aggregation by year/month/day |
 | `CardProvider` | `ChangeNotifier` | Folders, templates, note cards |
 | `SummaryProvider` | `ProxyProvider2<EntryProvider, RoutineProvider>` | Chart metrics (daily/weekly/monthly) |
-| `EntitlementService` | `ChangeNotifier` | State machine — preview/restricted/paid; 21d local preview, quota |
+| `EntitlementService` | `ChangeNotifier` | State machine — preview/restricted/paid; synced from RC on init (RC is single source of truth) |
 | `PurchasesService` | `ChangeNotifier` | RevenueCat IAP — init in main.dart, purchase/restore flow |
 | `AiPersonaProvider` | `ChangeNotifier` | AI avatar, name, personality |
 | `LlmConfigNotifier` | `ChangeNotifier` | Signals when LLM provider/api key changes |
+
+### Purchase Flow Design
+
+RevenueCat `PurchasesService.isPro` is the **single source of truth** for paid state. Rules:
+
+- **"Get Pro" visibility:** Gated on `EntitlementService.isRestricted` (local state). Shows when user is in restricted mode.
+- **Payment sheet trigger:** If `isPro == false` → show native payment sheet. If `isPro == true` → auto-restore Pro without showing sheet (user already owns it).
+- **After purchase:** Purchase result's `CustomerInfo` is authoritative. Do NOT call `refreshCustomerInfo()` in the purchase handler — the purchase result IS the freshest RC state. RC server sync may not have propagated yet.
+- **On app start:** `EntitlementService.init(isPro:)` syncs from RC. If RC says Pro, local state is overridden to `paid` (handles reinstall, device transfer).
+- **`_markEntitlementPaid()`** updates both SharedPreferences and calls `EntitlementService.init()` to refresh local state.
 
 ### Navigation
 Bottom nav (5 tabs) in `MainScreen` (`lib/app.dart`):
