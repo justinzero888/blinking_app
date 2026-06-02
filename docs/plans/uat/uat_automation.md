@@ -73,7 +73,7 @@
 
 ### Keepsake Cards (Phase 3: K)
 
-> Semantics identifiers added 2026-05-23: `btn_save_keepsake`, `card_builder_content`, `template_tpl_*`, `toggle_show_mood/date/tags/footer`, `btn_card_save`, `badge_keepsake`, `btn_edit_card`, `btn_share_card`, `btn_reflection_save_keepsake`, `btn_assistant_save_keepsake`.  
+> Semantics identifiers added 2026-05-23: `btn_save_keepsake`, `card_builder_content`, `template_tpl_*`, `toggle_show_mood/date/tags/footer`, `btn_card_save`, `badge_keepsake`, `btn_edit_card`, `btn_share_card`, `btn_assistant_save_keepsake`.  
 > Visual fidelity (gradients, motifs, colors) is manual per MV-1, MV-2, MV-3, MV-4. See phase3_uat.md.
 
 | ID | Description | Flow file | iPhone | iPad | Android | Phase 3 ref |
@@ -85,7 +85,6 @@
 | k5 | Toggle overlays ON/OFF (mood, date, tags, footer) — save both states | `flows/uat/k5-toggle-overlays.yaml` | ✅ | ✅ | ✅ | MK-13, MK-14, MK-16, MK-17 |
 | k6 | Edit existing keepsake — change template, badge updates | `flows/uat/k6-edit-keepsake.yaml` | ✅ | ✅ | ✅ | MK-18 |
 | k7 | Locale — EN/ZH builder labels and template names | `flows/uat/k7-locale.yaml` | ✅ | ✅ | ✅ | MK-20, MK-21, MK-22, MK-23 |
-| k8 | AI reflection → Save as Keepsake | `flows/uat/k8-reflection-entry.yaml` | ✅ | ✅ | ✅ | MK-3 |
 | k9 | Text-only entry → clean preview (no broken image) | `flows/uat/k9-photo-integration.yaml` | ✅ | ✅ | ✅ | MK-12 |
 | k10 | Badge mapping: no-badge entry, correct template name, no system tag | `flows/uat/k10-badge-mapping.yaml` | ✅ | ✅ | ✅ | MK-8, MK-9, MK-15 |
 
@@ -115,7 +114,7 @@ Cases from existing UAT documents that are **feasible to automate** but do not h
 |----|-------------|--------|-----------|-------|
 | v3-full | v3 per-routine voiceEnabled DB persistence (V-20 to V-22 complete) | Low | P2 V-20, V-21, V-22 | Add `Semantics(identifier: 'btn_edit_routine')` to `_BuildRoutineTile` edit icon, then extend v3 flow to re-open edit dialog and assert toggle state |
 | s9-full | s9 full import — fixture seeded, picker navigated, snackbar asserted | Medium | P1 S-9 | Restructure run script to seed `fixtures/routines_test.json` post-clearState; s9 flow selects file and asserts "Import complete: 2 imported" |
-| k8-assistant | MK-4: Create keepsake from Assistant chat | Low | P3 MK-4 | k8 covers MK-3 (ReflectionSession). MK-4 path requires `kUseMultiTurnChat=true` routing to AssistantScreen and `btn_assistant_save_keepsake` (identifier already added) |
+| k8-assistant | MK-4: Create keepsake from Assistant chat | Low | P3 MK-4 | Routing to AssistantScreen and `btn_assistant_save_keepsake` (identifier already added) |
 | k9-photo-full | MK-10, MK-11: Photo as hero/inline background in keepsake | Medium | P3 MK-10, MK-11 | Seed a photo into the simulator camera roll pre-run; create entry with image_picker; open builder; verify image appears in preview |
 
 ---
