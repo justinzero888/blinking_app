@@ -342,7 +342,7 @@ class _PaywallScreenState extends State<PaywallScreen> {
     } catch (_) {}
     if (!mounted) return;
 
-    if (service.isPro || (info?.entitlements.active.containsKey('pro_access') ?? false)) {
+    if (service.isPro || info != null) {
       // Update local entitlement state to paid
       final entitlement = context.read<EntitlementService>();
       await _markEntitlementPaid(entitlement);

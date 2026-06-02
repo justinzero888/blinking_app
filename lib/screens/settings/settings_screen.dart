@@ -130,20 +130,12 @@ class _SettingsScreenState extends State<SettingsScreen>
       final svc = context.read<EntitlementService>();
       await svc.init(prefs);
     } else {
-      // Force restricted to test paywall — also clear RC identity to force fresh customer
+      // Force restricted to test paywall
       await prefs.remove('entitlement_jwt');
       await prefs.setString('entitlement_state', 'restricted');
       await prefs.setBool('entitlement_was_preview', true);
       await prefs.setInt('entitlement_preview_days', 0);
       await prefs.setString('entitlement_preview_started', '2020-01-01T00:00:00.000');
-      // Reset RevenueCat identity: logOut clears Keychain cache, re-init creates fresh customer.
-      // Non-fatal: if RC re-configure throws (e.g. already configured), proceed with existing
-      // identity — restricted state in prefs is what gates the paywall.
-      try {
-        await context.read<PurchasesService>().resetIdentity();
-      } catch (e) {
-        debugPrint('[Settings] resetIdentity failed (non-fatal): $e');
-      }
       final svc = context.read<EntitlementService>();
       await svc.init(prefs);
     }
