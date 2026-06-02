@@ -94,13 +94,25 @@ class PurchasesService extends ChangeNotifier {
   /// Forces a completely fresh customer record — use when sandbox pro_access
   /// is stuck from previous tests.
   Future<void> resetIdentity() async {
+    final appUserId = await Purchases.getCustomerInfo().then((i) => i.originalAppUserId);
+    debugPrint('[PurchasesService] Current RC appUserID: $appUserId');
     try { await Purchases.logOut(); } catch (_) {}
     _initialized = false;
     _customerInfo = null;
     _offerings = null;
     _lastError = null;
     if (_storedKey != null) {
-      await init(unifiedKey: _storedKey);
+      // Use a fresh random appUserID to avoid identifierForVendor merge
+      await Purchases.configure(
+        PurchasesConfiguration(_storedKey!)
+          ..appUserID = '${appUserId}_${DateTime.now().millisecondsSinceEpoch}',
+      );
+      try {
+        _customerInfo = await Purchases.getCustomerInfo();
+        _offerings = await Purchases.getOfferings();
+      } catch (_) {}
+      _initialized = true;
+      notifyListeners();
     }
   }
 
