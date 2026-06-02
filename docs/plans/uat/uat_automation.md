@@ -3,7 +3,7 @@
 > **Living document.** Add a row to the appropriate table every time a new feature or fix gets a Maestro flow.  
 > **Flow root:** `maestro-tests/apps/blink-notes/`  
 > **Run scripts:** `maestro-tests/ci/run-uat-iphone.sh` · `run-uat-ipad.sh` · `run-uat-android.sh`  
-> **Last full pass:** 2026-05-31 — iPhone 11/11 ✅ · iPad 11/11 ✅ · Android 11/11 ✅ (v1.2.0+47)
+> **Last full pass:** 2026-06-01 — iPhone 12/12 ✅ · iPad 12/12 ✅ · Android 12/12 ✅ (v1.2.0+47)
 > **Phase 2 voice flows added:** 2026-05-23 — 5 new flows (v1–v4, s9); run scripts updated to 22 flows  
 > **Phase 3 keepsake flows added:** 2026-05-23 — 10 new flows (k1–k10); run scripts updated to 32/26 flows  
 > **v1.2.0+44 purchase/price flow added:** 2026-05-31 — 1 new flow (p1); run scripts now 33/27 flows
@@ -99,7 +99,7 @@
 | ID | Description | Flow file | iPhone | iPad | Android | Ref |
 |----|-------------|-----------|:------:|:----:|:-------:|-----|
 | p1 | Paywall loaded — RC initialized, price displayed, "Get Pro" enabled | `flows/uat/p1-paywall-ready.yaml` | ✅ | ✅ | ✅ | M-1, M-6 |
-| p2 | Paywall CTA smoke — Restore round-trip, cancel recovery, no crash | `flows/uat/p2-paywall-cta-smoke.yaml` | 🔲 | 🔲 | 🔲 | M-7 |
+| p2 | Paywall CTA smoke — Restore round-trip, cancel recovery, no crash | `flows/uat/p2-paywall-cta-smoke.yaml` | ✅ | ✅ | ✅ | M-7 |
 
 > **p2 note:** Simulator only — uses local StoreKit/Play test environment. Taps "Restore Purchases" instead of "Get Pro" to avoid native OS payment sheet that Maestro cannot traverse. Validates SDK round-trip + error recovery.
 
