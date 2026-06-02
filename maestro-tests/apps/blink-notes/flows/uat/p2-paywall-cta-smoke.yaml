@@ -1,66 +1,66 @@
-# P2-PAYWALL-CTA-SMOKE: Get Pro button tap → purchase sheet → cancel cleanly
+# P2-PAYWALL-CTA-SMOKE: Restore Purchases round-trip confirms SDK path and recovery
 # Simulator only — uses local StoreKit / Play test environment.
-# Validates: button tap triggers SDK, cancellation is handled without error/dismiss.
+# Validates: SDK async path completes, _isRestoring resets, paywall stays open cleanly.
+# "Get Pro" tap is not automated here — native payment sheet requires real-device sandbox.
+# See Layer 3 real-device checklist in RCA-purchase-flow-v1.2.0.md for full CTA coverage.
 appId: com.blinking.blinking
 ---
 - runFlow: ../../subflows/launch.yaml
 
-# Enter restricted mode via debug toggle (Settings → General → tap version 5x)
+# Enter restricted mode: Settings -> General -> About -> tap version 5x
 - tapOn:
     id: "nav_settings"
 - waitForAnimationToEnd
-- scrollUntilVisible:
-    element:
-      id: "settings_tab_general"
-    direction: DOWN
-    timeout: 10000
 - tapOn:
     id: "settings_tab_general"
 - waitForAnimationToEnd
-- scrollUntilVisible:
-    element:
-      text: "Version"
-    direction: DOWN
-    timeout: 10000
-- tapOn: "Version"
-- tapOn: "Version"
-- tapOn: "Version"
-- tapOn: "Version"
-- tapOn: "Version"
+- scroll
 - waitForAnimationToEnd
+- scroll
+- waitForAnimationToEnd
+- tapOn:
+    id: "btn_debug_toggle"
+- tapOn:
+    id: "btn_debug_toggle"
+- tapOn:
+    id: "btn_debug_toggle"
+- tapOn:
+    id: "btn_debug_toggle"
+- tapOn:
+    id: "btn_debug_toggle"
+# resetIdentity() makes 3 RC network calls before writing restricted state — wait for
+# the snackbar which fires only after the full async chain (logOut → configure → init) completes
+- extendedWaitUntil:
+    visible:
+      text: "Switched to restricted mode"
+    timeout: 40000
 
-# Go back to main screen
-- pressKey: back
-- waitForAnimationToEnd
-- pressKey: back
-- waitForAnimationToEnd
-
-# Navigate to My Day tab
 - tapOn:
     id: "nav_my_day"
 - waitForAnimationToEnd
 
-# Open paywall by tapping the floating robot
+# Open paywall via robot button
 - tapOn:
-    id: "floating_robot"
+    id: "btn_ai_robot"
 - extendedWaitUntil:
     visible:
       text: "Blinking Pro"
     timeout: 10000
 - takeScreenshot: p2-paywall-ready
 
-# Tap "Restore Purchases" — exercises full SDK round-trip (getCustomerInfo, server call)
-# without triggering a real purchase transaction. On a fresh account, it returns
-# a no-op result and the paywall recovers cleanly.
+# Tap Restore Purchases -- performs a full SDK round-trip (Purchases.restorePurchases)
+# without triggering a native payment sheet. On a fresh install with no prior purchase,
+# this returns cleanly and leaves the paywall open. Confirms the async SDK path and
+# _isRestoring reset work correctly end-to-end.
 - tapOn:
-    text: "Restore"
+    text: "Restore Purchases"
 - extendedWaitUntil:
     visible:
       text: "Blinking Pro"
-    timeout: 15000
-- takeScreenshot: p2-restore-returned-cleanly
+    timeout: 40000
+- takeScreenshot: p2-restore-returned
 
-# Paywall still visible (not dismissed), no error SnackBar visible
+# Paywall must still be open (not dismissed), store still ready
 - assertVisible:
     text: "Blinking Pro"
 - assertNotVisible:

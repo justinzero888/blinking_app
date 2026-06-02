@@ -1,0 +1,56 @@
+# MK-3: Create keepsake from AI Daily Reflection
+#
+# MK-4 (Assistant chat → keepsake) requires AssistantScreen to be the active AI mode
+# (kUseMultiTurnChat=true). When the flag is false, btn_ai_robot opens ReflectionSessionScreen
+# and the btn_assistant_save_keepsake path cannot be reached. MK-4 is tracked in
+# Future Automation Candidates until the flag/routing can be determined at test time.
+#
+# btn_reflection_save_keepsake: Semantics on OutlinedButton.icon in reflection_session_screen.dart
+# AI call latency: extendedWaitUntil timeouts set to 60s (matches r4-ai-chat pattern)
+appId: com.blinking.blinking
+---
+- runFlow: ../../subflows/launch.yaml
+
+# Create an entry so the AI has content to reflect on
+- runFlow:
+    file: ../../subflows/create-entry.yaml
+    env:
+      ENTRY_TEXT: "Today I felt inspired and grateful for small moments"
+
+# Navigate My Day → ensure btn_ai_robot is visible
+- tapOn:
+    id: "nav_moments"
+- waitForAnimationToEnd
+- tapOn:
+    id: "nav_my_day"
+- waitForAnimationToEnd
+
+- extendedWaitUntil:
+    visible:
+      id: "btn_ai_robot"
+    timeout: 10000
+
+# Open AI reflection
+- tapOn:
+    id: "btn_ai_robot"
+- waitForAnimationToEnd
+- takeScreenshot: k8-reflection-opened
+
+# Wait for AI content to generate (up to 60s — matches r4-ai-chat)
+- extendedWaitUntil:
+    visible:
+      text: "Save Reflection"
+    timeout: 60000
+- takeScreenshot: k8-reflection-ready
+
+# Scroll to Save Reflection button and tap
+- scroll
+- waitForAnimationToEnd
+- tapOn:
+    text: "Save Reflection"
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      text: "Saved"
+    timeout: 5000
+- takeScreenshot: k8-reflection-saved

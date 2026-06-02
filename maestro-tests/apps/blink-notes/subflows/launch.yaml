@@ -2,35 +2,28 @@ appId: com.blinking.blinking
 ---
 - launchApp:
     clearState: true
+- runFlow: ../../../shared/dismiss-system-dialogs.yaml
+- waitForAnimationToEnd
 
-# Onboarding page 1 — intro screen
+# Handle first-launch onboarding (clearState always triggers it)
+# Page 1: intro screen — wait for Continue to be interactive, then tap
 - extendedWaitUntil:
     visible:
       text: "Continue"
     timeout: 20000
 - tapOn:
     text: "Continue"
-    waitToSettleTimeoutMs: 0
-
-# Onboarding page 2 — "Your life is fragments of time"
-- extendedWaitUntil:
-    visible:
-      text: "Continue"
-    timeout: 10000
-- tapOn:
-    text: "Continue"
-    waitToSettleTimeoutMs: 0
-
-# Onboarding page 3 — "Everything in My Day" features overview
+- waitForAnimationToEnd
+# Page 2: features overview ("Everything in My Day") — wait for Skip then tap
 - extendedWaitUntil:
     visible:
       text: "Skip"
-    timeout: 15000
+    timeout: 8000
 - tapOn:
     text: "Skip"
-    waitToSettleTimeoutMs: 0
+- waitForAnimationToEnd
 
-# Verify home screen loaded
+# Verify home screen is loaded
 - extendedWaitUntil:
     visible:
       text: "My Day"
