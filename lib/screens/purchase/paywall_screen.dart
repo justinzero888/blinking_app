@@ -341,7 +341,7 @@ class _PaywallScreenState extends State<PaywallScreen> {
     // which can overwrite it with a pre-sync server state.
     if (!mounted) return;
 
-    if (service.isPro || info != null) {
+    if (service.isPro) {
       // Update local entitlement state to paid
       final entitlement = context.read<EntitlementService>();
       await _markEntitlementPaid(entitlement);
