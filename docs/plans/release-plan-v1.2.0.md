@@ -149,7 +149,7 @@ flutter build ipa --release \
 
 # Android (production)
 flutter build appbundle --release \
-  --dart-define=RC_API_KEY=goog_ITjNhBQowFMaFwdyZYvaCGqqioitim \
+  --dart-define=RC_API_KEY=goog_ITjNhBQowFMaFwdyZYvaCGqqioi \
   --dart-define=TRIAL_API_KEY=$TRIAL_API_KEY \
   --dart-define=PRO_API_KEY=$PRO_API_KEY
 

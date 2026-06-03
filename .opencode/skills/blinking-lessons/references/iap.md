@@ -1,5 +1,15 @@
 # IAP / Store Configuration — Lessons Learned
 
+## Production API Keys (Source of Truth)
+
+| Platform | Key | Prefix |
+|----------|-----|--------|
+| **Google Play** | `goog_ITjNhBQowFMaFwdyZYvaCGqqioi` | `goog_` |
+| **Apple App Store** | `appl_vgTGaiNtCARgmdgOzpJcZyITNAT` | `appl_` |
+| **Test Store (debug)** | `test_FFZAekOZQXGwwReuLkrvQLTjyOP` | `test_` |
+
+> ⚠️ **Verify key character-for-character from RevenueCat → Project Settings → API Keys.** These keys cannot be re-downloaded — if lost, revoke and recreate. A single wrong character causes `getOfferings()` to return empty — "No offerings from store" error. This has wasted multiple testing cycles.
+
 ## RevenueCat Setup Order (Must Follow)
 
 1. Create RevenueCat project → Test Store + test key (Project Settings → API Keys)

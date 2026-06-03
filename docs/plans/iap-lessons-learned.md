@@ -141,7 +141,7 @@ flutter build appbundle --release --dart-define=RC_API_KEY=goog_...
 | RevenueCat Entitlement | `pro_access` |
 | RevenueCat Offering (Current) | `ofrng88832e4ac2` |
 | iOS Production Key | `appl_vgTGaiNtCARgmdgOzpJcZyITNAT` |
-| Android Production Key | `goog_ITjNhBQowFMaFwdyZYvaCGqqioitim` |
+| Android Production Key | `goog_ITjNhBQowFMaFwdyZYvaCGqqioi` |
 | Test Store Key | `test_FFZAekOZQXGwwReuLkrvQLTjyOP` |
 | App Store Key ID | `4UK6U499RC` |
 | App Store Issuer ID | `8525f01e-0925-49f8-9862-739031df8d50` |

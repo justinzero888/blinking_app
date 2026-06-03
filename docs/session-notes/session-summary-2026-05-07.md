@@ -11,7 +11,7 @@
 | 1.5 | Google Cloud Pub/Sub API enabled | ✅ |
 | 1.6 | JSON key existed from yesterday | ✅ |
 | 1.7 | Permissions granted (View financial data + Manage orders) | ✅ |
-| 1.8 | **RevenueCat Google Play connected** → `goog_ITjNhBQowFMaFwdyZYvaCGqqioitim` | ✅ |
+| 1.8 | **RevenueCat Google Play connected** → `goog_ITjNhBQowFMaFwdyZYvaCGqqioi` | ✅ |
 | 1.9 | **Product imported from Google Play** → attached to `pro_access`, added to offering | ✅ |
 | 1.10 | License tester — pending (after AAB rollout) | ⬜ |
 | — | **AAB v25 built with `goog_` key** (49.9MB) | ✅ |
