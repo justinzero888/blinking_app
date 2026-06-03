@@ -380,9 +380,6 @@ class _PaywallScreenState extends State<PaywallScreen> {
       return;
     }
 
-    await service.refreshCustomerInfo();
-    if (!mounted) return;
-
     if (service.isPro) {
       final entitlement = context.read<EntitlementService>();
       await _markEntitlementPaid(entitlement);
@@ -395,6 +392,10 @@ class _PaywallScreenState extends State<PaywallScreen> {
         ),
       );
       Navigator.pop(context);
+    } else if (service.lastError != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(service.lastError!)),
+      );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

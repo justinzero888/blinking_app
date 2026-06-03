@@ -1,0 +1,13 @@
+# Subflow: tap the debug toggle 5x to cycle entitlement state.
+# Caller must already be on Settings → General tab with the About section visible.
+# After this subflow completes, wait for the expected entitlement state label.
+- tapOn:
+    id: "btn_debug_toggle"
+- tapOn:
+    id: "btn_debug_toggle"
+- tapOn:
+    id: "btn_debug_toggle"
+- tapOn:
+    id: "btn_debug_toggle"
+- tapOn:
+    id: "btn_debug_toggle"

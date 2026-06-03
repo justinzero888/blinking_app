@@ -80,3 +80,25 @@ If prices change in App Store Connect / Play Console AFTER a build is live:
 | **Gate 1** | TestFlight / Play Console upload | After Gate 0 passes |
 | **Gate 2** | Real device via store download | After store build available |
 | **Price change** | Existing deployed build | Before promotion after price change |
+
+---
+
+## Change Classification Matrix
+
+**Which gates are required for each type of change?**
+
+| Change | flutter test | Gate 0 | Gate 1+2 | Checklist sections |
+|--------|-------------|--------|----------|--------------------|
+| `purchases_service.dart` | ✅ | ✅ | ✅ | All sections |
+| `paywall_screen.dart` | ✅ | ✅ | ✅ | All sections |
+| `entitlement_service.dart` | ✅ | ✅ | ✅ | Already-Pro, Restore |
+| RC API key change | ✅ | ✅ | ✅ | Pre-purchase, Purchase Complete |
+| Price change in store console (no code) | — | ✅ on existing build | No new build | Price-Change Resilience |
+| `app.dart` / provider tree | ✅ | ✅ | No | Smoke only |
+| Unrelated UI change | ✅ | No | No | — |
+
+**Rules:**
+- Any file touching purchase, entitlement, or RC → Gate 0 + real-device checklist before upload
+- Price changes in the store console after a build is live → run Gate 0 items 14–18 on the **already-deployed** build without a rebuild
+- Never upload a build that hasn't been smoke-tested on a real device with a real sandbox account
+- The stuck-`_isPurchasing` bug and the false-positive Pro gate both shipped because Gate 0 was skipped — it takes 15 minutes and catches both classes of bug

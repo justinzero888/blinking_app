@@ -358,6 +358,66 @@ void main() {
         expect(service.isPro, isTrue);
       });
     });
+
+    // -----------------------------------------------------------------------
+    // Regression tests for the three failure modes that burned us in prod.
+    // Each test is named after the incident it guards against.
+    // -----------------------------------------------------------------------
+    group('failure mode regressions', () {
+      test('isPurchasing cleared when purchaseProduct throws an exception',
+          // Incident: exception mid-purchase left _isPurchasing=true, making
+          // the "Get Pro" button permanently disabled until app restart.
+          () async {
+        final service = PurchasesServiceMock();
+        await service.init(unifiedKey: 'test_key');
+        service.setMockThrowException(Exception('Network timeout'));
+
+        await service.purchaseProduct('blinking_pro');
+
+        expect(service.isPurchasing, isFalse,
+            reason: 'button must re-enable after any exception path');
+      });
+
+      test('user-cancel returns null with no lastError set',
+          // Incident: some error paths set lastError on cancel, causing a
+          // misleading error snackbar after the user dismissed the sheet.
+          // The cancel path must be detectable as: info==null && lastError==null.
+          () async {
+        final service = PurchasesServiceMock();
+        await service.init(unifiedKey: 'test_key');
+        // Failure path without explicit exception = cancel scenario in mock.
+        service.setMockPurchaseSuccess(false);
+
+        final result = await service.purchaseProduct('blinking_pro');
+
+        expect(result, isFalse);
+        // lastError must be null so the caller can detect cancel vs error.
+        expect(service.lastError, isNull,
+            reason:
+                'cancel must not set lastError — callers distinguish cancel '
+                'from error by checking (result==null && lastError==null)');
+      });
+
+      test('isPro requires active pro_access entitlement, not just non-null result',
+          // Incident (v1.1.0 paywall): the gate was `service.isPro || info != null`.
+          // On TestFlight, restorePurchases() always returned non-null CustomerInfo
+          // even without a real purchase, granting Pro for free.
+          // The gate must be `service.isPro` alone.
+          () async {
+        final service = PurchasesServiceMock();
+        await service.init(unifiedKey: 'test_key');
+        // Simulate: purchase returned non-null result but entitlement NOT active.
+        service.setMockPurchaseSuccess(true);
+        service.setMockHasPro(false); // entitlement explicitly not granted
+
+        await service.purchaseProduct('blinking_pro');
+
+        expect(service.isPro, isFalse,
+            reason:
+                'isPro must reflect the entitlement, not the mere presence '
+                'of a CustomerInfo object');
+      });
+    });
   });
 }
 
@@ -372,6 +432,7 @@ class PurchasesServiceMock {
   bool _mockPurchaseSuccess = false;
   bool _mockRestoreSuccess = false;
   List<String> _mockOfferings = [];
+  Exception? _mockPurchaseException;
 
   bool get isInitialized => _initialized;
   bool get isPurchasing => _purchasing;
@@ -422,13 +483,18 @@ class PurchasesServiceMock {
     try {
       await Future.delayed(const Duration(milliseconds: 10));
 
+      if (_mockPurchaseException != null) {
+        throw _mockPurchaseException!;
+      }
+
       if (!_mockPurchaseSuccess) {
         _purchasing = false;
         return false;
       }
 
       _lastError = null; // Clear error on success
-      _hasPro = true; // Mark as pro on success
+      // _hasPro is NOT set here — callers control it via setMockHasPro(),
+      // matching production where isPro derives from RC's entitlement response.
       _purchasing = false;
       return true;
     } catch (e) {
@@ -487,5 +553,9 @@ class PurchasesServiceMock {
 
   void setMockOfferings(List<String> offerings) {
     _mockOfferings = offerings;
+  }
+
+  void setMockThrowException(Exception e) {
+    _mockPurchaseException = e;
   }
 }

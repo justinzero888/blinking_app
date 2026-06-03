@@ -33,10 +33,26 @@
 
 ### Price-Change Resilience
 > Required if prices changed after last build cut.
-- [ ] 14. With app running (no restart), change price in App Store Connect / Play Console
-- [ ] 15. Without restarting, tap "Get Pro"
-- [ ] 16. Confirm payment sheet appears with NEW price (offerings refreshed before purchase)
-- [ ] 17. Cancel. Confirm paywall recovers cleanly
+- [ ] 14. Note the price shown on paywall at first launch (before any background activity)
+- [ ] 15. Change price in App Store Connect / Play Console
+- [ ] 16. Without restarting the app, tap "Get Pro"
+- [ ] 17. Confirm payment sheet appears with the NEW price (offerings refresh fires before purchase)
+- [ ] 18. Cancel. Confirm paywall recovers cleanly
+
+### Already-Pro User Flow
+> Required on any change to entitlement routing or purchase gate logic.
+- [ ] 19. iPhone: Use debug toggle (Settings → About → tap version 5x from preview) to cycle to restricted, then purchase in sandbox to reach Pro state
+- [ ] 20. Force-kill and reopen. Tap robot → confirm AssistantScreen opens, NOT PaywallScreen
+- [ ] 21. Navigate to Settings → confirm Pro banner shows, no "Get Pro" prompt visible
+- [ ] 22. Android: repeat steps 19–21
+
+### Reinstall Restore Flow
+> Required on any change to restorePurchases() or _handleRestore logic.
+- [ ] 23. iPhone: Uninstall app. Reinstall from TestFlight using same sandbox account
+- [ ] 24. Enter restricted mode via debug toggle → tap robot → paywall opens
+- [ ] 25. Tap "Restore Purchases" → SDK round-trip completes → "Pro restored." snackbar + paywall closes
+- [ ] 26. Confirm Pro features unlocked (no paywall on next robot tap)
+- [ ] 27. Android: repeat steps 23–26 with Play Internal Testing account
 
 ---
 

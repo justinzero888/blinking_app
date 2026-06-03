@@ -1,0 +1,71 @@
+# P3-ALREADY-PRO-NO-PAYWALL: already-Pro user tapping robot goes to assistant, not paywall
+#
+# Scenario: A user who already owns Pro (or has been set to Pro via debug toggle) taps the
+# floating robot. The entitlement gate must route them to AssistantScreen, NOT PaywallScreen.
+# Paywall should never appear for a Pro user — showing it would be a regression in the
+# entitlement routing logic.
+#
+# Debug setup: 5-tap debug toggle cycles preview → restricted → preview.
+# To reach paid state: Settings → General → About → tap version 5x from PREVIEW state.
+# The toggle cycles: preview → restricted → preview. For this test we verify that
+# PREVIEW mode (not restricted) routes to the assistant directly.
+#
+# Note: True "paid" state requires a real purchase. This flow tests the preview path
+# (non-restricted) which also routes to AssistantScreen — verifying the entitlement
+# gate separates restricted from non-restricted users correctly.
+appId: com.blinking.blinking
+---
+- runFlow: ../../subflows/launch.yaml
+
+# Ensure we start in preview (non-restricted) mode by checking entitlement state.
+# If already restricted from a prior test run, tap debug toggle to cycle back to preview.
+- tapOn:
+    id: "nav_settings"
+- waitForAnimationToEnd
+
+- tapOn:
+    id: "settings_tab_general"
+- waitForAnimationToEnd
+
+- scroll
+- waitForAnimationToEnd
+- scroll
+- waitForAnimationToEnd
+
+# Read current entitlement state from the hidden semantics label.
+# If restricted, cycle back to preview with 5 taps.
+- runFlow:
+    when:
+      visible:
+        text: "entitlement:restricted"
+    file: ../../subflows/debug-toggle-5x.yaml
+
+- extendedWaitUntil:
+    visible:
+      text: "entitlement:preview"
+    timeout: 30000
+- takeScreenshot: p3-preview-mode-confirmed
+
+# Navigate to My Day — FloatingRobotWidget is present here.
+- tapOn:
+    id: "nav_my_day"
+- waitForAnimationToEnd
+- takeScreenshot: p3-home-with-robot
+
+# Tap robot — preview (non-restricted) mode must route to AssistantScreen, not PaywallScreen.
+- tapOn:
+    id: "btn_ai_robot"
+- waitForAnimationToEnd
+- takeScreenshot: p3-after-robot-tap
+
+# AssistantScreen is open — verify it, not PaywallScreen.
+# "Blinking Pro" headline is the reliable PaywallScreen marker.
+- assertNotVisible:
+    text: "Blinking Pro"
+- takeScreenshot: p3-no-paywall-confirmed
+
+# PaywallScreen must never appear for non-restricted users.
+# assistant_screen_root or the chat input confirms AssistantScreen is open.
+- assertVisible:
+    id: "assistant_input_field"
+- takeScreenshot: p3-assistant-open-confirmed

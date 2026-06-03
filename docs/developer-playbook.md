@@ -206,7 +206,90 @@ cd maestro-tests
 
 ---
 
-## 8. Common Pitfalls
+## 8. RC–Google Play Sync Diagnostic
+
+**When to use:** A purchase shows in Google Play's order management (play.google.com/console → Orders) but does NOT appear in RevenueCat → Customers → Sandbox/Production. This means RC's receipt validation rejected or never received the receipt.
+
+### Why this happens
+
+RC validates Google Play receipts by calling Google Play Developer API server-side. Failures are silent in production logs — the SDK swallows the HTTP error and the order never lands in RC. Common causes:
+
+| Error code | Meaning | Fix |
+|------------|---------|-----|
+| `400` | Malformed receipt or wrong bundle ID | Verify `applicationId` in `build.gradle` matches Play Console |
+| `403` | Service account missing permission | Play Console → Setup → API access → grant the service account "Order management" permission |
+| `401` | RC Google credentials expired or wrong key | Re-download service account JSON from Google Cloud → re-upload to RC dashboard |
+| No RC API call at all | Purchase callback never fired | Play Billing integration issue — check `BillingClient.startConnection()` |
+
+### The sideloading constraint
+
+**Lesson Learned:** Sideloaded APKs cannot make new purchases via `launchBillingFlow()` — the Play Store rejects billing requests from apps not installed through the Store. However, the diagnostic only needs **Restore Purchases**, which calls `queryPurchasesAsync()` to query the Google account's existing order history. This is a read operation against the Google account, not against the installation source, and it works on properly signed sideloaded APKs.
+
+Two distinct Play Billing operations — different rules:
+
+| Operation | Sideloaded APK | Requires Play Store install |
+|-----------|---------------|----------------------------|
+| `launchBillingFlow()` — new purchase | ❌ Fails | ✅ |
+| `queryPurchasesAsync()` — restore | ✅ Works (production-signed) | — |
+
+The diagnostic only uses restore → sideloading a production-signed release APK is sufficient.
+
+### Build the diagnostic APK
+
+**Critical:** Do NOT use a debug APK (`--debug`). Debug builds have the Test Store key hard-coded as fallback, and the Test Store key cannot validate real Play receipts. Use a **release APK** with the `RC_DEBUG_LOG` flag:
+
+```bash
+flutter build apk --release \
+  --dart-define=RC_API_KEY=goog_ITjNhBQowFMaFwdyZYvaCGqqioi \
+  --dart-define=RC_DEBUG_LOG=true
+```
+
+The `RC_DEBUG_LOG=true` flag enables `LogLevel.debug` in `purchases_service.dart` even in release mode — full RC HTTP logging without any production impact on the normal release build (which never sets this flag).
+
+### Tier 1 — Sideloaded release APK (fastest, try first)
+
+```bash
+adb install -r build/app/outputs/flutter-apk/app-release.apk
+```
+
+Then:
+1. Open app on the device signed in with the Google account that has the unsynced order
+2. Settings → About → tap version 5× to enter restricted mode → tap robot → open paywall
+3. Tap **Restore Purchases**
+
+Watch the log stream on your machine:
+```bash
+adb logcat | grep -iE "RevenueCat|revenuecat|api\.revenuecat\.com"
+```
+
+You will see one of:
+- `POST api.revenuecat.com/v1/receipts → 200` — receipt accepted; order appears in RC
+- `POST api.revenuecat.com/v1/receipts → 400/403/401` — rejection with specific error body
+- No RC API call — `queryPurchasesAsync()` returned nothing; escalate to Tier 2
+
+### Tier 2 — Internal Testing track (if Tier 1 restore returns no results)
+
+If the sideloaded restore triggers no RC API call, Play Billing's `queryPurchasesAsync()` is not returning the purchase token for the sideloaded APK. Upload the same build to the Internal Testing track and install it from the Play Store:
+
+```bash
+# Use the same APK built above — already has RC_DEBUG_LOG=true
+# Upload to Play Console → Internal Testing → upload APK (not AAB — faster processing)
+# Internal Testing typically processes in 5–15 minutes
+# Install on device via the Internal Testing opt-in link
+```
+
+Then repeat the restore + logcat steps above. Installation via the Play Store ensures `queryPurchasesAsync()` returns the full purchase history.
+
+### What NOT to do
+
+- ❌ Debug APK (`--debug`) — uses Test Store key which cannot validate production receipts
+- ❌ Check RC dashboard before running the restore — sync only triggers on an active SDK call
+- ❌ Run this on iOS for a Google Play order — receipts are platform-specific
+- ❌ Make a new purchase during the diagnostic — not needed and adds billing complexity
+
+---
+
+## 9. Common Pitfalls  <!-- was §8 -->
 
 - ❌ Calling `refreshCustomerInfo()` after purchase → overwrites authoritative purchase result with stale data
 - ❌ Testing purchase flow with same sandbox Apple ID → StoreKit auto-restores without sheet
@@ -217,7 +300,7 @@ cd maestro-tests
 
 ---
 
-## 9. Key Contacts
+## 10. Key Contacts
 
 | Role | Contact |
 |------|---------|

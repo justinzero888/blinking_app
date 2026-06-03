@@ -1,0 +1,99 @@
+# P4-RESTORE-CANCEL-RECOVERY: restore SDK round-trip recovers cleanly with no prior purchase
+#
+# Scenario: A restricted user opens the paywall and taps "Restore Purchases". On a device
+# with no prior purchase, the SDK returns successfully with no active entitlements. The
+# paywall must:
+#   1. Show the spinner while restore is in progress (_isRestoring=true)
+#   2. Return cleanly — paywall stays open, "Blinking Pro" headline still visible
+#   3. Re-enable the Restore button (_isRestoring=false)
+#   4. Show an informational snackbar ("No previous Pro purchase found.")
+#
+# This directly validates the fix for the stuck-button bug where exceptions during
+# restore left _isRestoring=true, disabling the button permanently.
+#
+# Note: The actual purchase sheet cannot be automated — it is a native OS modal.
+# This flow tests the restore SDK path which IS automatable and covers the async
+# state reset that was the source of the stuck-button regression.
+appId: com.blinking.blinking
+---
+- runFlow: ../../subflows/launch.yaml
+
+# Enter restricted mode via 5-tap debug toggle.
+- tapOn:
+    id: "nav_settings"
+- waitForAnimationToEnd
+
+- tapOn:
+    id: "settings_tab_general"
+- waitForAnimationToEnd
+
+- scroll
+- waitForAnimationToEnd
+- scroll
+- waitForAnimationToEnd
+
+- tapOn:
+    id: "btn_debug_toggle"
+- tapOn:
+    id: "btn_debug_toggle"
+- tapOn:
+    id: "btn_debug_toggle"
+- tapOn:
+    id: "btn_debug_toggle"
+- tapOn:
+    id: "btn_debug_toggle"
+
+- extendedWaitUntil:
+    visible:
+      text: "entitlement:restricted"
+    timeout: 30000
+- takeScreenshot: p4-restricted-mode-active
+
+# Open paywall via robot button.
+- tapOn:
+    id: "nav_my_day"
+- waitForAnimationToEnd
+
+- tapOn:
+    id: "btn_ai_robot"
+- extendedWaitUntil:
+    visible:
+      text: "Blinking Pro"
+    timeout: 10000
+- takeScreenshot: p4-paywall-open
+
+# Verify store is ready before tapping Restore.
+- assertNotVisible:
+    text: "Store unavailable, please try again later"
+
+# Tap Restore Purchases — SDK round-trip begins.
+- tapOn:
+    text: "Restore Purchases"
+- takeScreenshot: p4-restore-in-progress
+
+# Wait for the round-trip to complete. Paywall headline must reappear,
+# confirming the screen did NOT pop (no prior purchase found).
+- extendedWaitUntil:
+    visible:
+      text: "Blinking Pro"
+    timeout: 40000
+- takeScreenshot: p4-restore-returned
+
+# Paywall is still open — not dismissed.
+- assertVisible:
+    text: "Blinking Pro"
+
+# Store still ready — RC session intact after restore.
+- assertNotVisible:
+    text: "Store unavailable, please try again later"
+
+# Restore button must be re-enabled (showing text, not spinner).
+# This confirms _isRestoring was reset to false.
+- assertVisible:
+    text: "Restore Purchases"
+- takeScreenshot: p4-restore-button-re-enabled
+
+# Informational snackbar confirms the "no prior purchase" branch fired correctly.
+- assertVisible:
+    text: "No previous Pro purchase found."
+- takeScreenshot: p4-no-prior-purchase-snackbar

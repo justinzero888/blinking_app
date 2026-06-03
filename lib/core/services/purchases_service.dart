@@ -50,6 +50,18 @@ class PurchasesService extends ChangeNotifier {
       return;
     }
 
+    // RC debug logging: full HTTP request/response bodies including
+    // api.revenuecat.com receipt validation responses. Surfaces receipt
+    // rejection reasons (400/403) that are otherwise silent.
+    // Enabled in two cases:
+    //   1. kDebugMode — automatic for all debug builds (test Store key)
+    //   2. RC_DEBUG_LOG=true dart-define — for diagnostic release builds
+    //      with the production key (see developer-playbook.md §8)
+    const _rcDebugLog = bool.fromEnvironment('RC_DEBUG_LOG', defaultValue: false);
+    if (kDebugMode || _rcDebugLog) {
+      await Purchases.setLogLevel(LogLevel.debug);
+    }
+
     try {
       await Purchases.configure(
         PurchasesConfiguration(platformKey)
