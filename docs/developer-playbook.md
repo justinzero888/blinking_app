@@ -11,7 +11,7 @@
 | **Flutter SDK** | 3.41.9 (stable) |
 | **macOS / Xcode** | 26.2 Tahoe / 26.4.1 |
 | **Repo** | `/Users/justinzero/ClaudeDev/blink/blinking_app` |
-| **Current version** | 1.2.0+54 (dev), 1.1.0+40 (production) |
+| **Current version** | 1.2.0+56 (dev), 1.1.0+40 (production), 1.2.0+51 (in review) |
 | **IAP** | RevenueCat `blinking_pro` ($7.99 non-consumable, entitlement `pro_access`) |
 | **Tests** | 557 pass, 8 pre-existing flaky (home_screen and db_index) |
 | **Lint** | `flutter analyze --no-pub` — target 0 errors |
@@ -155,6 +155,12 @@ Simulator test store is isolated from live stores. Maestro passes on sim do not 
 
 ### Lesson 25: TestFlight sandbox returns non-null CustomerInfo always
 `Purchases.purchase()` on TestFlight returns `CustomerInfo` even on cancel. Check `entitlements.active`, not `!= null`.
+
+### Lesson 26: Purchase gate must trust RC as single source of truth
+`service.isPro` alone is the gate. Never add `|| info != null` — the race condition that required it (v1.1.0 `refreshCustomerInfo()`) is eliminated. `_customerInfo` is set directly from `PurchaseResult`, and `EntitlementService.init(isPro:)` syncs on app start.
+
+### Lesson 27: RevenueCat API keys must be verified character-for-character
+One wrong character = zero offerings = wasted testing cycles. Centralized source of truth: `.opencode/skills/blinking-lessons/references/iap.md`. iOS: `appl_vgTGaiNtCARgmdgOzpJcZyITNAT`. Android: `goog_ITjNhBQowFMaFwdyZYvaCGqqioi`.
 
 ---
 

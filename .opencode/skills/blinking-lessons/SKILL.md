@@ -229,6 +229,37 @@ Ready for release: bump version ONCE, build IPA + AAB
 
 **Rule:** `flutter build ipa` or `flutter build appbundle` → must increment. `flutter build ios --simulator` → no increment needed.
 
+### 22. RC Is the Single Source of Truth — Purchase Gate Must Not Have Safety Nets
+
+The purchase gate (`service.isPro`) relies on RevenueCat `CustomerInfo` as the sole authoritative paid-state check. Previous builds had `|| info != null` as a safety net from v1.1.0 when `refreshCustomerInfo()` could race and overwrite the purchase result. That race is eliminated — `_customerInfo` is set directly from `PurchaseResult.customerInfo` in `purchaseProduct()`, and `refreshCustomerInfo()` is NOT called in the purchase handler.
+
+```
+// ✅ CORRECT — trust RC
+if (service.isPro) { _markEntitlementPaid(); }
+
+// ❌ WRONG — safety net causes false positives on sandbox / wrong keys
+if (service.isPro || info != null) { ... }
+```
+
+Additional safeguards that make `service.isPro` reliable:
+- `EntitlementService.init(isPro:)` syncs local state from RC on app start — paid users never see "Get Pro"
+- Purchase result `CustomerInfo` is set on `_customerInfo` before returning — no stale data
+- No `refreshCustomerInfo()` after purchase — eliminates the race condition entirely
+
+**Rule:** Never add back `|| info != null` or `|| info?.entitlements.active...`. The architecture is correct — if `service.isPro` is false after a successful purchase, the bug is in RC configuration (wrong key, disconnected store), not in the gate.
+
+### 23. RevenueCat API Keys Must Be Verified Character-for-Character
+
+A single wrong character causes `getOfferings()` to return empty → "No offerings from store" error → wasted testing cycles. Keys cannot be re-downloaded from RC dashboard — if lost, revoke and recreate.
+
+**Source of truth:** `.opencode/skills/blinking-lessons/references/iap.md` — centralized key reference. Never copy from session summaries or old docs. Verify against RevenueCat → Project Settings → API Keys every time.
+
+```
+✅ iOS:   appl_vgTGaiNtCARgmdgOzpJcZyITNAT
+✅ Android: goog_ITjNhBQowFMaFwdyZYvaCGqqioi
+❌ Android (wrong): goog_ITjNhBQowFMaFwdyZYvaCGqqioitim
+```
+
 ### 20. Price Changes After Build Cut Break Purchase Flow
 
 **Recurring issue** — happened in May 7 (TestFlight "No offerings", RevenueCat credentials), and again June 1 (stale offerings cache after $19.99→$7.99).
