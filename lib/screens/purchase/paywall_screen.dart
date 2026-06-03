@@ -341,7 +341,11 @@ class _PaywallScreenState extends State<PaywallScreen> {
     // which can overwrite it with a pre-sync server state.
     if (!mounted) return;
 
-    if (service.isPro || info != null) {
+    // Only grant Pro if the purchase actually granted the entitlement.
+    // info != null is not sufficient — Google Play can return non-null
+    // CustomerInfo for "already owned" without pro_access active.
+    final purchaseGrantedPro = info?.entitlements.active.containsKey('pro_access') ?? false;
+    if (service.isPro || purchaseGrantedPro) {
       // Update local entitlement state to paid
       final entitlement = context.read<EntitlementService>();
       await _markEntitlementPaid(entitlement);
