@@ -964,7 +964,7 @@ class _SettingsScreenState extends State<SettingsScreen>
     _prefs = await SharedPreferences.getInstance();
     if (mounted) {
       _voiceNotifier.value = _prefs?.getBool('voice_notifications_enabled') ?? false;
-      setState(() => _voiceLoaded = true);
+      setState(() {});
     }
   }
 

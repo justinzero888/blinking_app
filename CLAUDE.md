@@ -6,13 +6,13 @@ Personal memory/habit-tracking Flutter app (记忆闪烁). Path: `/Users/justinz
 
 - **Flutter SDK:** `^3.11.0` (currently 3.41.9 stable, Apr 29 2026)
 - **macOS:** 26.2 (Tahoe beta) — Xcode 26.4.1 GM for production builds
-- **Current version:** `1.2.0+52` (v1.1.0+40 live on both stores; v1.2.0+51 in review)
+- **Current version:** `1.2.0+56` (dev HEAD) | `v1.2.0+54` iOS App Store (pending review) | `v1.2.0+55` Google Play (pending review)
 - **iOS App Store:** ✅ Live — [Blinking Notes](https://apps.apple.com/app/id6765900648) (Apple ID: 6765900648)
-- **Google Play:** ✅ Live (1.1.0+40)
+- **Google Play:** ✅ Live
 - **Android:** compileSdk 36 / targetSdk 36 (via Flutter SDK)
 - **DB version:** 16 (`kSchemaVersion = 16` in `DatabaseService`)
 - **Lint:** `flutter analyze --no-pub` (target: 0 errors)
-- **Tests:** `flutter test` (563 tests, 561 passing, 2 pre-existing flaky)
+- **Tests:** `flutter test` (578 tests, all passing)
 - **Server config:** `https://blinkingchorus.com/api/config` — AI keys + model selection, updatable without app deploy
 - **AI Model:** DeepSeek `deepseek-chat-v3-0324` primary, Gemini `gemini-2.0-flash-001` failover (both trial + pro, configurable via KV secrets at `/api/config`)
 - **IAP Price:** $7.99 (non-consumable `blinking_pro`, entitlement `pro_access`) — dynamic pricing via `PurchasesService.proPriceString`
@@ -66,7 +66,7 @@ Calendar | Moment | Routine | Insights | Settings
 
 ### Storage Layers
 - **SQLite** via `DatabaseService` singleton (accessed through `StorageService`)
-  - DB version 12; migration blocks: `< 2` (entries/routines), `< 3` (emotion/category), `< 4` (card tables), `< 5` (routine scheduling), `< 6` (template image + card AI summary), `< 7` (card rich content), `< 8` (routine `icon_image_path`), `< 9` (template `custom_image_path`), `< 10` (template `source_template_id`), `< 11` (indexes on `entry_tags(entry_id)` + `note_card_entries(card_id)`), `< 12` (checklist: `entry_format`, `list_items`, `list_carried_forward`)
+  - DB version 16; migration blocks: `< 2` (entries/routines), `< 3` (emotion/category), `< 4` (card tables), `< 5` (routine scheduling), `< 6` (template image + card AI summary), `< 7` (card rich content), `< 8` (routine `icon_image_path`), `< 9` (template `custom_image_path`), `< 10` (template `source_template_id`), `< 11` (indexes on `entry_tags(entry_id)` + `note_card_entries(card_id)`), `< 12` (checklist: `entry_format`, `list_items`, `list_carried_forward`), `< 13` (lens system: `lens_sets` table), `< 14` (voice: `voice_enabled` on routines), `< 15` (cards: `NoteCard` + `CardTemplate` tables, `card_folder_id` on note_cards), `< 16` (card content field `card_content` on note_cards)
   - Tables: `entries`, `routines`, `tags`, `templates`, `card_folders`, `note_cards`, `note_card_entries`
 - **SharedPreferences** for: theme, locale, LLM provider config (`llm_providers`, `llm_selected_index`), AI persona (`ai_assistant_name`, `ai_assistant_personality`, `ai_avatar_path`), entitlement (`entitlement_jwt`, `entitlement_state`, `entitlement_quota`, `entitlement_quota_date`, `entitlement_preview_started`, `entitlement_was_preview`), onboarding (`onboarding_completed`, `onboarding_done`), transition screen (`transition_screen_shown`)
 - **File system** via `FileService` for media attachments, rendered card PNGs, custom template images, and card inline images (`card_images/`)
@@ -81,7 +81,7 @@ Calendar | Moment | Routine | Insights | Settings
 | `lib/main.dart` | App entry point, `StorageService` init |
 | `lib/core/config/constants.dart` | `AppConstants.appVersion` — keep in sync with pubspec.yaml |
 | `lib/core/services/storage_service.dart` | All CRUD; seeds default tags, routines, templates, folders |
-| `lib/core/services/database_service.dart` | SQLite schema v11 + sequential migrations |
+| `lib/core/services/database_service.dart` | SQLite schema v16 + sequential migrations |
 | `lib/core/services/llm_service.dart` | OpenAI-compatible chat/complete; reads provider config from SharedPreferences |
 | `lib/core/services/file_service.dart` | Media copy to app documents directory |
 | `lib/core/services/chorus_service.dart` | Social publishing to Chorus backend |
@@ -121,7 +121,7 @@ Calendar | Moment | Routine | Insights | Settings
 | `lib/core/services/card_render_service.dart` | Off-screen PNG renderer with 4 layouts (hero_image/centered/left_aligned/two_column), 8 templates, 6 decorative motifs, auto-font sizing (96→9px binary search), overlay elements, re-render-on-restore |
 | `lib/models/card_enums.dart` | `CardLayout`, `CardCornerStyle` enums with value/fromString extensions |
 | `lib/widgets/card_template_picker.dart` | Horizontal scroll of 8 template thumbnails with locale-aware names (ZH/EN) and selection highlight |
-| `lib/widgets/card_builder_sheet.dart` | `DraggableScrollableSheet` — template picker, content editor, AI Rewrite, toggle overlays, Save Keepsake flow. Injectable `renderFn` for testing. |
+| `lib/widgets/card_builder_sheet.dart` | `DraggableScrollableSheet` — template picker, content editor, toggle overlays, Save Keepsake flow. Injectable `renderFn` for testing. |
 | `lib/screens/moment/card_preview_screen.dart` | Full-screen PNG preview with pinch-to-zoom, share, edit, re-render placeholder |
 | `lib/widgets/floating_robot.dart` | Bobbing + pulse + wave-on-tap robot overlay (3 AnimationControllers); avatar = 🤖 emoji |
 | `lib/widgets/floating_robot.dart` | Bobbing + pulse + wave-on-tap robot overlay (3 AnimationControllers); avatar = 🤖 emoji |
@@ -135,11 +135,14 @@ Calendar | Moment | Routine | Insights | Settings
 - Settings → About → tap version text **5x quickly** to cycle between `preview` and `restricted` modes
 - Restricted mode + tap robot → paywall appears
 
-### RevenueCat Test Store
-- Key configured in `lib/main.dart` via `_rcTestApiKey` (default: `test_` key from Project Settings → API Keys)
-- Test Store requires `purchases_flutter ≥ 9.8.0` (currently 9.16.1)
+### RevenueCat Keys
+- Production keys passed via `--dart-define=RC_API_KEY=appl_...` (iOS) or `RC_API_KEY=goog_...` (Android)
+- Debug builds fall back to Test Store key hard-coded in `lib/main.dart` (safe — only hits RC sandbox)
+- **NEVER** ship without a production key — `main.dart` throws a fatal exception in `kReleaseMode` if key is empty
+- Add `--dart-define=RC_DEBUG_LOG=true` to any release build for verbose RC HTTP logging (sync diagnostics)
+- Key sources: iOS `appl_vgTGaiNtCARgmdgOzpJcZyITNAT` · Android `goog_ITjNhBQowFMaFwdyZYvaCGqqioi`
+- `purchases_flutter` 9.16.1 — Test Store requires ≥ 9.8.0
 - Purchases show in RevenueCat → Customers → **Sandbox** tab
-- Do NOT ship with Test Store key — use `--dart-define=RC_API_KEY=appl_/goog_` for production builds
 - Full setup doc: `docs/plans/revenuecat-setup-actual.md`
 
 ### Entitlement Flow
@@ -153,7 +156,7 @@ Calendar | Moment | Routine | Insights | Settings
 ## Important Conventions
 
 ### Database Migrations
-Always use sequential `if (oldVersion < N)` blocks in `DatabaseService.onUpgrade`. Never nest or use `else if`. `_onCreate` always creates the full v11 schema. `kSchemaVersion` at top of class defines the current target.
+Always use sequential `if (oldVersion < N)` blocks in `DatabaseService.onUpgrade`. Never nest or use `else if`. `_onCreate` always creates the full current schema (v16). `kSchemaVersion` at top of class defines the current target. `ALTER TABLE ADD COLUMN` is not idempotent — do not write migration idempotency tests for column additions.
 
 ### Version Sync
 When bumping `pubspec.yaml` version, also update `lib/core/config/constants.dart` `AppConstants.appVersion` (semver only, no build number) and the version subtitle in `settings_screen.dart`. A `test/core/version_test.dart` enforces this.
@@ -302,18 +305,18 @@ Use `try { await launchUrl(uri); } catch (_) { ... }` pattern. Do NOT use `canLa
 ### Pending
 | Priority | Item | Effort | Status |
 |----------|------|--------|--------|
-| P1 | Ship Keepsake cards in next release (v1.2.0+42) | ~1h | ✅ Built — IPA (46MB) + AAB (66MB) ready |
-| P1 | Write 10 Maestro UAT flows for Keepsake | ~2-3h | ✅ Done — k1–k10 in `maestro-tests/apps/blink-notes/flows/uat/`, iPhone 10/10, iPad 10/10 |
-| P1 | Manual visual QA on real devices (8 cases) | ~1h | ✅ Done — 24 cells verified by testing team |
-| P1 | Onboarding Screen 2 marketing alignment — "Everything in My Day" + privacy anchor | ~2h | ✅ Done — validated on sims |
+| P1 | v1.2.0 App Store review outcome — watch for rejection feedback | — | v1.2.0+54 pending review |
+| P1 | v1.2.0 Google Play review outcome | — | v1.2.0+55 pending review |
 | P2 | Personas web page at blinkingchorus.com/personas | ~2h | Not started |
 | P2 | Habit template browse/import UI (separate from full backup) | ~2h | Not started |
 | P2 | Marketing plan (launch strategy, ASO) | TBD | Not started |
 | P3 | Firebase / Cloud Sync | Large | All deps commented out |
-| P3 | Card History screen (grid) | ~3h | Deferred to v1.2.1 |
+| P3 | Card History screen (grid) | ~3h | Deferred to v1.3.0 |
 | P3 | XHS Export mode (multi-page, ratio toggle, page breaks) | ~1 week | Deferred to v1.3.0 |
 | P3 | Custom template saving | ~2 days | Deferred to v1.3.0 |
-| — | Voice notification — background TTS | ~4h | Deferred to v1.3.0 |
+| P3 | Voice notification — background TTS | ~4h | Deferred to v1.3.0 (foreground-only limitation documented) |
+| P3 | Entitlement server enforcement (`ENTITLEMENT_ENABLED`) | ~4h | Deferred — local RC state is sufficient |
+| P3 | Kaishu font (LXGW WenKai) | ~2h | Deferred — MaShanZheng acceptable |
 
 ---
 
@@ -381,3 +384,10 @@ Use `try { await launchUrl(uri); } catch (_) { ... }` pattern. Do NOT use `canLa
 | v1.2.0+49 | 65edd9a | Purchase flow: refresh offerings before purchase + 30s timeout. Paywall: fix false-positive Pro gate (`info != null`). |
 | v1.2.0+51 | a0584d7 | Strip all media permissions per Google Play policy (`tools:node="remove"`). |
 | v1.2.0+52 | cf5efcd | RC identity reset via debug toggle. Remove non-functional Save as Keepsake from Reflection screen. |
+| v1.2.0+53 | — | Purchase gate hardening: RC single source of truth, remove refreshCustomerInfo race. |
+| v1.2.0+54 | 816abc7 | iOS App Store submission (pending review). Dead code cleanup, deployment checklist. |
+| v1.2.0+55 | — | Google Play submission (pending review). Same codebase as +54. |
+| v1.2.0+56 | 1b46f8d | Reverted purchase gate to stable baseline + rebuilt IPA + AAB. |
+| v1.2.0+56 | e2a8620 | Purchase flow hardening: restore race fix, 12 PaywallScreen widget tests, 3 unit test regressions, Maestro p3/p4, RC_DEBUG_LOG flag, RC sync diagnostic playbook. |
+| v1.2.0+56 | 9d1de74 | Restore 578/578 test gate: calendar header overflow fix, db_index stale migration test removal. |
+| v1.2.0+56 | 19f3960 | Clear 69 warnings: dead code, unused imports, null-safety cleanup across 29 files. Voice subtitle updated. |

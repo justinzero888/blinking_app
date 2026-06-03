@@ -11,10 +11,10 @@
 | **Flutter SDK** | 3.41.9 (stable) |
 | **macOS / Xcode** | 26.2 Tahoe / 26.4.1 |
 | **Repo** | `/Users/justinzero/ClaudeDev/blink/blinking_app` |
-| **Current version** | 1.2.0+56 (dev), 1.1.0+40 (production), 1.2.0+51 (in review) |
+| **Current version** | 1.2.0+56 (dev HEAD) · v1.2.0+54 iOS pending review · v1.2.0+55 Google Play pending review |
 | **IAP** | RevenueCat `blinking_pro` ($7.99 non-consumable, entitlement `pro_access`) |
-| **Tests** | 557 pass, 8 pre-existing flaky (home_screen and db_index) |
-| **Lint** | `flutter analyze --no-pub` — target 0 errors |
+| **Tests** | 578/578 passing, 0 failures |
+| **Lint** | `flutter analyze --no-pub` — 0 errors, 2 known false-positive warnings |
 | **Context doc** | `CLAUDE.md` — full architecture, file map, commit history |
 
 ---
@@ -129,13 +129,40 @@ User taps "Get Pro"
 ## 5. Lessons Learned
 
 ### Lesson 1: One edit, one analyze
-After every edit, run `flutter analyze`. Never batch edits.
+After every edit, run `flutter analyze`. Never batch edits. One broken edit cascades into 5 more that try to "fix" the previous.
 
 ### Lesson 2: Never hardcode IDs
-Use named constants defined in the owning model.
+Every ID referenced in logic must be a named constant in the model that defines it. Single source of truth for renames — otherwise grep-and-replace misses references in 10+ files.
+
+### Lesson 3: SharedPreferences is for settings, not data
+If data > 1KB, use SQLite or the filesystem. Images belong in `ApplicationDocumentsDirectory` with a path stored in prefs. Base64-encoded images exceed iOS NSUserDefaults limits and silently truncate.
+
+### Lesson 4: Seed data must have one canonical source
+If a class like `DefaultRoutines` exists, it must be the single source and `StorageService` imports from it — not duplicates it. Stale duplicates silently overwrite correct data on reset.
+
+### Lesson 5: Keep seed logic in `main.dart`, not in shared providers
+Seed code in `RoutineProvider.loadRoutines()` runs in both production and test environments. This causes test failures when the seed creates unexpected state. Production-only initialization belongs outside shared provider code.
 
 ### Lesson 6: Build order — IPA first, then AAB
 `flutter clean` once at start. Never clean between builds.
+
+### Lesson 7: Model field addition is a 7-layer write chain
+Adding one field requires changes in: `[ ] Model [ ] DB create [ ] DB migrate [ ] Storage insert [ ] Storage select [ ] Repository [ ] Provider [ ] Version test`. Missing any layer = data works in memory but is lost on restart.
+
+### Lesson 8: Use `--simulator` not `--no-codesign` for simulator builds
+`flutter build ios --debug --no-codesign` produces a device (`arm64`) binary. Installing on a simulator causes silent failure — the app icon does nothing. Always use `flutter build ios --debug --simulator`. Verify with `lipo -info` — should show `x86_64 arm64`.
+
+### Lesson 9: Check dependency API before design
+`flutter_local_notifications` v21 removed `onDidReceiveLocalNotification` (existed in v10+). Design assumed the callback existed. Verify installed package source with `grep`, not pub.dev docs which may show older versions.
+
+### Lesson 10: Android emulator TTS is broken
+Google TTS native library (`libgoogle_speech_sbg_tts_jni.so`) crashes on emulated ARM. `flutter_tts.speak()` returns success — the crash is in the native process. Test TTS on iPhone simulator or real Android device.
+
+### Lesson 11: JSON-encode complex types for SQLite
+`List<String>`, `Map`, and `Set` cannot be stored directly in SQLite `TEXT` columns. Use `jsonEncode()` on insert and `jsonDecode()` on read. Use a helper that handles both raw and encoded formats for backward compatibility.
+
+### Lesson 12: Async ordering — never put `cancelAll()` inside async lifecycle
+`cancelAll()` inside `loadRoutines()` (async, called from `create:`) can run AFTER `scheduleRoutine()` due to async ordering. Always cancel specific IDs, not everything. Chain async calls explicitly.
 
 ### Lesson 13: OverlayEntry only for off-screen rendering
 `_renderOffscreen`/`renderToFile` is test-only. OverlayEntry at `Positioned(left: -2000)` is the only production path.
@@ -168,7 +195,34 @@ Simulator test store is isolated from live stores. Maestro passes on sim do not 
 `service.isPro` alone is the gate. Never add `|| info != null` — the race condition that required it (v1.1.0 `refreshCustomerInfo()`) is eliminated. `_customerInfo` is set directly from `PurchaseResult`, and `EntitlementService.init(isPro:)` syncs on app start.
 
 ### Lesson 27: RevenueCat API keys must be verified character-for-character
-One wrong character = zero offerings = wasted testing cycles. Centralized source of truth: `.opencode/skills/blinking-lessons/references/iap.md`. iOS: `appl_vgTGaiNtCARgmdgOzpJcZyITNAT`. Android: `goog_ITjNhBQowFMaFwdyZYvaCGqqioi`.
+One wrong character = zero offerings = wasted testing cycles. iOS: `appl_vgTGaiNtCARgmdgOzpJcZyITNAT`. Android: `goog_ITjNhBQowFMaFwdyZYvaCGqqioi`.
+
+### Lesson 28: `refreshCustomerInfo()` in the restore handler overwrites the authoritative result
+`restorePurchases()` already returns the freshest `CustomerInfo`. Calling `refreshCustomerInfo()` immediately after can overwrite it with a pre-sync server state on slow connections. The restore result IS the authoritative state — don't re-fetch it.
+
+### Lesson 29: Restore errors show misleading message without `lastError` branch
+The `_handleRestore` else branch ("No previous Pro purchase found.") fires for BOTH the no-prior-purchase case AND store errors (where `info == null && lastError != null`). Always add `else if (service.lastError != null)` before the catch-all else to surface actual error messages.
+
+### Lesson 30: Every feature needs automated tests, not just a design doc
+Tests documented in a design doc are not tests — they are intentions. After every feature or bug fix, verify: test file exists, test count increased, analyze returns 0 errors. A feature is not "done" until automated tests exist. UAT is for human UX verification, not regression protection.
+
+### Lesson 31: Maestro feedback ≠ new code needed
+Before fixing a Maestro-reported "code fix needed", check `git log` first. If the fix is already committed, the issue is a stale installed build, not a code gap. Treat "needs new build" feedback as "verify in code first."
+
+### Lesson 32: Automation failures ≠ customer bugs — classify before fixing
+After every Maestro/UAT failure, ask: "Does this affect a real human user?" If a finger tap works but Maestro fails → P2-automation, batch at end of day. Only drop everything for P0-human (crash, data loss, feature broken for real users). DEF-V-001 consumed a full day across 7 versions for a zero-customer-impact automation gap.
+
+### Lesson 33: Server deployment — verify with curl, not "the app works"
+The app can work via compile-time dart-define fallback keys even when the server is never deployed. "AI works" does not mean "server is deployed." After every `wrangler deploy`, verify each endpoint independently:
+```bash
+curl -s https://blinkingchorus.com/api/config | python3 -c "import json,sys; d=json.load(sys.stdin); print('OK')"
+```
+
+### Lesson 34: Git status before claiming "deployed"
+`wrangler deploy` pushes whatever is in the filesystem — including uncommitted changes. A subsequent deploy from committed code overwrites them silently. Always `git status` + `git push` before deploying. The source of truth is git, not the deployed server.
+
+### Lesson 35: Locale logic must be verified per-field in both locales
+`isZh ? descriptionEn : description` (reversed) and `name` instead of `displayName(isZh)` are silent bugs — each field fails independently. For every user-facing string, create a test that verifies both EN and ZH render correctly.
 
 ---
 
@@ -291,12 +345,29 @@ Then repeat the restore + logcat steps above. Installation via the Play Store en
 
 ## 9. Common Pitfalls  <!-- was §8 -->
 
-- ❌ Calling `refreshCustomerInfo()` after purchase → overwrites authoritative purchase result with stale data
-- ❌ Testing purchase flow with same sandbox Apple ID → StoreKit auto-restores without sheet
-- ❌ Changing store price after build cut → stale `StoreProduct` references
-- ❌ `flutter build appbundle && flutter clean` → AAB deleted by clean
-- ❌ Manual `PipelineOwner` for rendering → only works in test environment
+**Purchase / IAP**
+- ❌ `refreshCustomerInfo()` after purchase or restore → overwrites authoritative result with stale data
+- ❌ `|| info != null` as Pro gate → TestFlight always returns non-null CustomerInfo, grants Pro for free
+- ❌ Same sandbox Apple ID for consecutive tests → StoreKit auto-restores without showing payment sheet
+- ❌ Changing store price after build cut → stale `StoreProduct` references, silent purchase failure
+- ❌ Debug APK for RC sync diagnostic → Test Store key can't validate production Play receipts; use `RC_DEBUG_LOG=true` release build
+
+**Build / Deploy**
+- ❌ `flutter build appbundle && flutter clean` → AAB deleted by clean; never clean between builds
+- ❌ `flutter build ios --debug --no-codesign` for simulator → arm64 device binary, silent failure on sim; use `--simulator`
+- ❌ "App works" = "server deployed" → compile-time fallback keys mask deployment gaps; always verify with curl
+- ❌ `wrangler deploy` before `git push` → uncommitted changes deployed, then silently lost on next deploy
+
+**Flutter / Dart**
+- ❌ Manual `PipelineOwner` for rendering → only works under `TestWidgetsFlutterBinding`, breaks on device
 - ❌ Missing `flutter clean && pod install` → `objective_c.framework` absent on iOS sim
+- ❌ Complex types (`List`, `Map`) inserted directly into SQLite → use `jsonEncode()`/`jsonDecode()`
+- ❌ Seed data in shared providers → runs in test environment; keep in `main.dart`
+- ❌ `ALTER TABLE ADD COLUMN` idempotency tests → not idempotent by design; framework ensures migrations run once
+
+**Testing**
+- ❌ Treating every Maestro failure as P0 → automation-only failures have zero customer impact; classify first
+- ❌ Feature "done" without automated tests → design doc test plans are intentions, not tests
 
 ---
 
