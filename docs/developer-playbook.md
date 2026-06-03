@@ -36,7 +36,15 @@ flutter build apk --debug
 ```
 
 ### Building for production (store upload)
+```bash
+# Single command — validates keys, builds both platforms, verifies output
+TRIAL_API_KEY=<key> PRO_API_KEY=<key> bash scripts/build-release.sh
 ```
+
+The script handles: key validation, `flutter analyze` + `flutter test`, clean once, iOS IPA first, Android AAB second, merged manifest check (no leaked media permissions), artifact verification.
+
+Manual (if script not used):
+```bash
 flutter clean && flutter pub get
 flutter build ipa --release --dart-define=...   # iOS FIRST
 flutter build appbundle --release --dart-define=...  # Android SECOND
