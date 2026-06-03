@@ -148,7 +148,7 @@ class CardRenderService {
 
     final image = await renderObject.toImage(pixelRatio: 1.0);
 
-    try { element.unmount(); } catch (_) {}
+    try { (element as dynamic).unmount(); } catch (_) {}
     try { renderObject.detach(); } catch (_) {}
     try { pipelineOwner.dispose(); } catch (_) {}
 
@@ -377,7 +377,6 @@ class _CardRenderWidget extends StatelessWidget {
       case CardCornerStyle.pill:
         return const BorderRadius.all(Radius.circular(720));
       case CardCornerStyle.rounded:
-      default:
         return const BorderRadius.all(Radius.circular(24));
     }
   }
@@ -473,7 +472,6 @@ class _CardRenderWidget extends StatelessWidget {
       case CardLayout.twoColumn:
         return _buildTwoColumnLayout();
       case CardLayout.heroImage:
-      default:
         return _buildHeroLayout();
     }
   }

@@ -2,9 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
 import '../../l10n/app_localizations.dart';
 import '../../providers/locale_provider.dart';
 import '../../providers/summary_provider.dart';
@@ -1818,7 +1816,6 @@ class _AiInsightsSectionState extends State<_AiInsightsSection> {
 
       // Active day & hour
       final activeDay = data['mostActiveDay'] as String?;
-      final activeHour = data['mostActiveHour'] as int?;
       if (activeDay != null) {
         sb.writeln('⏰ 你最喜欢在${_zhDayName(activeDay)}记录。');
       }
@@ -1905,66 +1902,6 @@ class _AiInsightsSectionState extends State<_AiInsightsSection> {
     }
   }
 
-  Future<String?> _callLlm(String systemPrompt, String prompt) async {
-    // Kept for potential future use, not called from insights anymore
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final jsonStr = prefs.getString('llm_providers');
-      if (jsonStr == null || jsonStr.isEmpty) return null;
-
-      final providers = jsonDecode(jsonStr) as List<dynamic>;
-      if (providers.isEmpty) return null;
-
-      final selectedIndex = prefs.getInt('llm_selected_index') ?? 0;
-      final idx = selectedIndex.clamp(0, providers.length - 1);
-      final config = providers[idx] as Map<String, dynamic>;
-      final apiKey = config['apiKey'] as String? ?? '';
-      final baseUrl = config['baseUrl'] as String? ?? '';
-      final model = config['model'] as String? ?? 'qwen/qwen3.5-flash-02-23';
-
-      if (apiKey.isEmpty || baseUrl.isEmpty) return null;
-
-      final messages = [
-        {'role': 'system', 'content': systemPrompt},
-        {'role': 'user', 'content': prompt},
-      ];
-
-      final response = await http.post(
-        Uri.parse(baseUrl),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $apiKey',
-        },
-        body: jsonEncode({
-          'model': model,
-          'messages': messages,
-          'max_tokens': 300,
-          'temperature': 0.7,
-        }),
-      ).timeout(const Duration(seconds: 15));
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final choices = data['choices'] as List<dynamic>;
-        if (choices.isNotEmpty) {
-          return choices[0]['message']['content'] as String?;
-        }
-      }
-      return null;
-    } catch (_) {
-      return null;
-    }
-  }
-
-  String _formatJson(Map<String, dynamic> data) {
-    final sb = StringBuffer();
-    for (final e in data.entries) {
-      if (e.value != null) {
-        sb.writeln('${e.key}: ${e.value}');
-      }
-    }
-    return sb.toString();
-  }
 }
 
 /// Returns a nice interval for y-axis labels (1, 2, 5, 10, 20, 50, ...)

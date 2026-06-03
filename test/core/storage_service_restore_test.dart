@@ -4,7 +4,6 @@ import 'package:archive/archive_io.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
-import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 import 'package:blinking/core/services/storage_service.dart';
 
 class MockPathProvider extends PathProviderPlatform {
@@ -377,7 +376,7 @@ void main() {
       Archive? decoded;
       try {
         decoded = ZipDecoder().decodeStream(inputStream);
-        expect(decoded!.findFile('persona.json'), isNull);
+        expect(decoded.findFile('persona.json'), isNull);
         expect(decoded.findFile('data.json'), isNotNull);
       } finally {
         await decoded?.clear();
@@ -408,7 +407,7 @@ void main() {
       Archive? decoded;
       try {
         decoded = ZipDecoder().decodeStream(inputStream);
-        final personaFile = decoded!.findFile('persona.json');
+        final personaFile = decoded.findFile('persona.json');
         expect(personaFile, isNotNull);
         final personaStr = utf8.decode(personaFile!.content as List<int>);
         // Verify it parses as invalid (restore code catches this)

@@ -204,7 +204,6 @@ class EntryCard extends StatelessWidget {
         icon = Icons.check_circle_outline;
         break;
       case EntryType.freeform:
-      default:
         icon = Icons.note;
     }
     return Icon(icon, size: 18, color: Colors.grey);

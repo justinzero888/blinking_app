@@ -73,15 +73,9 @@ class _SettingsScreenState extends State<SettingsScreen>
     },
   ];
 
-  int _selectedLlmIndex = 0;
-
-  String _aiName = 'AI 助手';
-  String _aiPersonality = '';
-
   Map<String, dynamic>? _customStyle;
   List<Map<String, dynamic>> _customStyles = [];
   bool _hasCustomStyle = false;
-  bool _voiceLoaded = false;
   SharedPreferences? _prefs;
   final ValueNotifier<bool> _voiceNotifier = ValueNotifier<bool>(false);
 
@@ -157,48 +151,12 @@ class _SettingsScreenState extends State<SettingsScreen>
     final prefs = await SharedPreferences.getInstance();
     if (mounted) {
       final customList = prefs.getStringList('ai_custom_styles') ?? [];
-      final activeId = prefs.getString('ai_style_id') ?? 'kael';
       setState(() {
-        _aiName = prefs.getString('ai_assistant_name') ?? 'AI 助手';
-        _aiPersonality = prefs.getString('ai_assistant_personality') ?? '';
         _customStyles = customList
             .map((s) => jsonDecode(s) as Map<String, dynamic>)
             .toList();
         _hasCustomStyle = _customStyles.isNotEmpty;
       });
-    }
-  }
-
-  Future<void> _saveAiSettings() async {
-    await context
-        .read<AiPersonaProvider>()
-        .saveNameAndPersonality(_aiName, _aiPersonality);
-    if (mounted) {
-      final isZh = context.read<LocaleProvider>().locale.languageCode == 'zh';
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(isZh ? 'AI 设置已保存' : 'AI settings saved')),
-      );
-    }
-  }
-
-  Future<void> _pickAiAvatar() async {
-    final picker = ImagePicker();
-    final picked = await picker.pickImage(
-      source: ImageSource.gallery,
-      maxWidth: 512,
-      maxHeight: 512,
-      imageQuality: 85,
-    );
-    if (picked == null) return;
-
-    try {
-      await context.read<AiPersonaProvider>().setAvatarFromPath(picked.path);
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('头像保存失败: $e')),
-        );
-      }
     }
   }
 
@@ -230,23 +188,9 @@ class _SettingsScreenState extends State<SettingsScreen>
         _llmProviders
           ..clear()
           ..addAll(merged);
-        final idx = prefs.getInt('llm_selected_index') ?? 0;
-        _selectedLlmIndex = idx < _llmProviders.length ? idx : 0;
       });
     }
   }
-
-  Future<void> _saveLlmSettings() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('llm_providers', jsonEncode(_llmProviders));
-    await prefs.setInt('llm_selected_index', _selectedLlmIndex);
-    if (mounted) {
-      context.read<LlmConfigNotifier>().notify();
-    }
-  }
-
-  List<Map<String, String>> get _displayProviders => _llmProviders;
-
 
   Widget _buildAITab(bool isZh) {
     final entitlement = context.watch<EntitlementService>();
@@ -1054,8 +998,8 @@ class _SettingsScreenState extends State<SettingsScreen>
                       children: [
                         Text(isZh ? '语音提醒' : 'Voice Reminders'),
                         Text(
-                          isZh ? '提醒时如果应用打开，会朗读习惯名称'
-                              : 'Speak routine names at reminder time when app is open',
+                          isZh ? '应用在前台时朗读习惯名称；后台或锁屏时静音'
+                              : 'Announces habit names aloud while app is open — silent when backgrounded',
                           style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                         ),
                       ],
@@ -1330,8 +1274,6 @@ class _SettingsScreenState extends State<SettingsScreen>
 
   static const _systemTagIds = {'tag_synthesis', 'tag_private', 'tag_welcome'};
   // Tags hidden from the add-entry tag picker
-  static const _hiddenTagIds = {'tag_synthesis', 'tag_welcome'};
-
   Widget _buildTagTile(
     BuildContext context, Tag tag, TagProvider provider, bool isZh,
   ) {
@@ -1564,225 +1506,6 @@ class _SettingsScreenState extends State<SettingsScreen>
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  // ============ LLM PROVIDER MANAGEMENT ============
-
-  void _showEditLlmDialog(BuildContext context, int index, bool isZh) {
-    final provider = _llmProviders[index];
-    final nameController = TextEditingController(text: provider['name']);
-    final modelController = TextEditingController(text: provider['model']);
-    final apiKeyController = TextEditingController(text: provider['apiKey']);
-    final baseUrlController = TextEditingController(text: provider['baseUrl']);
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(isZh ? '编辑 AI 服务' : 'Edit AI Provider'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nameController,
-                decoration: InputDecoration(
-                  labelText: isZh ? '服务名称' : 'Provider Name',
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: modelController,
-                decoration: InputDecoration(
-                  labelText: isZh ? '模型名称' : 'Model Name',
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: apiKeyController,
-                decoration: const InputDecoration(
-                  labelText: 'API Key',
-                  hintText: 'sk-...',
-                ),
-                obscureText: true,
-              ),
-              if ((provider['baseUrl'] ?? '').contains('openrouter'))
-                Padding(
-                  padding: const EdgeInsets.only(top: 6),
-                  child: GestureDetector(
-                    onTap: () => launchUrl(
-                      Uri.parse('https://openrouter.ai/keys'),
-                      mode: LaunchMode.externalApplication,
-                    ),
-                    child: Text(
-                      isZh ? '🔑 免费获取 API Key →' : '🔑 Get a free API key →',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: Theme.of(context).colorScheme.primary,
-                        decoration: TextDecoration.underline,
-                      ),
-                    ),
-                  ),
-                ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: baseUrlController,
-                decoration: const InputDecoration(
-                  labelText: 'Base URL',
-                ),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(isZh ? '取消' : 'Cancel'),
-          ),
-          if (_llmProviders.length > 1)
-            TextButton(
-              onPressed: () {
-                setState(() {
-                  _llmProviders.removeAt(index);
-                  if (_selectedLlmIndex >= _llmProviders.length) {
-                    _selectedLlmIndex = _llmProviders.length - 1;
-                  }
-                });
-                _saveLlmSettings();
-                Navigator.pop(context);
-              },
-              child: Text(
-                isZh ? '删除' : 'Delete',
-                style: const TextStyle(color: Colors.red),
-              ),
-            ),
-          TextButton(
-            onPressed: () {
-              setState(() {
-                _llmProviders[index] = {
-                  'name': nameController.text,
-                  'model': modelController.text,
-                  'apiKey': apiKeyController.text,
-                  'baseUrl': baseUrlController.text,
-                };
-              });
-              _saveLlmSettings();
-              Navigator.pop(context);
-            },
-            child: Text(isZh ? '保存' : 'Save'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showAddLlmDialog(BuildContext context, bool isZh) {
-    final nameController = TextEditingController();
-    final modelController = TextEditingController();
-    final apiKeyController = TextEditingController();
-    final baseUrlController = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(isZh ? '添加 AI 服务' : 'Add AI Provider'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nameController,
-                decoration: InputDecoration(
-                  labelText: isZh ? '服务名称' : 'Provider Name',
-                  hintText: isZh ? '例如：DeepSeek' : 'e.g. DeepSeek',
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: modelController,
-                decoration: InputDecoration(
-                  labelText: isZh ? '模型名称' : 'Model Name',
-                  hintText: 'e.g. deepseek-chat',
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: apiKeyController,
-                decoration: const InputDecoration(
-                  labelText: 'API Key',
-                  hintText: 'sk-...',
-                ),
-                obscureText: true,
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: baseUrlController,
-                decoration: const InputDecoration(
-                  labelText: 'Base URL',
-                  hintText: 'https://api.example.com/v1',
-                ),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(isZh ? '取消' : 'Cancel'),
-          ),
-          TextButton(
-            onPressed: () {
-              if (nameController.text.isNotEmpty) {
-                setState(() {
-                  _llmProviders.add({
-                    'name': nameController.text,
-                    'model': modelController.text,
-                    'apiKey': apiKeyController.text,
-                    'baseUrl': baseUrlController.text,
-                  });
-                });
-                _saveLlmSettings();
-                Navigator.pop(context);
-              }
-            },
-            child: Text(isZh ? '添加' : 'Add'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showTrialInfoDialog(BuildContext context, bool isZh) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(isZh ? '试用详情' : 'Trial Details'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(isZh ? '模型：qwen/qwen3.5-flash' : 'Model: qwen/qwen3.5-flash'),
-            const SizedBox(height: 8),
-            Text(isZh ? '由 Blinking 试用后端代理' : 'Proxied by Blinking trial backend'),
-            const SizedBox(height: 8),
-            Text(
-              isZh ? '每天最多 20 次请求，共 7 天试用期。' : 'Up to 20 requests/day for 7 days.',
-              style: const TextStyle(color: Colors.grey),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              isZh ? '试用服务商不可编辑。' : 'Trial provider cannot be edited.',
-              style: TextStyle(color: Colors.red[400], fontSize: 12),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(isZh ? '关闭' : 'Close'),
-          ),
-        ],
       ),
     );
   }

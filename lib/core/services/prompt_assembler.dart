@@ -175,7 +175,7 @@ SYSTEM:
     bool isZh = false,
   }) {
     final notesText = todayEntries.isNotEmpty
-        ? todayEntries.map((e) => '- ${e.content ?? ''}').join('\n')
+        ? todayEntries.map((e) => '- ${e.content}').join('\n')
         : (isZh ? '(今天暂无笔记)' : '(no notes today)');
     final habitText = todayHabits.isNotEmpty
         ? todayHabits.join(', ')
@@ -295,7 +295,6 @@ SYSTEM:
         return sorted.where((e) => e.createdAt.isAfter(ninetyDaysAgo)).toList();
       default: // auto
         if (recent50.isEmpty) return [];
-        final daysSinceFirst = today.difference(recent50.last.createdAt).inDays;
         final daysSinceLast = today.difference(recent50.first.createdAt).inDays;
 
         if (daysSinceLast <= 1 && recent50.length >= 7) {
@@ -317,7 +316,7 @@ SYSTEM:
   static String _formatEntry(Entry entry, bool isZh) {
     final date = '${entry.createdAt.year}/${entry.createdAt.month.toString().padLeft(2, '0')}/${entry.createdAt.day.toString().padLeft(2, '0')}';
     final emotion = entry.emotion ?? '';
-    final content = entry.content ?? '';
+    final content = entry.content;
     return '[$date $emotion] $content';
   }
 
@@ -378,8 +377,8 @@ SYSTEM:
 
       // Sort by: has emotion first, then by content length
       entries.sort((a, b) {
-        final aScore = (a.emotion != null ? 1 : 0) + (a.content.length ?? 0);
-        final bScore = (b.emotion != null ? 1 : 0) + (b.content.length ?? 0);
+        final aScore = (a.emotion != null ? 1 : 0) + a.content.length;
+        final bScore = (b.emotion != null ? 1 : 0) + b.content.length;
         return bScore.compareTo(aScore);
       });
 
@@ -395,7 +394,7 @@ SYSTEM:
     bool isZh = false,
   }) {
     final entriesText = samples
-        .map((e) => '[${e.createdAt.month}/${e.createdAt.day} ${e.emotion ?? ""}] ${e.content ?? ""}')
+        .map((e) => '[${e.createdAt.month}/${e.createdAt.day} ${e.emotion ?? ""}] ${e.content}')
         .join('\n');
 
     return [

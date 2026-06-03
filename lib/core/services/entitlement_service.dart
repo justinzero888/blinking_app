@@ -38,7 +38,6 @@ class EntitlementService extends ChangeNotifier {
   String? _jwt;
   EntitlementState _state = EntitlementState.restricted;
   int _previewDaysRemaining = 0;
-  bool _initialized = false;
   bool _initInProgress = false;
 
   Future<void> init(SharedPreferences prefs, {bool isPro = false}) async {
@@ -69,7 +68,6 @@ class EntitlementService extends ChangeNotifier {
       await _refreshStatus();
     }
 
-    _initialized = true;
     notifyListeners();
   }
 
@@ -237,11 +235,6 @@ class EntitlementService extends ChangeNotifier {
       return AIButtonVisual.active;
     }
     return AIButtonVisual.dormant;
-  }
-
-  bool _isBYOKKeyValid() {
-    if (!hasActiveBYOK || _prefs == null) return false;
-    return _prefs!.getBool('entitlement_byok_validated') ?? true;
   }
 
   int get previewDaysRemaining => _previewDaysRemaining;

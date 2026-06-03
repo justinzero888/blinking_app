@@ -880,8 +880,6 @@ class _ReflectTab extends StatelessWidget {
         .length;
     int bestStreak = 0;
     Routine? bestRoutine;
-    Routine? worstRoutine;
-    double worstRate = 1.0;
     for (final r in activeHabits) {
       if (r.streak > bestStreak) {
         bestStreak = r.streak;
@@ -1654,7 +1652,7 @@ class _RoutineDialogWidgetState extends State<_RoutineDialogWidget> {
       );
       provider.updateRoutine(updated);
       // Reschedule notification
-      if (reminder != null && reminder.isNotEmpty) {
+      if (reminder.isNotEmpty) {
         NotificationService.scheduleRoutine(updated, isZh);
       } else {
         NotificationService.cancelRoutine(updated.id, isZh);
@@ -1672,7 +1670,7 @@ class _RoutineDialogWidgetState extends State<_RoutineDialogWidget> {
         voiceEnabled: _voiceEnabled,
       );
       // Schedule notification
-      if (newRoutine != null && reminder != null && reminder.isNotEmpty) {
+      if (newRoutine != null && reminder.isNotEmpty) {
         NotificationService.scheduleRoutine(newRoutine, isZh);
       }
     }

@@ -6,7 +6,6 @@ import 'dart:convert';
 import '../../providers/routine_provider.dart';
 import '../../providers/entry_provider.dart';
 import '../../providers/locale_provider.dart';
-import '../../providers/jar_provider.dart';
 import '../../models/routine.dart';
 import '../../models/entry.dart';
 import '../../core/services/entitlement_service.dart';
@@ -562,7 +561,6 @@ class _EmojiJarSection extends StatefulWidget {
 class _EmojiJarSectionState extends State<_EmojiJarSection> {
   bool _expanded = true;
   List<Map<String, String>> _reflections = [];
-  bool _loaded = false;
 
   String _dateKey(DateTime d) =>
       '${d.year}_${d.month}_${d.day}';
@@ -584,7 +582,6 @@ class _EmojiJarSectionState extends State<_EmojiJarSection> {
         } else {
           _reflections = [];
         }
-        _loaded = true;
       });
     }
   }
@@ -617,8 +614,6 @@ class _EmojiJarSectionState extends State<_EmojiJarSection> {
   @override
   Widget build(BuildContext context) {
     final isZh = context.watch<LocaleProvider>().locale.languageCode == 'zh';
-    final emotions = context.watch<JarProvider>().getDayEmotions(widget.date);
-    final hasEmoji = emotions.isNotEmpty;
 
     return Card(
       child: Column(

@@ -90,7 +90,24 @@
       "Bash(curl -fsSL \"https://get.maestro.mobile.dev\")",
       "Bash(bash)",
       "Bash(maestro --debug test --device emulator-5554 /Users/justinzero/ClaudeDev/blink/blinking_app/maestro-tests/apps/blink-notes/flows/uat/k1-core-create.yaml)",
-      "Bash(MAESTRO_DEBUG=1 maestro test --device emulator-5554 /Users/justinzero/ClaudeDev/blink/blinking_app/maestro-tests/apps/blink-notes/flows/uat/k1-core-create.yaml)"
+      "Bash(MAESTRO_DEBUG=1 maestro test --device emulator-5554 /Users/justinzero/ClaudeDev/blink/blinking_app/maestro-tests/apps/blink-notes/flows/uat/k1-core-create.yaml)",
+      "Bash(sort -t'•' -k3)",
+      "Bash(sed -i '' \"4d\" /Users/justinzero/ClaudeDev/blink/blinking_app/lib/providers/ai_persona_provider.dart)",
+      "Bash(sed -i '' \"1d\" /Users/justinzero/ClaudeDev/blink/blinking_app/lib/widgets/card_builder_sheet.dart)",
+      "Bash(sed -n '618p;619p;620p;621p;622p;623p' /Users/justinzero/ClaudeDev/blink/blinking_app/lib/screens/home/home_screen.dart)",
+      "Bash(sed -n '250p;251p;252p;253p;254p;270p;271p;272p;273p;274p' /Users/justinzero/ClaudeDev/blink/blinking_app/lib/screens/moment/entry_detail_screen.dart)",
+      "Bash(sed -i '' \"5d\" /Users/justinzero/ClaudeDev/blink/blinking_app/lib/screens/cherished/cherished_memory_screen.dart)",
+      "Bash(sed -i '' \"6d\" /Users/justinzero/ClaudeDev/blink/blinking_app/lib/screens/cherished/cherished_memory_screen.dart)",
+      "Bash(sed -i '' \"10d\" /Users/justinzero/ClaudeDev/blink/blinking_app/test/core/card_provider_test.dart)",
+      "Bash(sed -i '' \"2d\" /Users/justinzero/ClaudeDev/blink/blinking_app/test/core/chorus_service_test.dart)",
+      "Bash(sed -i '' \"7d\" /Users/justinzero/ClaudeDev/blink/blinking_app/test/core/storage_service_restore_test.dart)",
+      "Bash(sed -i '' \"10d\" /Users/justinzero/ClaudeDev/blink/blinking_app/test/integration/keepsake_integration_test.dart)",
+      "Bash(sed -i '' \"3d\" /Users/justinzero/ClaudeDev/blink/blinking_app/test/models/ai_persona_lens_test.dart)",
+      "Bash(sed -n '6p' /Users/justinzero/ClaudeDev/blink/blinking_app/test/core/purchases_service_test.dart)",
+      "Bash(sed -n '379p;380p;381p' /Users/justinzero/ClaudeDev/blink/blinking_app/test/core/storage_service_restore_test.dart)",
+      "Bash(sed -n '154p;155p;156p;157p;158p;173p;174p;175p;176p;177p' /Users/justinzero/ClaudeDev/blink/blinking_app/test/integration/keepsake_integration_test.dart)",
+      "Bash(sed -n '7p;8p;9p' /Users/justinzero/ClaudeDev/blink/blinking_app/test/models/ai_persona_lens_test.dart)",
+      "Bash(sed -n '236p;237p;238p;239p;240p' /Users/justinzero/ClaudeDev/blink/blinking_app/test/providers/entry_filtering_test.dart)"
     ]
   }
 }

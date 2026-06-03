@@ -235,7 +235,7 @@ void main() {
       });
 
       test('tag filter preserves original order', () {
-        final filtered = _filterByTag(allEntries, 'tag_fitness');
+        _filterByTag(allEntries, 'tag_fitness');
         // entry1 (index 0) comes before entry4 (index 3)
         final entry1Idx = allEntries.indexWhere((e) => e.id == 'entry1');
         final entry4Idx = allEntries.indexWhere((e) => e.id == 'entry4');

@@ -133,7 +133,7 @@ class _ReflectionSessionScreenState extends State<ReflectionSessionScreen> {
     if (mounted) {
       setState(() {
         if (saved.isNotEmpty) {
-          final text = saved.map((e) => e.content ?? '').join('\n\n');
+          final text = saved.map((e) => e.content).join('\n\n');
           _cards = [
             ReflectionCard(
                 lens: 1, card: text.isNotEmpty ? text : 'No reflections yet.',
@@ -560,10 +560,6 @@ class _ReflectionSessionScreenState extends State<ReflectionSessionScreen> {
     final lenses = _activeLens?.lenses ?? [];
     final lensLabel =
         index < lenses.length ? lenses[index] : 'Lens ${index + 1}';
-    final hasContent = !card.sparse &&
-        card.card != 'Thinking…' &&
-        card.card != '思考中…';
-
     return Card(
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),

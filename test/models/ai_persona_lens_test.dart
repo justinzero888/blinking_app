@@ -1,11 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:blinking/models/reflection_style.dart';
-import 'package:blinking/models/lens_set.dart';
 
 void main() {
   group('Persona → Lens mapping', () {
     test('each preset has its own unique lens questions', () {
-      final ids = ReflectionStyle.presets.map((s) => s.id).toSet();
       final lensSets = <String, List<String>>{};
       for (final s in ReflectionStyle.presets) {
         final lenses = s.lenses(false);

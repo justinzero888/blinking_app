@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
@@ -134,7 +133,6 @@ class _CardBuilderSheetState extends State<CardBuilderSheet> {
   @override
   Widget build(BuildContext context) {
     final isZh = context.watch<LocaleProvider>().locale.languageCode == 'zh';
-    final cardProvider = context.read<CardProvider>();
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
 
     return Padding(
@@ -356,7 +354,7 @@ class _CardBuilderSheetState extends State<CardBuilderSheet> {
       if (bgPath != null && bgPath.startsWith('assets/')) {
         try {
           bgBytes = (await rootBundle.load(bgPath)).buffer.asUint8List();
-          decodedBg = await decodeImageFromList(bgBytes!);
+          decodedBg = await decodeImageFromList(bgBytes);
         } catch (_) {}
       }
 

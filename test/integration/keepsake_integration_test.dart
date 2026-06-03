@@ -7,7 +7,6 @@ import 'package:path_provider_platform_interface/path_provider_platform_interfac
 import 'package:blinking/core/services/storage_service.dart';
 import 'package:blinking/core/services/database_service.dart';
 import 'package:blinking/providers/card_provider.dart';
-import 'package:blinking/models/note_card.dart';
 
 class _TestPathProvider extends FakePathProvider {
   final String appDocsPath;
@@ -154,7 +153,7 @@ void main() {
     });
 
     test('IT-4: All toggles OFF — persisted correctly', () async {
-      final card = await cardProvider.addCard(
+      await cardProvider.addCard(
         entryIds: ['entry_1'],
         templateId: 'tpl_seal',
         folderId: 'folder_default',
@@ -173,7 +172,7 @@ void main() {
     });
 
     test('IT-5: All toggles ON — full card persisted', () async {
-      final card = await cardProvider.addCard(
+      await cardProvider.addCard(
         entryIds: ['entry_1'],
         templateId: 'tpl_ink_rhythm',
         folderId: 'folder_default',

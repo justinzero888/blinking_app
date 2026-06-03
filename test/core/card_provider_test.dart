@@ -7,7 +7,6 @@ import 'package:path_provider_platform_interface/path_provider_platform_interfac
 import 'package:blinking/core/services/storage_service.dart';
 import 'package:blinking/core/services/database_service.dart';
 import 'package:blinking/providers/card_provider.dart';
-import 'package:blinking/models/card_template.dart';
 import 'package:blinking/models/card_enums.dart';
 
 class _MockPathProvider extends FakePathProvider {

@@ -359,10 +359,6 @@ class StorageService {
   /// Only 3 are active by default: drink water, read, write a note
   List<Routine> _getDefaultRoutines() {
     // Active: only these 3 nameEn values
-    const activeHabits = {'Drink water', 'Read 15 minutes', 'Write a note'};
-    
-    bool isActiveDefault(String nameEn) => activeHabits.contains(nameEn);
-    
     return [
       Routine(id: 'routine_seed_1', name: '喝水', nameEn: 'Drink water', icon: '💧', frequency: RoutineFrequency.daily, isActive: true, reminderTime: '10:00', description: '多数成年人都处于轻度脱水而不自知。影响精力、专注与消化。', descriptionEn: 'Most adults are mildly dehydrated without noticing. Affects energy, focus, digestion.', category: RoutineCategory.health, createdAt: DateTime.now(), updatedAt: DateTime.now()),
       Routine(id: 'routine_seed_2', name: '维生素 / 服药', nameEn: 'Vitamins / medication', icon: '💊', frequency: RoutineFrequency.daily, isActive: false, reminderTime: '08:00', description: '没有固定时间，依从性容易下降。', descriptionEn: 'Compliance falls off without a consistent time anchor.', category: RoutineCategory.health, createdAt: DateTime.now(), updatedAt: DateTime.now()),

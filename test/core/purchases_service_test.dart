@@ -3,11 +3,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   group('PurchasesService', () {
-    late SharedPreferences prefs;
-
     setUp(() async {
       SharedPreferences.setMockInitialValues({});
-      prefs = await SharedPreferences.getInstance();
     });
 
     group('initialization', () {

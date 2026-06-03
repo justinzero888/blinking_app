@@ -250,7 +250,6 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
   }
 
   Future<void> _handleSaveAsKeepsake(BuildContext context, Entry entry) async {
-    final isZh = context.read<LocaleProvider>().locale.languageCode == 'zh';
     final tagProvider = context.read<TagProvider>();
     final tags = tagProvider.tags
         .where((t) => entry.tagIds.contains(t.id))
@@ -270,7 +269,6 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
   }
 
   void _handleEditKeepsake(BuildContext context, NoteCard card) {
-    final isZh = context.read<LocaleProvider>().locale.languageCode == 'zh';
     CardBuilderSheet.show(
       context,
       entryId: card.entryIds.isNotEmpty ? card.entryIds.first : null,

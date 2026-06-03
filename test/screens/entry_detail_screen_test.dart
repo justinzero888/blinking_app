@@ -30,7 +30,7 @@ TagProvider _tagProvider() {
 EntryProvider _entryProvider({List<Entry> entries = const []}) {
   final p = EntryProvider(EntryRepository(_FakeStorage()));
   // Seed with the provided entries so the provider has data without platform channels
-  for (final e in entries) {
+  for (final _ in entries) {
     p.allEntries; // access getter to ensure list is initialized
   }
   return p;
