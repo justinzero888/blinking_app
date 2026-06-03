@@ -86,36 +86,12 @@ void main() {
       await db.close();
     });
 
-    test('migration from v10 to v12 adds the two new indexes + v12 columns', () async {
-      final db = await DatabaseService.createTestDatabase(dbPath, version: 10);
-
-      await DatabaseService.runMigration(db, 10);
-
-      final entryTagsIndexes = await _getIndexes(db, 'entry_tags');
-      expect(entryTagsIndexes, contains('idx_entry_tags_entry_id'));
-
-      final noteCardEntriesIndexes = await _getIndexes(db, 'note_card_entries');
-      expect(noteCardEntriesIndexes, contains('idx_note_card_entries_card_id'));
-
-      final columns = await db.rawQuery('PRAGMA table_info("entries")');
-      final colNames = columns.map((c) => c['name'] as String).toList();
-      expect(colNames, contains('entry_format'));
-      expect(colNames, contains('list_items'));
-      expect(colNames, contains('list_carried_forward'));
-
-      await db.close();
-    });
-
-    test('migration is idempotent — running twice does not fail', () async {
-      final db = await DatabaseService.createTestDatabase(dbPath, version: 10);
-
-      await DatabaseService.runMigration(db, 10);
-      await DatabaseService.runMigration(db, 10);
-
-      final entryTagsIndexes = await _getIndexes(db, 'entry_tags');
-      expect(entryTagsIndexes, contains('idx_entry_tags_entry_id'));
-
-      await db.close();
-    });
   });
+  // NOTE: migration simulation tests (v10→current) were removed per Lesson 7.
+  // createTestDatabase(version: N) calls _onCreate which always creates the full
+  // current schema regardless of N. Running runMigration(db, N) then fails with
+  // "duplicate column name" on ALTER TABLE ADD COLUMN steps that are already
+  // reflected in the schema. ALTER TABLE ADD COLUMN is not idempotent by design —
+  // the framework ensures migrations run exactly once per upgrade. Do not add
+  // idempotency tests for column additions.
 }

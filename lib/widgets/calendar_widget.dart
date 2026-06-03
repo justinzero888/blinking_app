@@ -78,13 +78,18 @@ class CalendarWidget extends StatelessWidget {
               onMonthChanged(previousMonth);
             },
           ),
-          Text(
-            _isZh(context)
-                ? DateFormat('yyyy年M月').format(focusedMonth)
-                : DateFormat('MMMM yyyy').format(focusedMonth),
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+          Expanded(
+            child: Center(
+              child: Text(
+                _isZh(context)
+                    ? DateFormat('yyyy年M月').format(focusedMonth)
+                    : DateFormat('MMMM yyyy').format(focusedMonth),
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
           ),
           Row(
             mainAxisSize: MainAxisSize.min,

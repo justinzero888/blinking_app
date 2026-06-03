@@ -34,7 +34,7 @@ class DatabaseService {
   @visibleForTesting
   static Future<void> runMigration(Database db, int oldVersion) async {
     final svc = DatabaseService._internal();
-    await svc._onUpgrade(db, oldVersion, 15);
+    await svc._onUpgrade(db, oldVersion, kSchemaVersion);
   }
 
   Future<Database> get database async {
