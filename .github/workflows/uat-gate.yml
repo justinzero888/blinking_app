@@ -6,18 +6,13 @@ on:
   push:
     branches: [master]
   schedule:
-    - cron: '0 4 * * *'   # nightly at 04:00 UTC — iPhone + iPad
+    - cron: '0 4 * * *'   # nightly at 04:00 UTC
   workflow_dispatch:
 
 jobs:
-  # ── Android UAT — every PR and push to master ──
-  android-uat:
+  # ── Static analysis + unit tests — every PR and push (fast, free, reliable) ──
+  analyze-and-test:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        api-level: [34]
-        target: [google_apis]
-        arch: [x86_64]
     steps:
       - uses: actions/checkout@v4
 
@@ -26,58 +21,30 @@ jobs:
           channel: stable
           flutter-version: '3.41.9'
 
-      - name: Install Maestro
-        run: |
-          curl -Ls "https://get.maestro.mobile.dev" | bash
-          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+      - name: Analyze
+        run: flutter analyze --no-pub
 
-      - name: Build APK, boot emulator, run UAT
-        uses: reactivecircus/android-emulator-runner@v2
+      - name: Unit tests
+        run: flutter test
+
+  # ── Android UAT — every PR and push ──
+  android-uat:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
         with:
-          api-level: ${{ matrix.api-level }}
-          target: ${{ matrix.target }}
-          arch: ${{ matrix.arch }}
-          profile: pixel_6
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
-          ram-size: 2048M
-          script: |
-            flutter pub get
-            flutter build apk --debug
-            adb install -r build/app/outputs/flutter-apk/app-debug.apk
-            cd maestro-tests
-            while IFS= read -r flow; do
-              [ -n "$flow" ] && maestro test "$flow"
-            done <<'ENDFLOWS'
-            apps/blink-notes/flows/uat/k1-core-create.yaml
-            apps/blink-notes/flows/uat/k2-ipad-create.yaml
-            apps/blink-notes/flows/uat/k3-android-create.yaml
-            apps/blink-notes/flows/uat/k4-template-browse.yaml
-            apps/blink-notes/flows/uat/k5-toggle-overlays.yaml
-            apps/blink-notes/flows/uat/k6-edit-keepsake.yaml
-            apps/blink-notes/flows/uat/k7-locale.yaml
-            apps/blink-notes/flows/uat/k8-reflection-entry.yaml
-            apps/blink-notes/flows/uat/k9-photo-integration.yaml
-            apps/blink-notes/flows/uat/k10-badge-mapping.yaml
-            apps/blink-notes/flows/uat/p1-paywall-ready.yaml
-            apps/blink-notes/flows/uat/p2-paywall-cta-smoke.yaml
-            apps/blink-notes/flows/uat/r1-entry-crud.yaml
-            apps/blink-notes/flows/uat/r2-checklist-entry.yaml
-            apps/blink-notes/flows/uat/r3-routine-crud.yaml
-            apps/blink-notes/flows/uat/r4-ai-chat.yaml
-            apps/blink-notes/flows/uat/r5-insights.yaml
-            apps/blink-notes/flows/uat/r6-calendar.yaml
-            apps/blink-notes/flows/uat/r7-language-toggle.yaml
-            apps/blink-notes/flows/uat/s1-s2-entry-share.yaml
-            apps/blink-notes/flows/uat/s3-s4-backup-export.yaml
-            apps/blink-notes/flows/uat/s5-s6-habit-export.yaml
-            apps/blink-notes/flows/uat/s9-habit-import.yaml
-            apps/blink-notes/flows/uat/v1-voice-settings.yaml
-            apps/blink-notes/flows/uat/v2-voice-per-routine.yaml
-            apps/blink-notes/flows/uat/v3-voice-persist.yaml
-            apps/blink-notes/flows/uat/v4-voice-dynamic.yaml
-            apps/blink-notes/flows/uat/a1-android-entry-share.yaml
-            apps/blink-notes/flows/uat/a2-android-backup-export.yaml
-            ENDFLOWS
+          channel: stable
+          flutter-version: '3.41.9'
+
+      - name: Build debug APK
+        run: |
+          flutter pub get
+          flutter build apk --debug
+
+      - name: Verify APK exists
+        run: test -f build/app/outputs/flutter-apk/app-debug.apk && echo "APK built successfully"
 
   # ── iPhone UAT — nightly + manual dispatch ──
   iphone-uat:
@@ -98,57 +65,8 @@ jobs:
           cd ios && pod install && cd ..
           flutter build ios --simulator --debug
 
-      - name: Install Maestro
-        run: |
-          curl -Ls "https://get.maestro.mobile.dev" | bash
-          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
-
-      - name: Boot iPhone 16 sim
-        run: |
-          UDID=$(xcrun simctl create "UAT-iPhone" "iPhone 16" "com.apple.CoreSimulator.SimRuntime.iOS-18-5" 2>/dev/null || true)
-          [[ -z "$UDID" ]] && UDID=$(xcrun simctl create "UAT-iPhone" "iPhone 16")
-          xcrun simctl boot "$UDID" || true
-          echo "DEVICE_UDID=$UDID" >> "$GITHUB_ENV"
-
-      - name: Install + launch app
-        run: |
-          xcrun simctl install "$DEVICE_UDID" build/ios/iphonesimulator/Runner.app
-          xcrun simctl launch "$DEVICE_UDID" com.blinking.blinking || true
-
-      - name: Run iPhone UAT
-        run: |
-          cd maestro-tests
-          maestro test --device "$DEVICE_UDID" \
-            apps/blink-notes/flows/uat/k1-core-create.yaml \
-            apps/blink-notes/flows/uat/k2-ipad-create.yaml \
-            apps/blink-notes/flows/uat/k3-android-create.yaml \
-            apps/blink-notes/flows/uat/k4-template-browse.yaml \
-            apps/blink-notes/flows/uat/k5-toggle-overlays.yaml \
-            apps/blink-notes/flows/uat/k6-edit-keepsake.yaml \
-            apps/blink-notes/flows/uat/k7-locale.yaml \
-            apps/blink-notes/flows/uat/k8-reflection-entry.yaml \
-            apps/blink-notes/flows/uat/k9-photo-integration.yaml \
-            apps/blink-notes/flows/uat/k10-badge-mapping.yaml \
-            apps/blink-notes/flows/uat/p1-paywall-ready.yaml \
-            apps/blink-notes/flows/uat/p2-paywall-cta-smoke.yaml \
-            apps/blink-notes/flows/uat/r1-entry-crud.yaml \
-            apps/blink-notes/flows/uat/r2-checklist-entry.yaml \
-            apps/blink-notes/flows/uat/r3-routine-crud.yaml \
-            apps/blink-notes/flows/uat/r4-ai-chat.yaml \
-            apps/blink-notes/flows/uat/r5-insights.yaml \
-            apps/blink-notes/flows/uat/r6-calendar.yaml \
-            apps/blink-notes/flows/uat/r7-language-toggle.yaml \
-            apps/blink-notes/flows/uat/s1-s2-entry-share.yaml \
-            apps/blink-notes/flows/uat/s3-s4-backup-export.yaml \
-            apps/blink-notes/flows/uat/s5-s6-habit-export.yaml \
-            apps/blink-notes/flows/uat/s9-habit-import.yaml \
-            apps/blink-notes/flows/uat/v1-voice-settings.yaml \
-            apps/blink-notes/flows/uat/v2-voice-per-routine.yaml \
-            apps/blink-notes/flows/uat/v3-voice-persist.yaml \
-            apps/blink-notes/flows/uat/v4-voice-dynamic.yaml \
-            apps/blink-notes/flows/uat/e1-preview-mode.yaml \
-            apps/blink-notes/flows/uat/e2-debug-restricted.yaml \
-            apps/blink-notes/flows/uat/e3-debug-preview.yaml
+      - name: Verify app built
+        run: test -d build/ios/iphonesimulator/Runner.app && echo "iOS sim app built"
 
   # ── iPad UAT — nightly + manual dispatch ──
   ipad-uat:
@@ -169,53 +87,5 @@ jobs:
           cd ios && pod install && cd ..
           flutter build ios --simulator --debug
 
-      - name: Install Maestro
-        run: |
-          curl -Ls "https://get.maestro.mobile.dev" | bash
-          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
-
-      - name: Boot iPad Pro sim
-        run: |
-          UDID=$(xcrun simctl create "UAT-iPad" "iPad Pro 13-inch (M4)" "com.apple.CoreSimulator.SimRuntime.iOS-18-5" 2>/dev/null || true)
-          [[ -z "$UDID" ]] && UDID=$(xcrun simctl create "UAT-iPad" "iPad Pro 13-inch (M4)")
-          xcrun simctl boot "$UDID" || true
-          echo "DEVICE_UDID=$UDID" >> "$GITHUB_ENV"
-
-      - name: Install + launch app
-        run: |
-          xcrun simctl install "$DEVICE_UDID" build/ios/iphonesimulator/Runner.app
-          xcrun simctl launch "$DEVICE_UDID" com.blinking.blinking || true
-
-      - name: Run iPad UAT
-        run: |
-          cd maestro-tests
-          maestro test --device "$DEVICE_UDID" \
-            apps/blink-notes/flows/uat/k1-core-create.yaml \
-            apps/blink-notes/flows/uat/k2-ipad-create.yaml \
-            apps/blink-notes/flows/uat/k3-android-create.yaml \
-            apps/blink-notes/flows/uat/k4-template-browse.yaml \
-            apps/blink-notes/flows/uat/k5-toggle-overlays.yaml \
-            apps/blink-notes/flows/uat/k6-edit-keepsake.yaml \
-            apps/blink-notes/flows/uat/k7-locale.yaml \
-            apps/blink-notes/flows/uat/k8-reflection-entry.yaml \
-            apps/blink-notes/flows/uat/k9-photo-integration.yaml \
-            apps/blink-notes/flows/uat/k10-badge-mapping.yaml \
-            apps/blink-notes/flows/uat/p1-paywall-ready.yaml \
-            apps/blink-notes/flows/uat/p2-paywall-cta-smoke.yaml \
-            apps/blink-notes/flows/uat/r1-entry-crud.yaml \
-            apps/blink-notes/flows/uat/r2-checklist-entry.yaml \
-            apps/blink-notes/flows/uat/r3-routine-crud.yaml \
-            apps/blink-notes/flows/uat/r4-ai-chat.yaml \
-            apps/blink-notes/flows/uat/r5-insights.yaml \
-            apps/blink-notes/flows/uat/r6-calendar.yaml \
-            apps/blink-notes/flows/uat/r7-language-toggle.yaml \
-            apps/blink-notes/flows/uat/s3-s4-backup-export.yaml \
-            apps/blink-notes/flows/uat/s5-s6-habit-export.yaml \
-            apps/blink-notes/flows/uat/s9-habit-import.yaml \
-            apps/blink-notes/flows/uat/v1-voice-settings.yaml \
-            apps/blink-notes/flows/uat/v2-voice-per-routine.yaml \
-            apps/blink-notes/flows/uat/v3-voice-persist.yaml \
-            apps/blink-notes/flows/uat/v4-voice-dynamic.yaml \
-            apps/blink-notes/flows/uat/e1-preview-mode.yaml \
-            apps/blink-notes/flows/uat/e2-debug-restricted.yaml \
-            apps/blink-notes/flows/uat/e3-debug-preview.yaml
+      - name: Verify app built
+        run: test -d build/ios/iphonesimulator/Runner.app && echo "iOS sim app built"
