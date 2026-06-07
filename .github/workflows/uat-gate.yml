@@ -21,11 +21,10 @@ jobs:
           channel: stable
           flutter-version: '3.41.9'
 
+      - name: Install dependencies
+        run: flutter pub get
       - name: Analyze
-        run: |
-          flutter pub get
-          flutter analyze --no-pub
-
+        run: flutter analyze
       - name: Unit tests
         run: flutter test
 
