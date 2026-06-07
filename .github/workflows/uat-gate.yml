@@ -45,9 +45,39 @@ jobs:
             flutter build apk --debug
             adb install -r build/app/outputs/flutter-apk/app-debug.apk
             cd maestro-tests
-            FLOWS=apps/blink-notes/flows/uat
-            set -- ${FLOWS}/k1-core-create.yaml ${FLOWS}/k2-ipad-create.yaml ${FLOWS}/k3-android-create.yaml ${FLOWS}/k4-template-browse.yaml ${FLOWS}/k5-toggle-overlays.yaml ${FLOWS}/k6-edit-keepsake.yaml ${FLOWS}/k7-locale.yaml ${FLOWS}/k8-reflection-entry.yaml ${FLOWS}/k9-photo-integration.yaml ${FLOWS}/k10-badge-mapping.yaml ${FLOWS}/p1-paywall-ready.yaml ${FLOWS}/p2-paywall-cta-smoke.yaml ${FLOWS}/r1-entry-crud.yaml ${FLOWS}/r2-checklist-entry.yaml ${FLOWS}/r3-routine-crud.yaml ${FLOWS}/r4-ai-chat.yaml ${FLOWS}/r5-insights.yaml ${FLOWS}/r6-calendar.yaml ${FLOWS}/r7-language-toggle.yaml ${FLOWS}/s1-s2-entry-share.yaml ${FLOWS}/s3-s4-backup-export.yaml ${FLOWS}/s5-s6-habit-export.yaml ${FLOWS}/s9-habit-import.yaml ${FLOWS}/v1-voice-settings.yaml ${FLOWS}/v2-voice-per-routine.yaml ${FLOWS}/v3-voice-persist.yaml ${FLOWS}/v4-voice-dynamic.yaml ${FLOWS}/a1-android-entry-share.yaml ${FLOWS}/a2-android-backup-export.yaml
-            maestro test "$@"
+            while IFS= read -r flow; do
+              [ -n "$flow" ] && maestro test "$flow"
+            done <<'ENDFLOWS'
+            apps/blink-notes/flows/uat/k1-core-create.yaml
+            apps/blink-notes/flows/uat/k2-ipad-create.yaml
+            apps/blink-notes/flows/uat/k3-android-create.yaml
+            apps/blink-notes/flows/uat/k4-template-browse.yaml
+            apps/blink-notes/flows/uat/k5-toggle-overlays.yaml
+            apps/blink-notes/flows/uat/k6-edit-keepsake.yaml
+            apps/blink-notes/flows/uat/k7-locale.yaml
+            apps/blink-notes/flows/uat/k8-reflection-entry.yaml
+            apps/blink-notes/flows/uat/k9-photo-integration.yaml
+            apps/blink-notes/flows/uat/k10-badge-mapping.yaml
+            apps/blink-notes/flows/uat/p1-paywall-ready.yaml
+            apps/blink-notes/flows/uat/p2-paywall-cta-smoke.yaml
+            apps/blink-notes/flows/uat/r1-entry-crud.yaml
+            apps/blink-notes/flows/uat/r2-checklist-entry.yaml
+            apps/blink-notes/flows/uat/r3-routine-crud.yaml
+            apps/blink-notes/flows/uat/r4-ai-chat.yaml
+            apps/blink-notes/flows/uat/r5-insights.yaml
+            apps/blink-notes/flows/uat/r6-calendar.yaml
+            apps/blink-notes/flows/uat/r7-language-toggle.yaml
+            apps/blink-notes/flows/uat/s1-s2-entry-share.yaml
+            apps/blink-notes/flows/uat/s3-s4-backup-export.yaml
+            apps/blink-notes/flows/uat/s5-s6-habit-export.yaml
+            apps/blink-notes/flows/uat/s9-habit-import.yaml
+            apps/blink-notes/flows/uat/v1-voice-settings.yaml
+            apps/blink-notes/flows/uat/v2-voice-per-routine.yaml
+            apps/blink-notes/flows/uat/v3-voice-persist.yaml
+            apps/blink-notes/flows/uat/v4-voice-dynamic.yaml
+            apps/blink-notes/flows/uat/a1-android-entry-share.yaml
+            apps/blink-notes/flows/uat/a2-android-backup-export.yaml
+            ENDFLOWS
 
   # ── iPhone UAT — nightly + manual dispatch ──
   iphone-uat:
