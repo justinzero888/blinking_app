@@ -12,7 +12,12 @@ on:
 jobs:
   # ── Android UAT — every PR and push to master ──
   android-uat:
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        api-level: [34]
+        target: [google_apis]
+        arch: [x86_64]
     steps:
       - uses: actions/checkout@v4
 
@@ -21,62 +26,55 @@ jobs:
           channel: stable
           flutter-version: '3.41.9'
 
-      - name: Build debug APK
-        run: |
-          flutter pub get
-          flutter build apk --debug
-
       - name: Install Maestro
         run: |
           curl -Ls "https://get.maestro.mobile.dev" | bash
           echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
 
-      - name: Boot Android emulator
+      - name: Build APK, boot emulator, run UAT
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 34
-          target: google_apis
-          arch: x86_64
+          api-level: ${{ matrix.api-level }}
+          target: ${{ matrix.target }}
+          arch: ${{ matrix.arch }}
           profile: pixel_6
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
-          script: echo "Emulator ready"
-
-      - name: Install APK
-        run: adb install -r build/app/outputs/flutter-apk/app-debug.apk
-
-      - name: Run Android UAT
-        run: |
-          cd maestro-tests
-          maestro test \
-            apps/blink-notes/flows/uat/k1-core-create.yaml \
-            apps/blink-notes/flows/uat/k2-ipad-create.yaml \
-            apps/blink-notes/flows/uat/k3-android-create.yaml \
-            apps/blink-notes/flows/uat/k4-template-browse.yaml \
-            apps/blink-notes/flows/uat/k5-toggle-overlays.yaml \
-            apps/blink-notes/flows/uat/k6-edit-keepsake.yaml \
-            apps/blink-notes/flows/uat/k7-locale.yaml \
-            apps/blink-notes/flows/uat/k8-reflection-entry.yaml \
-            apps/blink-notes/flows/uat/k9-photo-integration.yaml \
-            apps/blink-notes/flows/uat/k10-badge-mapping.yaml \
-            apps/blink-notes/flows/uat/p1-paywall-ready.yaml \
-            apps/blink-notes/flows/uat/p2-paywall-cta-smoke.yaml \
-            apps/blink-notes/flows/uat/r1-entry-crud.yaml \
-            apps/blink-notes/flows/uat/r2-checklist-entry.yaml \
-            apps/blink-notes/flows/uat/r3-routine-crud.yaml \
-            apps/blink-notes/flows/uat/r4-ai-chat.yaml \
-            apps/blink-notes/flows/uat/r5-insights.yaml \
-            apps/blink-notes/flows/uat/r6-calendar.yaml \
-            apps/blink-notes/flows/uat/r7-language-toggle.yaml \
-            apps/blink-notes/flows/uat/s1-s2-entry-share.yaml \
-            apps/blink-notes/flows/uat/s3-s4-backup-export.yaml \
-            apps/blink-notes/flows/uat/s5-s6-habit-export.yaml \
-            apps/blink-notes/flows/uat/s9-habit-import.yaml \
-            apps/blink-notes/flows/uat/v1-voice-settings.yaml \
-            apps/blink-notes/flows/uat/v2-voice-per-routine.yaml \
-            apps/blink-notes/flows/uat/v3-voice-persist.yaml \
-            apps/blink-notes/flows/uat/v4-voice-dynamic.yaml \
-            apps/blink-notes/flows/uat/a1-android-entry-share.yaml \
-            apps/blink-notes/flows/uat/a2-android-backup-export.yaml
+          ram-size: 2048M
+          script: |
+            flutter pub get
+            flutter build apk --debug
+            adb install -r build/app/outputs/flutter-apk/app-debug.apk
+            cd maestro-tests
+            maestro test \
+              apps/blink-notes/flows/uat/k1-core-create.yaml \
+              apps/blink-notes/flows/uat/k2-ipad-create.yaml \
+              apps/blink-notes/flows/uat/k3-android-create.yaml \
+              apps/blink-notes/flows/uat/k4-template-browse.yaml \
+              apps/blink-notes/flows/uat/k5-toggle-overlays.yaml \
+              apps/blink-notes/flows/uat/k6-edit-keepsake.yaml \
+              apps/blink-notes/flows/uat/k7-locale.yaml \
+              apps/blink-notes/flows/uat/k8-reflection-entry.yaml \
+              apps/blink-notes/flows/uat/k9-photo-integration.yaml \
+              apps/blink-notes/flows/uat/k10-badge-mapping.yaml \
+              apps/blink-notes/flows/uat/p1-paywall-ready.yaml \
+              apps/blink-notes/flows/uat/p2-paywall-cta-smoke.yaml \
+              apps/blink-notes/flows/uat/r1-entry-crud.yaml \
+              apps/blink-notes/flows/uat/r2-checklist-entry.yaml \
+              apps/blink-notes/flows/uat/r3-routine-crud.yaml \
+              apps/blink-notes/flows/uat/r4-ai-chat.yaml \
+              apps/blink-notes/flows/uat/r5-insights.yaml \
+              apps/blink-notes/flows/uat/r6-calendar.yaml \
+              apps/blink-notes/flows/uat/r7-language-toggle.yaml \
+              apps/blink-notes/flows/uat/s1-s2-entry-share.yaml \
+              apps/blink-notes/flows/uat/s3-s4-backup-export.yaml \
+              apps/blink-notes/flows/uat/s5-s6-habit-export.yaml \
+              apps/blink-notes/flows/uat/s9-habit-import.yaml \
+              apps/blink-notes/flows/uat/v1-voice-settings.yaml \
+              apps/blink-notes/flows/uat/v2-voice-per-routine.yaml \
+              apps/blink-notes/flows/uat/v3-voice-persist.yaml \
+              apps/blink-notes/flows/uat/v4-voice-dynamic.yaml \
+              apps/blink-notes/flows/uat/a1-android-entry-share.yaml \
+              apps/blink-notes/flows/uat/a2-android-backup-export.yaml
 
   # ── iPhone UAT — nightly + manual dispatch ──
   iphone-uat:
