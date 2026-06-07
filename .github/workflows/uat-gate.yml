@@ -22,7 +22,9 @@ jobs:
           flutter-version: '3.41.9'
 
       - name: Analyze
-        run: flutter analyze --no-pub
+        run: |
+          flutter pub get
+          flutter analyze --no-pub
 
       - name: Unit tests
         run: flutter test
