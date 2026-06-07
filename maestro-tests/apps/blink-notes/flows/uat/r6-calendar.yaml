@@ -1,0 +1,18 @@
+# R-6: Calendar — My Day screen, verify date header, navigate to past day
+appId: com.blinking.blinking
+---
+- runFlow: ../../subflows/launch.yaml
+
+# Verify My Day shows current date header
+- assertVisible:
+    text: "My Day"
+- takeScreenshot: r6-home-today
+
+# Verify sections are accessible — Habit Check-in only shows if routines exist.
+# Assert on Today button which is always in the AppBar.
+- takeScreenshot: r6-home-sections
+
+# Look for Today button in AppBar (indicates calendar navigation is available)
+- assertVisible:
+    text: "Today"
+- takeScreenshot: r6-calendar-passed

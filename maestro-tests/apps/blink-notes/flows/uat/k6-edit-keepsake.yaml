@@ -1,0 +1,90 @@
+# MK-18: Edit keepsake — builder opens with prior content, change template, verify badge updates
+# 1. Create keepsake with Ink Rhythm template
+# 2. Open preview → tap edit → builder re-opens with pre-filled content
+# 3. Change template to Plain Paper
+# 4. Save → verify snackbar
+# 5. Badge now shows "Keepsake · Plain Paper"
+#
+# btn_edit_card: Semantics on edit IconButton in card_preview_screen.dart
+appId: com.blinking.blinking
+---
+- runFlow: ../../subflows/launch.yaml
+
+# Create entry + initial keepsake with Ink Rhythm
+- tapOn:
+    id: "btn_fab_add_entry"
+- waitForAnimationToEnd
+- tapOn:
+    id: "input_entry_body"
+- inputText: "UAT edit keepsake test entry"
+- tapOn:
+    id: "btn_entry_save"
+- waitForAnimationToEnd
+
+- tapOn:
+    id: "nav_moments"
+- waitForAnimationToEnd
+- tapOn:
+    id: "entry_item"
+- waitForAnimationToEnd
+
+- tapOn:
+    id: "btn_save_keepsake"
+- waitForAnimationToEnd
+- tapOn:
+    id: "template_tpl_ink_rhythm"
+- waitForAnimationToEnd
+- tapOn:
+    text: "Save Keepsake"
+- extendedWaitUntil:
+    visible:
+      text: "Keepsake saved"
+    timeout: 15000
+- takeScreenshot: k6-initial-keepsake-saved
+
+# Navigate to badge → preview → edit
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      id: "badge_keepsake"
+    direction: DOWN
+- tapOn:
+    id: "badge_keepsake"
+- waitForAnimationToEnd
+- assertVisible:
+    text: "Keepsake Preview"
+- takeScreenshot: k6-preview-before-edit
+
+- tapOn:
+    id: "btn_edit_card"
+- waitForAnimationToEnd
+- assertVisible:
+    text: "Save as Keepsake"
+# card_builder_content identifier pending (DEF-K-001) — assert pre-filled text instead
+- assertVisible:
+    text: "UAT edit keepsake test entry"
+- takeScreenshot: k6-builder-reopened-for-edit
+
+# Change template to Plain Paper
+- tapOn:
+    id: "template_tpl_plain_paper"
+- waitForAnimationToEnd
+- takeScreenshot: k6-template-changed-to-plain-paper
+
+- tapOn:
+    text: "Save Keepsake"
+- extendedWaitUntil:
+    visible:
+      text: "Keepsake saved"
+    timeout: 15000
+- takeScreenshot: k6-keepsake-updated
+
+# Verify badge reflects new template name
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      id: "badge_keepsake"
+    direction: DOWN
+- assertVisible:
+    text: "Keepsake · Plain Paper"
+- takeScreenshot: k6-badge-shows-plain-paper

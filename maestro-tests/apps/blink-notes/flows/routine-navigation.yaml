@@ -1,0 +1,42 @@
+# Routine tab: navigate, verify screen loads, verify FAB changes to playlist_add
+# Does not create a routine (requires paid entitlement in production)
+appId: com.blinking.blinking
+---
+- runFlow: ../subflows/launch.yaml
+
+# Navigate to Routine tab
+- runFlow:
+    file: ../subflows/navigate-to-tab.yaml
+    env:
+      TAB_ID: "nav_routine"
+      SCREEN_TITLE: "Routines · Build/Do/Reflect"
+
+- takeScreenshot: routine-screen
+
+# Navigate back to My Day
+- tapOn:
+    id: "nav_my_day"
+- waitForAnimationToEnd
+- assertVisible:
+    text: "My Day"
+- takeScreenshot: back-to-home
+
+# Navigate to Insights
+- runFlow:
+    file: ../subflows/navigate-to-tab.yaml
+    env:
+      TAB_ID: "nav_insights"
+      SCREEN_TITLE: "Insights"
+
+- takeScreenshot: insights-screen
+
+# Navigate to Settings
+- runFlow:
+    file: ../subflows/navigate-to-tab.yaml
+    env:
+      TAB_ID: "nav_settings"
+      SCREEN_TITLE: "Settings"
+
+- takeScreenshot: settings-screen
+
+- takeScreenshot: navigation-complete

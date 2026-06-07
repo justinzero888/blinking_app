@@ -1,0 +1,28 @@
+# env: { ENTRY_TEXT: "My test memory" }
+# Precondition: app is on My Day (index 0) or Moments (index 1) — FAB is visible
+appId: com.blinking.blinking
+---
+- tapOn:
+    id: "btn_fab_add_entry"
+- waitForAnimationToEnd
+
+- extendedWaitUntil:
+    visible:
+      text: "Add Memory"
+    timeout: 5000
+
+- tapOn:
+    id: "input_entry_body"
+- waitForAnimationToEnd
+- inputText: ${ENTRY_TEXT}
+
+- tapOn:
+    id: "btn_entry_save"
+
+# Wait for editor to close and My Day FAB to reappear — screenshotBasedTap on iPad takes ~5s,
+# meaning the "Memory saved!" snackbar (4s) appears and dismisses BEFORE extendedWaitUntil
+# starts. Asserting FAB visibility instead avoids the race condition on both platforms.
+- extendedWaitUntil:
+    visible:
+      id: "btn_fab_add_entry"
+    timeout: 15000

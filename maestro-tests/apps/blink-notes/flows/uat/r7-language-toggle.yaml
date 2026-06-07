@@ -1,0 +1,49 @@
+# R-7: Settings — language toggle EN↔ZH, verify UI language changes
+appId: com.blinking.blinking
+---
+- runFlow: ../../subflows/launch.yaml
+
+- tapOn:
+    id: "nav_settings"
+- waitForAnimationToEnd
+- assertVisible:
+    text: "Settings"
+
+# Navigate to General tab
+- tapOn:
+    id: "settings_tab_general"
+- waitForAnimationToEnd
+- takeScreenshot: r7-settings-general
+
+# Tap Language picker (use ID to avoid matching section header text "Language")
+- tapOn:
+    id: "btn_language_picker"
+- waitForAnimationToEnd
+- assertVisible:
+    text: "Select Language"
+- takeScreenshot: r7-language-dialog
+
+# Select Chinese
+- tapOn:
+    text: "中文"
+- waitForAnimationToEnd
+- takeScreenshot: r7-switched-to-zh
+
+# Verify app is now in Chinese (Settings AppBar says 设置)
+- assertVisible:
+    text: "设置"
+- takeScreenshot: r7-settings-in-chinese
+
+# Switch back to English
+- tapOn:
+    id: "settings_tab_general"
+- waitForAnimationToEnd
+- tapOn:
+    id: "btn_language_picker"
+- waitForAnimationToEnd
+- tapOn:
+    text: "English"
+- waitForAnimationToEnd
+- assertVisible:
+    text: "Settings"
+- takeScreenshot: r7-back-to-english

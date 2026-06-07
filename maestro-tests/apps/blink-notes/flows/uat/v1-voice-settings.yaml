@@ -1,0 +1,52 @@
+# V-1 to V-3, V-25: Voice Reminders global toggle ON/OFF + Test Voice button tappable
+# toggle_voice_reminders: Semantics(identifier, onTap) wrapping ListTile in settings_screen.dart
+# btn_test_voice: Semantics on OutlinedButton.icon in settings_screen.dart
+#
+# Tap strategy: tapOn id "toggle_voice_reminders" relies on Semantics.onTap being defined
+# on the outer Semantics wrapper. Without an explicit onTap, iOS accessibilityActivate
+# returns NO for the checked=true (voice ON) state and the second tap has no effect.
+# The Semantics.onTap handler is the authoritative toggle action for automation.
+appId: com.blinking.blinking
+---
+- runFlow: ../../subflows/launch.yaml
+
+# Navigate to Settings → General
+- tapOn:
+    id: "nav_settings"
+- waitForAnimationToEnd
+- tapOn:
+    id: "settings_tab_general"
+- waitForAnimationToEnd
+- takeScreenshot: v1-settings-general
+
+# V-1: "Voice Reminders" toggle is visible (clearState resets SharedPrefs → default OFF)
+- assertVisible:
+    id: "toggle_voice_reminders"
+# clearState doesn't flush NSUserDefaults; wait briefly for voice to be OFF (default state)
+- extendedWaitUntil:
+    notVisible:
+      id: "btn_test_voice"
+    timeout: 3000
+- takeScreenshot: v1-voice-toggle-visible
+
+# V-2: Toggle voice ON
+- tapOn:
+    id: "toggle_voice_reminders"
+- waitForAnimationToEnd
+- takeScreenshot: v1-voice-enabled
+
+# V-25: "Test Voice" button appears and is tappable (no crash = pass)
+- assertVisible:
+    id: "btn_test_voice"
+- tapOn:
+    id: "btn_test_voice"
+- waitForAnimationToEnd
+- takeScreenshot: v1-test-voice-tapped
+
+# V-3: Toggle voice OFF — assert in-place (ValueNotifier updates synchronously)
+- tapOn:
+    id: "toggle_voice_reminders"
+- waitForAnimationToEnd
+- assertNotVisible:
+    id: "btn_test_voice"
+- takeScreenshot: v1-voice-disabled

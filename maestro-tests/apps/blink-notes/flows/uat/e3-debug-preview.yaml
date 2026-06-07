@@ -1,0 +1,52 @@
+# E-3: Debug toggle → preview — tap version 5× from restricted to restore preview, verify AI works
+appId: com.blinking.blinking
+---
+- runFlow: ../../subflows/launch.yaml
+
+- tapOn:
+    id: "nav_settings"
+- waitForAnimationToEnd
+
+- tapOn:
+    id: "settings_tab_general"
+- waitForAnimationToEnd
+
+# Scroll to bottom where debug toggle (version row) is located
+- scroll
+- waitForAnimationToEnd
+- scroll
+- waitForAnimationToEnd
+
+# First force restricted mode (5 taps)
+- tapOn:
+    id: "btn_debug_toggle"
+- tapOn:
+    id: "btn_debug_toggle"
+- tapOn:
+    id: "btn_debug_toggle"
+- tapOn:
+    id: "btn_debug_toggle"
+- tapOn:
+    id: "btn_debug_toggle"
+- waitForAnimationToEnd
+- assertVisible:
+    text: "Upgrade to Pro"
+
+# Now toggle back to preview (5 more taps)
+- tapOn:
+    id: "btn_debug_toggle"
+- tapOn:
+    id: "btn_debug_toggle"
+- tapOn:
+    id: "btn_debug_toggle"
+- tapOn:
+    id: "btn_debug_toggle"
+- tapOn:
+    id: "btn_debug_toggle"
+- waitForAnimationToEnd
+- takeScreenshot: e3-after-second-debug-tap
+
+# Verify restored to preview mode
+- assertVisible:
+    text: "21-Day Preview — 21 days left"
+- takeScreenshot: e3-preview-restored

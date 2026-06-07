@@ -1,0 +1,45 @@
+# Full entry lifecycle: create → verify on Home → navigate to Moments → verify → delete
+appId: com.blinking.blinking
+---
+- runFlow: ../subflows/launch.yaml
+
+# Create a new note entry
+- runFlow:
+    file: ../subflows/create-entry.yaml
+    env:
+      ENTRY_TEXT: "Maestro lifecycle test note"
+
+# Back on home — verify entry appears in today's overview
+- extendedWaitUntil:
+    visible:
+      text: "Maestro lifecycle test note"
+    timeout: 4000
+- takeScreenshot: entry-on-home
+
+# Navigate to Moments and verify entry appears in the list
+- runFlow:
+    file: ../subflows/navigate-to-tab.yaml
+    env:
+      TAB_ID: "nav_moments"
+      SCREEN_TITLE: "Moments"
+
+- assertVisible:
+    text: "Maestro lifecycle test note"
+- takeScreenshot: entry-in-moments
+
+# Tap the entry to open detail view
+- tapOn:
+    text: "Maestro lifecycle test note"
+- waitForAnimationToEnd
+- assertVisible:
+    text: "Maestro lifecycle test note"
+- pressKey: Back
+- waitForAnimationToEnd
+
+# Delete the entry to clean up
+- runFlow:
+    file: ../subflows/delete-entry.yaml
+    env:
+      ENTRY_TEXT: "Maestro lifecycle test note"
+
+- takeScreenshot: lifecycle-complete

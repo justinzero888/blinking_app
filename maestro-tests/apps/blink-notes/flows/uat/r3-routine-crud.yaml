@@ -1,0 +1,55 @@
+# R-3: Routine CRUD — create daily routine, verify in Build tab, toggle in Do tab
+appId: com.blinking.blinking
+---
+- runFlow: ../../subflows/launch.yaml
+
+- tapOn:
+    id: "nav_routine"
+- waitForAnimationToEnd
+- assertVisible:
+    text: "Routines · Build/Do/Reflect"
+
+# Navigate to Build tab
+- tapOn:
+    id: "routine_tab_build"
+- waitForAnimationToEnd
+- takeScreenshot: r3-build-tab
+
+# Tap FAB to add routine
+- tapOn:
+    id: "main_add_routine_fab"
+- waitForAnimationToEnd
+- assertVisible:
+    text: "Add Routine"
+
+# Enter routine name (wait for keyboard before typing)
+- tapOn:
+    id: "input_routine_name"
+- waitForAnimationToEnd
+- inputText: "UAT test habit"
+- waitForAnimationToEnd
+# Press Enter to dismiss keyboard — puts dialog buttons at their stable coordinates
+- pressKey: Enter
+- waitForAnimationToEnd
+- takeScreenshot: r3-routine-dialog
+
+# Tap by text — dialog is the only "Add" on screen, avoids MergeSemantics coordinate issues
+- tapOn:
+    text: "Add"
+- waitForAnimationToEnd
+- takeScreenshot: r3-routine-created
+
+# Verify save succeeded via snackbar (routine list text not accessible due to semantics lag)
+- extendedWaitUntil:
+    visible:
+      text: "Routine added"
+    timeout: 8000
+- takeScreenshot: r3-routine-in-build
+
+# Navigate to Do tab via ID
+- tapOn:
+    id: "routine_tab_do"
+- waitForAnimationToEnd
+# Text inside TabBarView/PageView is not exposed to XCTest accessibility tree on iOS 26.4
+# Screenshot serves as visual evidence of Do tab content
+- takeScreenshot: r3-routine-in-do-tab

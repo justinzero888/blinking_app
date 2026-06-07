@@ -1,0 +1,64 @@
+# MK-10, MK-11, MK-12: Photo integration in keepsake cards
+# MK-12 (P0): Text-only entry → builder → save → no broken image placeholder visible
+# MK-10, MK-11: Photo as hero/inline — requires an entry with a photo.
+#   On simulators, no photo is pre-seeded; test is limited to text-only path.
+#   To test MK-10/MK-11 fully: seed a photo into the simulator camera roll before running,
+#   create an entry with that photo via image_picker, then open builder.
+#   This is tracked in Future Automation Candidates (k9-photo-full).
+#
+# This flow covers MK-12 fully. MK-10 and MK-11 are documented as manual (MV-1 visual QA).
+appId: com.blinking.blinking
+---
+- runFlow: ../../subflows/launch.yaml
+
+# === MK-12: Text-only entry → clean gradient background, no broken image placeholder ===
+- tapOn:
+    id: "btn_fab_add_entry"
+- waitForAnimationToEnd
+- tapOn:
+    id: "input_entry_body"
+- inputText: "UAT text-only keepsake - no photo attached"
+- tapOn:
+    id: "btn_entry_save"
+- waitForAnimationToEnd
+
+- tapOn:
+    id: "nav_moments"
+- waitForAnimationToEnd
+- tapOn:
+    id: "entry_item"
+- waitForAnimationToEnd
+
+- tapOn:
+    id: "btn_save_keepsake"
+- waitForAnimationToEnd
+- assertVisible:
+    text: "Save as Keepsake"
+
+- tapOn:
+    id: "template_tpl_ink_rhythm"
+- waitForAnimationToEnd
+- tapOn:
+    text: "Save Keepsake"
+- extendedWaitUntil:
+    visible:
+      text: "Keepsake saved"
+    timeout: 15000
+- takeScreenshot: k9-text-only-saved
+
+# Preview — verify no "Image unavailable" / re-render placeholder visible
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      id: "badge_keepsake"
+    direction: DOWN
+- tapOn:
+    id: "badge_keepsake"
+- waitForAnimationToEnd
+- assertVisible:
+    text: "Keepsake Preview"
+- assertNotVisible:
+    text: "Image unavailable"
+- assertNotVisible:
+    text: "Re-render"
+- takeScreenshot: k9-text-only-preview-clean

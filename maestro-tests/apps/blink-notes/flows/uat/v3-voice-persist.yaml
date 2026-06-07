@@ -1,0 +1,120 @@
+# V-20 to V-22: Voice settings persist across app relaunch (stopApp + launchApp no clearState)
+#
+# Tests:
+#  - Global voiceEnabled persists in SharedPreferences across stopApp/launchApp
+#  - New routine dialog shows "Speak reminder" toggle after relaunch (global still ON)
+#
+# Limitation: Per-routine voiceEnabled persistence (Routine.voiceEnabled in SQLite) requires
+# tapping the routine's edit dialog after relaunch. The routine tile's edit icon (more_vert)
+# has no Semantics identifier and is not accessible to XCTest. To fully automate V-20/V-21/V-22,
+# add Semantics(identifier: 'btn_edit_routine') to the GestureDetector in _BuildRoutineTile.
+# Until then, this flow validates the SharedPreferences layer that backs per-routine persistence.
+appId: com.blinking.blinking
+---
+- runFlow: ../../subflows/launch.yaml
+
+# === Part 1: Set up voice ON + create routine with voice enabled ===
+- tapOn:
+    id: "nav_settings"
+- waitForAnimationToEnd
+- tapOn:
+    id: "settings_tab_general"
+- waitForAnimationToEnd
+- tapOn:
+    id: "toggle_voice_reminders"
+- waitForAnimationToEnd
+- takeScreenshot: v3-voice-enabled-pre-stop
+
+# Create a routine with Speak reminder ON
+- tapOn:
+    id: "nav_routine"
+- waitForAnimationToEnd
+- tapOn:
+    id: "routine_tab_build"
+- waitForAnimationToEnd
+- tapOn:
+    id: "main_add_routine_fab"
+- waitForAnimationToEnd
+- tapOn:
+    id: "input_routine_name"
+- inputText: "UAT persist check"
+- waitForAnimationToEnd
+- tapOn:
+    id: "input_routine_reminder"
+- waitForAnimationToEnd
+- inputText: "07:00"
+- pressKey: Enter
+- waitForAnimationToEnd
+- tapOn:
+    id: "toggle_speak_reminder"
+- waitForAnimationToEnd
+- tapOn:
+    id: "btn_routine_dialog_save"
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      text: "Routine added"
+    timeout: 8000
+- takeScreenshot: v3-routine-created-with-voice
+
+# === Part 2: Simulate app relaunch (no clearState) ===
+- stopApp
+- launchApp:
+    clearState: false
+- waitForAnimationToEnd
+
+# === Part 3: Verify global voice persisted ===
+- tapOn:
+    id: "nav_settings"
+- waitForAnimationToEnd
+- tapOn:
+    id: "settings_tab_general"
+- waitForAnimationToEnd
+- takeScreenshot: v3-settings-after-relaunch
+# btn_test_voice is only visible when global voice is ON — its presence confirms persistence
+- assertVisible:
+    id: "btn_test_voice"
+- takeScreenshot: v3-voice-persisted
+
+# Verify "Speak reminder" appears for a new routine with reminder (global still ON)
+- tapOn:
+    id: "nav_routine"
+- waitForAnimationToEnd
+- tapOn:
+    id: "routine_tab_build"
+- waitForAnimationToEnd
+- tapOn:
+    id: "main_add_routine_fab"
+- waitForAnimationToEnd
+- tapOn:
+    id: "input_routine_name"
+- inputText: "UAT persist verify"
+- waitForAnimationToEnd
+- tapOn:
+    id: "input_routine_reminder"
+- waitForAnimationToEnd
+- inputText: "10:00"
+- pressKey: Enter
+- waitForAnimationToEnd
+- assertVisible:
+    id: "toggle_speak_reminder"
+- takeScreenshot: v3-speak-reminder-still-visible-after-relaunch
+- tapOn:
+    text: "Cancel"
+- waitForAnimationToEnd
+
+# ── TEARDOWN: Leave voice OFF so the next flow starts with a known state ──
+# clearState doesn't reliably flush NSUserDefaults; explicit teardown prevents stale prefs.
+- tapOn:
+    id: "nav_settings"
+- waitForAnimationToEnd
+- tapOn:
+    id: "settings_tab_general"
+- waitForAnimationToEnd
+- tapOn:
+    id: "toggle_voice_reminders"
+- extendedWaitUntil:
+    notVisible:
+      id: "btn_test_voice"
+    timeout: 5000
+- takeScreenshot: v3-teardown-voice-off

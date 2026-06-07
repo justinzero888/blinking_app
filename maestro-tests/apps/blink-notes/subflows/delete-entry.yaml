@@ -1,0 +1,17 @@
+# env: { ENTRY_TEXT: "entry to delete" }
+# Precondition: app is on Moments screen showing the entry
+appId: com.blinking.blinking
+---
+- longPressOn:
+    text: ${ENTRY_TEXT}
+- waitForAnimationToEnd
+
+- assertVisible:
+    text: "Delete Entry"
+
+- tapOn:
+    text: "Delete"
+- waitForAnimationToEnd
+
+- assertNotVisible:
+    text: ${ENTRY_TEXT}

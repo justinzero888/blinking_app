@@ -1,0 +1,41 @@
+# Smoke test — runs on every PR, target under 60s
+# Verifies: app launches, home screen loads, all 5 nav tabs are reachable
+appId: com.blinking.blinking
+---
+- runFlow: ../subflows/launch.yaml
+
+# Verify home screen content
+- assertVisible:
+    text: "My Day"
+- takeScreenshot: smoke-home
+
+# Verify bottom nav tabs are all accessible
+- tapOn:
+    id: "nav_moments"
+- waitForAnimationToEnd
+- assertVisible:
+    text: "Moments"
+- takeScreenshot: smoke-moments
+
+- tapOn:
+    id: "nav_routine"
+- waitForAnimationToEnd
+- assertVisible:
+    text: "Routines · Build/Do/Reflect"
+- takeScreenshot: smoke-routine
+
+- tapOn:
+    id: "nav_insights"
+- waitForAnimationToEnd
+- assertVisible:
+    text: "Insights"
+- takeScreenshot: smoke-insights
+
+- tapOn:
+    id: "nav_settings"
+- waitForAnimationToEnd
+- assertVisible:
+    text: "Settings"
+- takeScreenshot: smoke-settings
+
+- takeScreenshot: smoke-passed

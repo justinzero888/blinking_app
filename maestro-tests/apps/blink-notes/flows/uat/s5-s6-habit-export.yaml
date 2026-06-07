@@ -1,0 +1,44 @@
+# S-5/S-6: Habit export (JSON) — navigate to Settings, export habits, verify share sheet
+# SKIP ON IPAD: UIActivityViewController uses UIPopover on iPad, which opens in a separate
+# accessibility window that Maestro cannot traverse. The "Copy" action is unreachable via
+# XCTest. This flow passes on iPhone and Android. Use run-uat-ipad.sh to exclude on iPad.
+appId: com.blinking.blinking
+---
+- runFlow: ../../subflows/launch.yaml
+
+- tapOn:
+    id: "nav_settings"
+- waitForAnimationToEnd
+
+# Navigate to General tab
+- tapOn:
+    id: "settings_tab_general"
+- waitForAnimationToEnd
+- assertVisible:
+    text: "Language"
+
+# Scroll to reach Export Habits (below Full Backup, CSV, JSON, Restore Data)
+- scroll
+- waitForAnimationToEnd
+
+# Tap Export Habits via Semantics identifier
+- tapOn:
+    id: "btn_export_habits"
+- waitForAnimationToEnd
+
+# Share sheet should open immediately with JSON file attached.
+# iOS: UIActivityViewController shows "Copy" action button.
+# Android: share sheet shows "Sharing 1 file" title (file shares have no Copy action).
+# Regex matches either platform.
+- extendedWaitUntil:
+    visible:
+      text: "Copy|Sharing.*"
+    timeout: 10000
+- takeScreenshot: habit-export-share-sheet
+
+# Dismiss (iOS 17+ share sheet dismissed by swipe down)
+- swipe:
+    direction: DOWN
+    duration: 300
+- waitForAnimationToEnd
+- takeScreenshot: s5-s6-passed

@@ -1,0 +1,60 @@
+# Moments screen: create entry, search for it, filter by Today/Week
+appId: com.blinking.blinking
+---
+- runFlow: ../subflows/launch.yaml
+
+# Create an entry with a unique searchable string
+- runFlow:
+    file: ../subflows/create-entry.yaml
+    env:
+      ENTRY_TEXT: "SearchTarget unique keyword blinking"
+
+# Navigate to Moments
+- runFlow:
+    file: ../subflows/navigate-to-tab.yaml
+    env:
+      TAB_ID: "nav_moments"
+      SCREEN_TITLE: "Moments"
+
+# Search for the entry
+- tapOn:
+    id: "input_moments_search"
+- inputText: "SearchTarget"
+- waitForAnimationToEnd
+- assertVisible:
+    text: "SearchTarget unique keyword blinking"
+- takeScreenshot: search-results
+
+# Clear search
+- tapOn:
+    description: "clear"
+- waitForAnimationToEnd
+
+# Filter by Today
+- tapOn:
+    text: "Today"
+- waitForAnimationToEnd
+- assertVisible:
+    text: "SearchTarget unique keyword blinking"
+- takeScreenshot: filter-today
+
+# Filter by This week
+- tapOn:
+    text: "This week"
+- waitForAnimationToEnd
+- assertVisible:
+    text: "SearchTarget unique keyword blinking"
+- takeScreenshot: filter-week
+
+# Reset to All
+- tapOn:
+    text: "All"
+- waitForAnimationToEnd
+
+# Clean up — delete the test entry
+- runFlow:
+    file: ../subflows/delete-entry.yaml
+    env:
+      ENTRY_TEXT: "SearchTarget unique keyword blinking"
+
+- takeScreenshot: moments-search-complete

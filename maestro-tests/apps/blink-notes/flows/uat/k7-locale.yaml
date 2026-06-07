@@ -1,0 +1,128 @@
+# MK-20, MK-21, MK-22, MK-23: Template names and builder labels in ZH + EN locales
+# MK-20: ZH locale — template names: 墨韵, 素笺, 竹影, 月色, 青花, 茶语, 朱砂, 山水
+# MK-21: EN locale — template names: Ink Rhythm, Plain Paper, Bamboo Shadow, Moonlight,
+#          Blue Porcelain, Tea Whisper, Cinnabar Seal, Landscape
+# MK-22: ZH locale — builder title "保存为纪念", section labels "选择模板", "内容", etc.
+# MK-23: EN locale — builder title "Save as Keepsake", section labels "Choose Template", etc.
+#
+# Language toggle: btn_language_picker → dialog → tap locale text (matches r7-language-toggle)
+appId: com.blinking.blinking
+---
+- runFlow: ../../subflows/launch.yaml
+
+# Create an entry (needed to open builder)
+- tapOn:
+    id: "btn_fab_add_entry"
+- waitForAnimationToEnd
+- tapOn:
+    id: "input_entry_body"
+- inputText: "UAT locale keepsake test"
+- tapOn:
+    id: "btn_entry_save"
+- waitForAnimationToEnd
+
+- tapOn:
+    id: "nav_moments"
+- waitForAnimationToEnd
+- tapOn:
+    id: "entry_item"
+- waitForAnimationToEnd
+
+# === MK-23: EN locale builder labels (default after clearState on EN device) ===
+- tapOn:
+    id: "btn_save_keepsake"
+- waitForAnimationToEnd
+- assertVisible:
+    text: "Save as Keepsake"
+- assertVisible:
+    text: "Choose Template"
+- assertVisible:
+    text: "Content"
+- assertVisible:
+    text: "Show Elements"
+- takeScreenshot: k7-en-builder-labels
+
+# MK-21: EN template IDs visible in picker (text labels inside horizontal ListView
+# are not accessible via XCTest text nodes — visual name check is manual MV-2)
+- assertVisible:
+    id: "template_tpl_ink_rhythm"
+- assertVisible:
+    id: "template_tpl_plain_paper"
+- takeScreenshot: k7-en-template-names
+
+# Dismiss builder, then back to Moments so bottom nav is fully visible
+- tapOn:
+    id: "btn_close_builder"
+- waitForAnimationToEnd
+- tapOn:
+    id: "btn_back_entry"
+- waitForAnimationToEnd
+
+# === Switch to ZH via Settings (matches r7-language-toggle pattern) ===
+- tapOn:
+    id: "nav_settings"
+- waitForAnimationToEnd
+- tapOn:
+    id: "settings_tab_general"
+- waitForAnimationToEnd
+- tapOn:
+    id: "btn_language_picker"
+- waitForAnimationToEnd
+- tapOn:
+    text: "中文"
+- waitForAnimationToEnd
+- takeScreenshot: k7-switched-to-zh
+
+# Navigate back to entry detail
+- tapOn:
+    id: "nav_moments"
+- waitForAnimationToEnd
+- tapOn:
+    id: "entry_item"
+- waitForAnimationToEnd
+
+# === MK-22: ZH locale builder labels ===
+- tapOn:
+    id: "btn_save_keepsake"
+- waitForAnimationToEnd
+- assertVisible:
+    text: "保存为纪念"
+- assertVisible:
+    text: "选择模板"
+- assertVisible:
+    text: "内容"
+- assertVisible:
+    text: "显示元素"
+- takeScreenshot: k7-zh-builder-labels
+
+# MK-20: ZH template IDs visible in picker (same IDs regardless of locale)
+- assertVisible:
+    id: "template_tpl_ink_rhythm"
+- assertVisible:
+    id: "template_tpl_plain_paper"
+- takeScreenshot: k7-zh-template-names
+
+# Dismiss builder, then back to Moments so bottom nav is fully visible
+- tapOn:
+    id: "btn_close_builder"
+- waitForAnimationToEnd
+- tapOn:
+    id: "btn_back_entry"
+- waitForAnimationToEnd
+
+# === TEARDOWN: Restore EN locale ===
+- tapOn:
+    id: "nav_settings"
+    optional: true
+- waitForAnimationToEnd
+- tapOn:
+    id: "settings_tab_general"
+    optional: true
+- waitForAnimationToEnd
+- tapOn:
+    id: "btn_language_picker"
+- waitForAnimationToEnd
+- tapOn:
+    text: "English"
+- waitForAnimationToEnd
+- takeScreenshot: k7-restored-en-locale

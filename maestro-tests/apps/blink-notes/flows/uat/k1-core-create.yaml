@@ -1,72 +1,86 @@
-# K1: Core keepsake creation flow
-# Entry → Save as Keepsake → pick template → Save → verify badge → preview
+# MK-1, MK-6, MK-7: Create keepsake from entry (iPhone)
+# MK-1: Builder opens with pre-filled content, select Ink Rhythm template, save
+# MK-6: Badge chip visible on EntryDetailScreen after save
+# MK-7: Badge tap → CardPreviewScreen with Edit + Share icons visible
+#
+# btn_save_keepsake: Semantics on photo_library IconButton in entry_detail_screen.dart
+# card_builder_content: PENDING DEF-K-001 — Semantics identifier not yet added to content TextField
+# template_tpl_ink_rhythm: Semantics on GestureDetector in card_template_picker.dart
+# btn_card_save: Semantics on Save Keepsake ElevatedButton
+# badge_keepsake: Semantics on ActionChip badge in entry_detail_screen.dart
+# btn_edit_card / btn_share_card: Semantics on AppBar icons in card_preview_screen.dart
 appId: com.blinking.blinking
 ---
 - runFlow: ../../subflows/launch.yaml
 
-# Navigate to Moment tab to see seed entries
+# Create an entry
+- tapOn:
+    id: "btn_fab_add_entry"
+- waitForAnimationToEnd
+- tapOn:
+    id: "input_entry_body"
+- inputText: "UAT keepsake test entry for MK-1"
+- tapOn:
+    id: "btn_entry_save"
+- waitForAnimationToEnd
+- takeScreenshot: k1-entry-created
+
+# Navigate to Moments tab and open entry detail
 - tapOn:
     id: "nav_moments"
-
-    waitToSettleTimeoutMs: 0
-# Tap first entry (today's entry: "今日阳光正好，微风不燥。")
-- extendedWaitUntil:
-    visible:
-      id: "entry_item"
-    timeout: 8000
-- scroll
-- extendedWaitUntil:
-    visible:
-      id: "entry_item"
-    timeout: 5000
+- waitForAnimationToEnd
 - tapOn:
     id: "entry_item"
-    index: 0
+- waitForAnimationToEnd
+- takeScreenshot: k1-entry-detail
 
-    waitToSettleTimeoutMs: 0
-# Tap Save as Keepsake button
+# MK-1: Tap "Save as Keepsake" → builder opens
 - tapOn:
     id: "btn_save_keepsake"
+- waitForAnimationToEnd
+- assertVisible:
+    text: "Save as Keepsake"
+# card_builder_content identifier pending (DEF-K-001) — assert pre-filled text instead
+- assertVisible:
+    text: "UAT keepsake test entry for MK-1"
+- takeScreenshot: k1-builder-opened
 
-    waitToSettleTimeoutMs: 0
-# Verify builder sheet is open
-- assertVisible: "Save as Keepsake"
-- assertVisible: "Choose Template"
-
-# Pick the third template (竹影 — Bamboo Shadow)
+# Select Ink Rhythm template
 - tapOn:
-    id: "template_tpl_bamboo"
+    id: "template_tpl_ink_rhythm"
+- waitForAnimationToEnd
+- takeScreenshot: k1-ink-rhythm-selected
 
-    waitToSettleTimeoutMs: 0
-# Toggle mood OFF
-- tapOn:
+# Verify overlay toggles visible
+- assertVisible:
     id: "toggle_show_mood"
 
-    waitToSettleTimeoutMs: 0
-# Tap Save Keepsake
 - tapOn:
-    id: "btn_card_save"
-
-    waitToSettleTimeoutMs: 0
-# Wait for save to complete
+    text: "Save Keepsake"
 - extendedWaitUntil:
-    visible: "Keepsake saved"
+    visible:
+      text: "Keepsake saved"
     timeout: 15000
+- takeScreenshot: k1-keepsake-saved
 
-# Verify badge appears on entry detail
+# MK-6: Badge visible on entry detail
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      id: "badge_keepsake"
+    direction: DOWN
 - assertVisible:
     id: "badge_keepsake"
+- takeScreenshot: k1-badge-visible
 
-# Tap badge to open preview
+# MK-7: Tap badge → CardPreviewScreen
 - tapOn:
     id: "badge_keepsake"
-
-    waitToSettleTimeoutMs: 0
-# Verify preview screen with image
-- assertVisible: "Keepsake Preview"
-
-# Verify Edit and Share buttons
+- waitForAnimationToEnd
+- assertVisible:
+    text: "Keepsake Preview"
 - assertVisible:
     id: "btn_edit_card"
 - assertVisible:
     id: "btn_share_card"
+- takeScreenshot: k1-preview-open

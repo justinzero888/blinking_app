@@ -1,0 +1,118 @@
+# MK-13, MK-14, MK-16, MK-17: Toggle overlay elements ON/OFF and verify save succeeds
+# MK-13: Mood toggle OFF → ON
+# MK-14: Tags toggle ON → OFF
+# MK-16: Date toggle ON → OFF
+# MK-17: Footer toggle ON → OFF
+# Visual verification (emoji absent/present on card PNG) is manual per MV-1.
+# Automation verifies: toggles are interactable and save completes without error.
+#
+# toggle_show_mood / date / tags / footer: MergeSemantics+Semantics on SwitchListTile
+appId: com.blinking.blinking
+---
+- runFlow: ../../subflows/launch.yaml
+
+# Create entry
+- tapOn:
+    id: "btn_fab_add_entry"
+- waitForAnimationToEnd
+- tapOn:
+    id: "input_entry_body"
+- inputText: "UAT toggle overlays test"
+- tapOn:
+    id: "btn_entry_save"
+- waitForAnimationToEnd
+
+- tapOn:
+    id: "nav_moments"
+- waitForAnimationToEnd
+- tapOn:
+    id: "entry_item"
+- waitForAnimationToEnd
+
+- tapOn:
+    id: "btn_save_keepsake"
+- waitForAnimationToEnd
+- assertVisible:
+    text: "Save as Keepsake"
+
+- tapOn:
+    id: "template_tpl_ink_rhythm"
+- waitForAnimationToEnd
+
+# Scroll to toggles
+- scrollUntilVisible:
+    element:
+      id: "toggle_show_mood"
+    direction: DOWN
+
+# MK-13: Toggle mood OFF
+- tapOn:
+    id: "toggle_show_mood"
+- waitForAnimationToEnd
+- takeScreenshot: k5-mood-off
+
+# MK-16: Toggle date OFF
+- tapOn:
+    id: "toggle_show_date"
+- waitForAnimationToEnd
+- takeScreenshot: k5-date-off
+
+# MK-14: Toggle tags OFF
+- tapOn:
+    id: "toggle_show_tags"
+- waitForAnimationToEnd
+- takeScreenshot: k5-tags-off
+
+# MK-17: Toggle footer OFF
+- tapOn:
+    id: "toggle_show_footer"
+- waitForAnimationToEnd
+- takeScreenshot: k5-all-overlays-off
+
+# Save with all overlays OFF
+- tapOn:
+    text: "Save Keepsake"
+- extendedWaitUntil:
+    visible:
+      text: "Keepsake saved"
+    timeout: 15000
+- takeScreenshot: k5-saved-overlays-off
+
+# Edit the card: navigate back to badge, tap, then edit
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      id: "badge_keepsake"
+    direction: DOWN
+- tapOn:
+    id: "badge_keepsake"
+- waitForAnimationToEnd
+- tapOn:
+    id: "btn_edit_card"
+- waitForAnimationToEnd
+- assertVisible:
+    text: "Save as Keepsake"
+
+# Scroll to toggles — turn all back ON
+- scrollUntilVisible:
+    element:
+      id: "toggle_show_mood"
+    direction: DOWN
+- tapOn:
+    id: "toggle_show_mood"
+- tapOn:
+    id: "toggle_show_date"
+- tapOn:
+    id: "toggle_show_tags"
+- tapOn:
+    id: "toggle_show_footer"
+- waitForAnimationToEnd
+- takeScreenshot: k5-all-overlays-on
+
+- tapOn:
+    text: "Save Keepsake"
+- extendedWaitUntil:
+    visible:
+      text: "Keepsake saved"
+    timeout: 15000
+- takeScreenshot: k5-saved-overlays-on

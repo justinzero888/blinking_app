@@ -1,0 +1,126 @@
+# V-4 to V-7: Per-routine "Speak reminder" toggle visibility rules
+#
+# V-7: Toggle absent when no reminder time is set
+# V-4: Toggle absent when global voice is OFF (even with reminder set)
+# V-5: Toggle visible when global voice is ON + reminder set
+# V-6: Per-routine toggle can be turned ON and routine saved
+#
+# toggle_voice_reminders: MergeSemantics+Semantics on SwitchListTile in settings_screen.dart
+# input_routine_reminder: MergeSemantics+Semantics on reminder TextField in routine_screen.dart
+# toggle_speak_reminder: MergeSemantics+Semantics on SwitchListTile in routine_screen.dart
+# clearState resets SharedPreferences → global voice starts as OFF by default.
+appId: com.blinking.blinking
+---
+- runFlow: ../../subflows/launch.yaml
+
+# === V-7: No reminder → "Speak reminder" not visible (regardless of global voice) ===
+- tapOn:
+    id: "nav_routine"
+- waitForAnimationToEnd
+- tapOn:
+    id: "routine_tab_build"
+- waitForAnimationToEnd
+- tapOn:
+    id: "main_add_routine_fab"
+- waitForAnimationToEnd
+- assertVisible:
+    text: "Add Routine"
+- tapOn:
+    id: "input_routine_name"
+- inputText: "UAT no-reminder test"
+- waitForAnimationToEnd
+# No reminder entered → toggle must be absent
+- assertNotVisible:
+    id: "toggle_speak_reminder"
+- takeScreenshot: v2-no-reminder-no-toggle
+- tapOn:
+    text: "Cancel"
+- waitForAnimationToEnd
+
+# === V-4: Reminder set but global voice OFF → "Speak reminder" not visible ===
+- tapOn:
+    id: "main_add_routine_fab"
+- waitForAnimationToEnd
+- tapOn:
+    id: "input_routine_name"
+- inputText: "UAT voice off test"
+- waitForAnimationToEnd
+- tapOn:
+    id: "input_routine_reminder"
+- waitForAnimationToEnd
+- inputText: "08:00"
+- pressKey: Enter
+- waitForAnimationToEnd
+# Global voice is OFF (clearState default) → toggle still absent
+- assertNotVisible:
+    id: "toggle_speak_reminder"
+- takeScreenshot: v2-reminder-set-voice-off-no-toggle
+- tapOn:
+    text: "Cancel"
+- waitForAnimationToEnd
+
+# === Turn global voice ON ===
+- tapOn:
+    id: "nav_settings"
+- waitForAnimationToEnd
+- tapOn:
+    id: "settings_tab_general"
+- waitForAnimationToEnd
+- tapOn:
+    id: "toggle_voice_reminders"
+- waitForAnimationToEnd
+- takeScreenshot: v2-voice-now-on
+
+# === V-5: Global voice ON + reminder set → "Speak reminder" visible ===
+- tapOn:
+    id: "nav_routine"
+- waitForAnimationToEnd
+- tapOn:
+    id: "routine_tab_build"
+- waitForAnimationToEnd
+- tapOn:
+    id: "main_add_routine_fab"
+- waitForAnimationToEnd
+- tapOn:
+    id: "input_routine_name"
+- inputText: "UAT speak test"
+- waitForAnimationToEnd
+- tapOn:
+    id: "input_routine_reminder"
+- waitForAnimationToEnd
+- inputText: "09:00"
+- pressKey: Enter
+- waitForAnimationToEnd
+- assertVisible:
+    id: "toggle_speak_reminder"
+- takeScreenshot: v2-speak-reminder-visible
+
+# === V-6: Toggle "Speak reminder" ON and save routine ===
+- tapOn:
+    id: "toggle_speak_reminder"
+- waitForAnimationToEnd
+- takeScreenshot: v2-speak-reminder-toggled-on
+- tapOn:
+    id: "btn_routine_dialog_save"
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      text: "Routine added"
+    timeout: 8000
+- takeScreenshot: v2-routine-saved-with-voice
+
+# ── TEARDOWN: Leave voice OFF so the next flow starts with a known state ──
+# clearState doesn't reliably flush NSUserDefaults; explicit teardown prevents stale prefs.
+- tapOn:
+    id: "nav_settings"
+- waitForAnimationToEnd
+- tapOn:
+    id: "settings_tab_general"
+- waitForAnimationToEnd
+- tapOn:
+    id: "toggle_voice_reminders"
+- extendedWaitUntil:
+    notVisible:
+      id: "btn_test_voice"
+    timeout: 5000
+- takeScreenshot: v2-teardown-voice-off

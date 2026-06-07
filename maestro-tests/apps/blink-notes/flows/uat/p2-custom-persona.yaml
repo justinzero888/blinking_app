@@ -1,0 +1,75 @@
+# P-2: Custom persona — create with all required fields, verify, go back
+appId: com.blinking.blinking
+---
+- runFlow: ../../subflows/launch.yaml
+
+- tapOn:
+    id: "nav_settings"
+- waitForAnimationToEnd
+- assertVisible:
+    text: "Choose reflection style"
+
+# Scroll down to reach Create Custom Style button (below persona cards)
+- scroll
+- waitForAnimationToEnd
+
+# Tap Create Custom Style (navigates to full-screen form)
+- tapOn:
+    text: "Create Custom Style"
+- waitForAnimationToEnd
+- assertVisible:
+    text: "Custom Style"
+- takeScreenshot: p2-custom-style-form
+
+# Fill in the required Name field
+- tapOn:
+    id: "input_custom_style_name"
+- waitForAnimationToEnd
+- inputText: "Test Persona"
+- takeScreenshot: p2-custom-name-entered
+
+# Scroll to bring lens fields into view
+- scroll
+- waitForAnimationToEnd
+
+# Fill in Lens 1 (required)
+- tapOn:
+    id: "input_custom_style_lens1"
+- waitForAnimationToEnd
+- inputText: "What was the highlight of your day?"
+
+# Fill in Lens 2 (required)
+- tapOn:
+    id: "input_custom_style_lens2"
+- waitForAnimationToEnd
+- inputText: "What challenged you today?"
+
+# Scroll to bring Lens 3 into view
+- scroll
+- waitForAnimationToEnd
+
+# Fill in Lens 3 (required)
+- tapOn:
+    id: "input_custom_style_lens3"
+- waitForAnimationToEnd
+- inputText: "What are you grateful for?"
+- takeScreenshot: p2-all-fields-filled
+
+# Scroll twice to bring Save button above keyboard fold
+- scroll
+- waitForAnimationToEnd
+- scroll
+- waitForAnimationToEnd
+
+# Tap Save button via identifier
+- tapOn:
+    id: "btn_custom_style_save"
+- waitForAnimationToEnd
+- takeScreenshot: p2-custom-persona-saved
+
+# Verify save succeeded via snackbar (card text not reliably accessible in merged semantics)
+- extendedWaitUntil:
+    visible:
+      text: "Custom style saved"
+    timeout: 10000
+- takeScreenshot: p2-custom-persona-visible

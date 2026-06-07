@@ -1,0 +1,44 @@
+# A-1: Android entry share — create entry, open detail, share, verify Android share sheet
+# SKIP ON IPAD: UIActivityViewController uses UIPopover on iPad, which opens in a separate
+# accessibility window that Maestro cannot traverse. The "Copy" action is unreachable via
+# XCTest. This flow passes on iPhone and Android. Use run-uat-ipad.sh to exclude on iPad.
+appId: com.blinking.blinking
+---
+- runFlow: ../../subflows/launch.yaml
+
+- runFlow:
+    file: ../../subflows/create-entry.yaml
+    env:
+      ENTRY_TEXT: "Android share test"
+
+- tapOn:
+    id: "nav_moments"
+- waitForAnimationToEnd
+# Wait for list to load before tapping entry by text
+- extendedWaitUntil:
+    visible:
+      id: "entry_item"
+    timeout: 5000
+- tapOn:
+    id: "entry_item"
+- waitForAnimationToEnd
+- takeScreenshot: a1-entry-detail
+
+# Tap share
+- tapOn:
+    text: "Share"
+- waitForAnimationToEnd
+
+# Android share sheet — "Sharing text" title is accessible; clipboard is an icon (no "Copy" text).
+# iOS share sheet — "Copy" action button is accessible.
+# Regex matches either platform.
+- extendedWaitUntil:
+    visible:
+      text: "Copy|Sharing.*"
+    timeout: 10000
+- takeScreenshot: a1-android-share-sheet
+
+# Dismiss Android share sheet
+- pressKey: BACK
+- waitForAnimationToEnd
+- takeScreenshot: a1-android-share-passed

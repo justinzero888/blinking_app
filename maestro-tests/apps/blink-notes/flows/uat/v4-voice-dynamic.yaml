@@ -1,0 +1,76 @@
+# V-24: "Speak reminder" toggle appears dynamically as user types reminder time
+# Verifies real-time setState triggered by _reminderController.addListener
+# input_routine_reminder: MergeSemantics+Semantics on reminder TextField in routine_screen.dart
+# toggle_speak_reminder: MergeSemantics+Semantics on SwitchListTile in routine_screen.dart
+appId: com.blinking.blinking
+---
+- runFlow: ../../subflows/launch.yaml
+
+# Enable global voice (required for per-routine toggle to appear)
+- tapOn:
+    id: "nav_settings"
+- waitForAnimationToEnd
+- tapOn:
+    id: "settings_tab_general"
+- waitForAnimationToEnd
+- tapOn:
+    id: "toggle_voice_reminders"
+- waitForAnimationToEnd
+- takeScreenshot: v4-voice-on
+
+# Open Add Routine dialog
+- tapOn:
+    id: "nav_routine"
+- waitForAnimationToEnd
+- tapOn:
+    id: "routine_tab_build"
+- waitForAnimationToEnd
+- tapOn:
+    id: "main_add_routine_fab"
+- waitForAnimationToEnd
+- tapOn:
+    id: "input_routine_name"
+- inputText: "UAT dynamic toggle"
+- waitForAnimationToEnd
+
+# Reminder field is empty → "Speak reminder" toggle must be absent
+- assertNotVisible:
+    id: "toggle_speak_reminder"
+- takeScreenshot: v4-reminder-empty-toggle-absent
+
+# Type reminder time → toggle must appear dynamically
+- tapOn:
+    id: "input_routine_reminder"
+- waitForAnimationToEnd
+- inputText: "08:00"
+- waitForAnimationToEnd
+- assertVisible:
+    id: "toggle_speak_reminder"
+- takeScreenshot: v4-reminder-typed-toggle-visible
+
+# Clear reminder field → toggle must disappear dynamically
+- eraseText: 5
+- waitForAnimationToEnd
+- assertNotVisible:
+    id: "toggle_speak_reminder"
+- takeScreenshot: v4-reminder-cleared-toggle-gone
+
+- tapOn:
+    text: "Cancel"
+- waitForAnimationToEnd
+
+# ── TEARDOWN: Leave voice OFF so the next flow starts with a known state ──
+# clearState doesn't reliably flush NSUserDefaults; explicit teardown prevents stale prefs.
+- tapOn:
+    id: "nav_settings"
+- waitForAnimationToEnd
+- tapOn:
+    id: "settings_tab_general"
+- waitForAnimationToEnd
+- tapOn:
+    id: "toggle_voice_reminders"
+- extendedWaitUntil:
+    notVisible:
+      id: "btn_test_voice"
+    timeout: 5000
+- takeScreenshot: v4-teardown-voice-off

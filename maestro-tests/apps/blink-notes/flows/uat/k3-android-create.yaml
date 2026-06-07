@@ -1,0 +1,69 @@
+# MK-24: Create keepsake on Android — full flow including share sheet
+# Share sheet works on Android (no UIPopover limitation).
+# btn_share_card tapped; share sheet opened is verified via assertVisible.
+appId: com.blinking.blinking
+---
+- runFlow: ../../subflows/launch.yaml
+
+- tapOn:
+    id: "btn_fab_add_entry"
+- waitForAnimationToEnd
+- tapOn:
+    id: "input_entry_body"
+- inputText: "UAT keepsake Android test"
+- tapOn:
+    id: "btn_entry_save"
+- waitForAnimationToEnd
+
+- tapOn:
+    id: "nav_moments"
+- waitForAnimationToEnd
+- tapOn:
+    id: "entry_item"
+- waitForAnimationToEnd
+
+- tapOn:
+    id: "btn_save_keepsake"
+- waitForAnimationToEnd
+- assertVisible:
+    text: "Save as Keepsake"
+
+# Swipe left to reveal templates 5-8; template_tpl_tea is template 6
+- swipe:
+    start: "75%, 30%"
+    end: "25%, 30%"
+    duration: 400
+- waitForAnimationToEnd
+- tapOn:
+    id: "template_tpl_tea"
+- waitForAnimationToEnd
+
+- tapOn:
+    text: "Save Keepsake"
+- extendedWaitUntil:
+    visible:
+      text: "Keepsake saved"
+    timeout: 15000
+- takeScreenshot: k3-keepsake-saved
+
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      id: "badge_keepsake"
+    direction: DOWN
+- tapOn:
+    id: "badge_keepsake"
+- waitForAnimationToEnd
+- assertVisible:
+    text: "Keepsake Preview"
+- takeScreenshot: k3-preview-open
+
+# Tap share — Android share sheet opens (not a UIPopover)
+- tapOn:
+    id: "btn_share_card"
+- waitForAnimationToEnd
+- takeScreenshot: k3-share-sheet-opened
+
+# Dismiss share sheet
+- pressKey: Back
+- waitForAnimationToEnd

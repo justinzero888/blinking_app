@@ -1,0 +1,19 @@
+# E-1: Fresh install — verify 21-day preview mode is active
+appId: com.blinking.blinking
+---
+- runFlow: ../../subflows/launch.yaml
+
+- tapOn:
+    id: "nav_settings"
+- waitForAnimationToEnd
+
+# Navigate to General tab to see entitlement banner
+- tapOn:
+    id: "settings_tab_general"
+- waitForAnimationToEnd
+- takeScreenshot: e1-settings-general
+
+# Verify 21-day preview banner is visible
+- assertVisible:
+    text: "21-Day Preview — 21 days left"
+- takeScreenshot: e1-preview-banner-visible

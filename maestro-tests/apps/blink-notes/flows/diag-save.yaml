@@ -1,0 +1,31 @@
+appId: com.blinking.blinking
+---
+- runFlow: ../../subflows/launch.yaml
+- tapOn:
+    id: "btn_fab_add_entry"
+- waitForAnimationToEnd
+- tapOn:
+    id: "input_entry_body"
+- inputText: "diag save test"
+- tapOn:
+    id: "btn_entry_save"
+- waitForAnimationToEnd
+- tapOn:
+    id: "nav_moments"
+- waitForAnimationToEnd
+- tapOn:
+    id: "entry_item"
+- waitForAnimationToEnd
+- tapOn:
+    id: "btn_save_keepsake"
+- waitForAnimationToEnd
+- assertVisible:
+    text: "Save as Keepsake"
+- takeScreenshot: diag-builder-open
+- tapOn:
+    id: "btn_card_save"
+- extendedWaitUntil:
+    visible:
+      text: "Keepsake saved"
+    timeout: 10000
+- takeScreenshot: diag-id-tap-result

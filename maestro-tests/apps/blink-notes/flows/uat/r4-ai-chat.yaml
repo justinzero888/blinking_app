@@ -1,0 +1,61 @@
+# R-4: AI Reflection — open Daily Reflection screen, wait for AI content, save reflection
+# Note: kUseMultiTurnChat=false routes btn_ai_robot to ReflectionSessionScreen (not AssistantScreen)
+appId: com.blinking.blinking
+---
+- runFlow: ../../subflows/launch.yaml
+
+# Create an entry so the AI has content to reflect on
+- runFlow:
+    file: ../../subflows/create-entry.yaml
+    env:
+      ENTRY_TEXT: "Today I felt grateful and focused on my goals"
+
+# Navigate to Moments then back to My Day — triggers robot widget rebuild
+- tapOn:
+    id: "nav_moments"
+- waitForAnimationToEnd
+- tapOn:
+    id: "nav_my_day"
+- waitForAnimationToEnd
+
+# Robot button should now be visible (active state: entry exists today)
+- extendedWaitUntil:
+    visible:
+      id: "btn_ai_robot"
+    timeout: 10000
+
+# Open Daily Reflection
+- tapOn:
+    id: "btn_ai_robot"
+- waitForAnimationToEnd
+- takeScreenshot: r4-ai-chat-opened
+
+# Screenshot as visual evidence of screen — "Daily Reflection" heading text is not exposed to
+# XCTest accessibility tree on iOS 26.4 (plain Text widget in ListView, no Semantics identifier).
+# Skip text assertion; wait directly for "Save Reflection" which is a FilledButton and IS accessible.
+- takeScreenshot: r4-reflection-screen
+
+# Wait for AI to finish generating — "Save Reflection" button appears only when !aiLoading && hasContent.
+# 60s timeout: iPad simulator AI calls can take 30-50s when running alongside other test flows.
+- extendedWaitUntil:
+    visible:
+      text: "Save Reflection"
+    timeout: 60000
+- takeScreenshot: r4-reflection-content
+
+# Scroll to ensure Save Reflection button is fully in view before tapping
+- scroll
+- waitForAnimationToEnd
+
+# Tap Save Reflection
+- tapOn:
+    text: "Save Reflection"
+- waitForAnimationToEnd
+- takeScreenshot: r4-message-sent
+
+# Verify saved — button switches to "Saved" (disabled) with check icon
+- extendedWaitUntil:
+    visible:
+      text: "Saved"
+    timeout: 5000
+- takeScreenshot: r4-ai-responded

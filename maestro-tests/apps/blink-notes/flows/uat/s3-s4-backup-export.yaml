@@ -1,0 +1,51 @@
+# S-3/S-4: Full backup export — navigate to Settings, trigger ZIP backup, verify share sheet
+# SKIP ON IPAD: UIActivityViewController uses UIPopover on iPad, which opens in a separate
+# accessibility window that Maestro cannot traverse. The "Copy" action is unreachable via
+# XCTest. This flow passes on iPhone and Android. Use run-uat-ipad.sh to exclude on iPad.
+appId: com.blinking.blinking
+---
+- runFlow: ../../subflows/launch.yaml
+
+- tapOn:
+    id: "nav_settings"
+- waitForAnimationToEnd
+
+# Navigate to General tab
+- tapOn:
+    id: "settings_tab_general"
+- waitForAnimationToEnd
+- assertVisible:
+    text: "Language"
+
+# Tap Full Backup (ZIP) via Semantics identifier
+- tapOn:
+    id: "btn_full_backup"
+- waitForAnimationToEnd
+- takeScreenshot: backup-range-dialog
+
+# Select All data range
+- tapOn:
+    text: "All data"
+- waitForAnimationToEnd
+
+# Start Backup
+- tapOn:
+    text: "Start Backup"
+- waitForAnimationToEnd
+
+# Wait for backup to complete and share sheet to appear.
+# iOS: UIActivityViewController shows "Copy" action button.
+# Android: share sheet shows "Sharing 1 file" title (file shares have no Copy action).
+# Regex matches either platform.
+- extendedWaitUntil:
+    visible:
+      text: "Copy|Sharing.*"
+    timeout: 60000
+- takeScreenshot: backup-share-sheet
+
+# Dismiss (iOS 17+ share sheet dismissed by swipe down)
+- swipe:
+    direction: DOWN
+    duration: 300
+- waitForAnimationToEnd
+- takeScreenshot: s3-s4-passed

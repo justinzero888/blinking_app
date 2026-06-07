@@ -1,0 +1,7 @@
+# env: { READY_TEXT: "My Day" }
+appId: com.blinking.blinking
+---
+- extendedWaitUntil:
+    visible:
+      text: ${READY_TEXT}
+    timeout: 8000

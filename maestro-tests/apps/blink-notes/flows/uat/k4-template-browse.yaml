@@ -1,0 +1,94 @@
+# MK-5: Browse all 8 templates — verify all thumbnails selectable, no crash on each
+# Visual fidelity (gradient correctness, colors) is manual per MV-1, MV-2.
+# template_tpl_*: Semantics on GestureDetector in card_template_picker.dart
+appId: com.blinking.blinking
+---
+- runFlow: ../../subflows/launch.yaml
+
+# Create an entry to give the builder pre-filled content
+- tapOn:
+    id: "btn_fab_add_entry"
+- waitForAnimationToEnd
+- tapOn:
+    id: "input_entry_body"
+- inputText: "UAT template browse test"
+- tapOn:
+    id: "btn_entry_save"
+- waitForAnimationToEnd
+
+- tapOn:
+    id: "nav_moments"
+- waitForAnimationToEnd
+- tapOn:
+    id: "entry_item"
+- waitForAnimationToEnd
+
+- tapOn:
+    id: "btn_save_keepsake"
+- waitForAnimationToEnd
+- assertVisible:
+    text: "Save as Keepsake"
+- takeScreenshot: k4-builder-open
+
+# Tap each of the 8 templates and verify selection (no crash = pass for automation)
+- tapOn:
+    id: "template_tpl_ink_rhythm"
+- waitForAnimationToEnd
+- takeScreenshot: k4-tpl-ink-rhythm
+
+- tapOn:
+    id: "template_tpl_plain_paper"
+- waitForAnimationToEnd
+- takeScreenshot: k4-tpl-plain-paper
+
+- tapOn:
+    id: "template_tpl_bamboo"
+- waitForAnimationToEnd
+- takeScreenshot: k4-tpl-bamboo
+
+- tapOn:
+    id: "template_tpl_moonlight"
+- waitForAnimationToEnd
+- takeScreenshot: k4-tpl-moonlight
+
+# Swipe left on the template row to reveal templates 5-8 (off-screen to the right).
+# y=0.30 targets the template thumbnail row which is in the upper portion of the sheet.
+- swipe:
+    start: "75%, 30%"
+    end: "25%, 30%"
+    duration: 400
+- waitForAnimationToEnd
+- tapOn:
+    id: "template_tpl_porcelain"
+- waitForAnimationToEnd
+- takeScreenshot: k4-tpl-porcelain
+
+- tapOn:
+    id: "template_tpl_tea"
+- waitForAnimationToEnd
+- takeScreenshot: k4-tpl-tea
+
+- tapOn:
+    id: "template_tpl_seal"
+- waitForAnimationToEnd
+- takeScreenshot: k4-tpl-seal
+
+# Second swipe — needed on Android where one swipe only reveals templates 5-7
+- swipe:
+    start: "75%, 30%"
+    end: "25%, 30%"
+    duration: 400
+- waitForAnimationToEnd
+- tapOn:
+    id: "template_tpl_landscape"
+- waitForAnimationToEnd
+- takeScreenshot: k4-tpl-landscape
+
+# Save with the last selected template (landscape) to verify the full save path works
+- tapOn:
+    text: "Save Keepsake"
+- extendedWaitUntil:
+    visible:
+      text: "Keepsake saved"
+    timeout: 15000
+- takeScreenshot: k4-all-templates-browsed-saved

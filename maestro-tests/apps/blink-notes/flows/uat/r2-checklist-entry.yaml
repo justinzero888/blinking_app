@@ -1,0 +1,45 @@
+# R-2: Checklist entry — create list entry, add items, verify in Moments
+appId: com.blinking.blinking
+---
+- runFlow: ../../subflows/launch.yaml
+
+- tapOn:
+    id: "btn_fab_add_entry"
+- waitForAnimationToEnd
+- assertVisible:
+    text: "Add Memory"
+
+# Switch to List format
+- tapOn:
+    text: "List"
+- waitForAnimationToEnd
+
+# Add first checklist item
+- tapOn:
+    id: "input_checklist_item"
+- inputText: "Buy groceries"
+- pressKey: ENTER
+- waitForAnimationToEnd
+
+# Add second item
+- inputText: "Call dentist"
+- pressKey: ENTER
+- waitForAnimationToEnd
+- takeScreenshot: r2-checklist-items-added
+
+# Save
+- tapOn:
+    id: "btn_entry_save"
+- waitForAnimationToEnd
+- takeScreenshot: r2-checklist-saved
+
+# Verify entry appears in Moments — open it to confirm checklist content
+- tapOn:
+    id: "nav_moments"
+- waitForAnimationToEnd
+- tapOn:
+    id: "entry_item"
+- waitForAnimationToEnd
+- assertVisible:
+    text: "Buy groceries"
+- takeScreenshot: r2-checklist-in-moments

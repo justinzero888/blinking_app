@@ -1,0 +1,52 @@
+# S-9: Habit import — verify Import Habits taps correctly, opens document picker, no crash
+#
+# Phase 1 (this flow): Verifies the Import Habits path is tappable and opens
+# UIDocumentPickerViewController without crashing. Picker is dismissed cleanly.
+#
+# Phase 2 (requires run-script coordination): Full import with data verification needs
+# the fixture pre-seeded into the app container AFTER clearState runs. See the note in
+# run-uat-iphone.sh for the xcrun simctl pre-seeding pattern.
+#
+# Fixture: apps/blink-notes/fixtures/routines_test.json
+# btn_import_habits: MergeSemantics+Semantics on ListTile in settings_screen.dart
+appId: com.blinking.blinking
+---
+- runFlow: ../../subflows/launch.yaml
+
+# Navigate to Settings → General
+- tapOn:
+    id: "nav_settings"
+- waitForAnimationToEnd
+- tapOn:
+    id: "settings_tab_general"
+- waitForAnimationToEnd
+- takeScreenshot: s9-settings-general
+
+# Scroll to Import Habits (it's below Export Habits in the General tab)
+- scroll
+- waitForAnimationToEnd
+
+# Tap Import Habits — opens UIDocumentPickerViewController (native iOS, XCTest-accessible)
+- tapOn:
+    id: "btn_import_habits"
+- waitForAnimationToEnd
+- takeScreenshot: s9-picker-opened
+
+# Dismiss the file picker:
+# - iOS: "Cancel" button (optional — taps if found, skips if absent on iPad popover variants)
+# - Android: Back key (SAF picker has no Cancel text; pressKey: Back closes the activity)
+# pressKey: Back is a no-op on iOS Settings root (no navigation history to pop)
+- tapOn:
+    text: "Cancel"
+    optional: true
+- pressKey: Back
+- waitForAnimationToEnd
+- takeScreenshot: s9-picker-dismissed
+
+# Verify we're back on Settings General — btn_import_habits was in view before the picker
+# and should still be at the same scroll position after dismiss
+- extendedWaitUntil:
+    visible:
+      id: "btn_import_habits"
+    timeout: 5000
+- takeScreenshot: s9-back-on-settings

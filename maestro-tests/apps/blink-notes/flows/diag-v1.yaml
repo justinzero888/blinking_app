@@ -1,0 +1,24 @@
+appId: com.blinking.blinking
+---
+- runFlow: ../subflows/launch.yaml
+- tapOn:
+    id: "nav_settings"
+- waitForAnimationToEnd
+- tapOn:
+    id: "settings_tab_general"
+- waitForAnimationToEnd
+# Turn ON using ID
+- tapOn:
+    id: "toggle_voice_reminders"
+- waitForAnimationToEnd
+- assertVisible:
+    id: "btn_test_voice"
+- takeScreenshot: diag-v1-voice-on
+# Turn OFF using text label instead of ID
+- tapOn:
+    text: "Voice Reminders"
+- waitForAnimationToEnd
+- takeScreenshot: diag-v1-after-text-toggle-off
+- assertNotVisible:
+    id: "btn_test_voice"
+- takeScreenshot: diag-v1-pass

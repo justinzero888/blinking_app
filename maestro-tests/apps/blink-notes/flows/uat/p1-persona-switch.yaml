@@ -1,0 +1,45 @@
+# P-1: Persona switch — Kael→Elara→Rush→Marcus, verify each activates
+appId: com.blinking.blinking
+---
+- runFlow: ../../subflows/launch.yaml
+
+- tapOn:
+    id: "nav_settings"
+- waitForAnimationToEnd
+- assertVisible:
+    text: "Settings"
+
+# Default is on AI Personalization tab — confirm
+- assertVisible:
+    text: "Choose reflection style"
+- takeScreenshot: p1-ai-personalization-tab
+
+# Tap Elara
+- tapOn:
+    id: "persona_elara"
+- waitForAnimationToEnd
+- takeScreenshot: p1-elara-selected
+
+# Tap Rush
+- tapOn:
+    id: "persona_rush"
+- waitForAnimationToEnd
+- takeScreenshot: p1-rush-selected
+
+# Tap Marcus (scroll down first — may be below fold on smaller screens)
+- scroll
+- waitForAnimationToEnd
+- tapOn:
+    id: "persona_marcus"
+- waitForAnimationToEnd
+- takeScreenshot: p1-marcus-selected
+
+# Return to Kael — swipe up to scroll back, then tapOn (Maestro auto-scrolls if needed)
+- swipe:
+    direction: UP
+    duration: 500
+- waitForAnimationToEnd
+- tapOn:
+    id: "persona_kael"
+- waitForAnimationToEnd
+- takeScreenshot: p1-kael-restored

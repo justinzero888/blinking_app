@@ -1,0 +1,38 @@
+# E-2: Debug toggle → restricted — tap version 5× to force restricted mode, verify paywall prompt
+appId: com.blinking.blinking
+---
+- runFlow: ../../subflows/launch.yaml
+
+- tapOn:
+    id: "nav_settings"
+- waitForAnimationToEnd
+
+# Navigate to General tab
+- tapOn:
+    id: "settings_tab_general"
+- waitForAnimationToEnd
+
+# Scroll to bottom where debug toggle (version row) is located
+- scroll
+- waitForAnimationToEnd
+- scroll
+- waitForAnimationToEnd
+
+# Tap version 5 times quickly to trigger debug toggle
+- tapOn:
+    id: "btn_debug_toggle"
+- tapOn:
+    id: "btn_debug_toggle"
+- tapOn:
+    id: "btn_debug_toggle"
+- tapOn:
+    id: "btn_debug_toggle"
+- tapOn:
+    id: "btn_debug_toggle"
+- waitForAnimationToEnd
+- takeScreenshot: e2-after-debug-tap
+
+# Verify switched to restricted mode — "Upgrade to Pro" banner appears
+- assertVisible:
+    text: "Upgrade to Pro"
+- takeScreenshot: e2-restricted-mode-active

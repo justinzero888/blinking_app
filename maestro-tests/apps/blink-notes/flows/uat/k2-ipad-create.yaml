@@ -1,0 +1,62 @@
+# MK-2: Create keepsake from entry on iPad — same flow as k1, no layout issues
+# Share (MK-19 iPad) is excluded — UIPopover limitation, covered in manual MV-5.
+appId: com.blinking.blinking
+---
+- runFlow: ../../subflows/launch.yaml
+
+- tapOn:
+    id: "btn_fab_add_entry"
+- waitForAnimationToEnd
+- tapOn:
+    id: "input_entry_body"
+- inputText: "UAT keepsake iPad test entry"
+- tapOn:
+    id: "btn_entry_save"
+- waitForAnimationToEnd
+
+- tapOn:
+    id: "nav_moments"
+- waitForAnimationToEnd
+- tapOn:
+    id: "entry_item"
+- waitForAnimationToEnd
+- takeScreenshot: k2-entry-detail
+
+- tapOn:
+    id: "btn_save_keepsake"
+- waitForAnimationToEnd
+- assertVisible:
+    text: "Save as Keepsake"
+# card_builder_content identifier pending (DEF-K-001) — assert pre-filled text instead
+- assertVisible:
+    text: "UAT keepsake iPad test entry"
+- takeScreenshot: k2-builder-opened
+
+# Select 月色 (Moonlight) template — different from k1 to verify each platform picks a template
+- tapOn:
+    id: "template_tpl_moonlight"
+- waitForAnimationToEnd
+
+- tapOn:
+    text: "Save Keepsake"
+- extendedWaitUntil:
+    visible:
+      text: "Keepsake saved"
+    timeout: 15000
+- takeScreenshot: k2-keepsake-saved
+
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      id: "badge_keepsake"
+    direction: DOWN
+- assertVisible:
+    id: "badge_keepsake"
+- tapOn:
+    id: "badge_keepsake"
+- waitForAnimationToEnd
+- assertVisible:
+    text: "Keepsake Preview"
+- assertVisible:
+    id: "btn_edit_card"
+- takeScreenshot: k2-preview-open

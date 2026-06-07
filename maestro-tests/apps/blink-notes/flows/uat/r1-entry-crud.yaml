@@ -1,0 +1,67 @@
+# R-1: Entry CRUD — create note with emotion, edit, delete
+appId: com.blinking.blinking
+---
+- runFlow: ../../subflows/launch.yaml
+
+# --- CREATE ---
+- tapOn:
+    id: "btn_fab_add_entry"
+- waitForAnimationToEnd
+- assertVisible:
+    text: "Add Memory"
+
+# Select emotion first (keyboard not up yet; mood row uses Row now, accessible to Maestro)
+- tapOn:
+    text: "Joyful.*"
+- waitForAnimationToEnd
+
+# Then type note content
+- tapOn:
+    id: "input_entry_body"
+- waitForAnimationToEnd
+- inputText: "CRUD test note"
+
+# Save
+- tapOn:
+    id: "btn_entry_save"
+- waitForAnimationToEnd
+- takeScreenshot: r1-entry-created
+
+# --- EDIT ---
+- tapOn:
+    id: "nav_moments"
+- waitForAnimationToEnd
+- tapOn:
+    id: "entry_item"
+- waitForAnimationToEnd
+- takeScreenshot: r1-entry-detail
+
+- tapOn:
+    text: "Edit"
+- waitForAnimationToEnd
+- assertVisible:
+    text: "Edit Memory"
+
+- tapOn:
+    id: "input_entry_body"
+- eraseText: 50
+- inputText: "CRUD test note edited"
+- tapOn:
+    id: "btn_entry_save"
+- waitForAnimationToEnd
+- takeScreenshot: r1-entry-edited
+
+# --- DELETE ---
+# After EDIT save, app is on entry detail (pushed route) — nav bar inaccessible; pop first
+- tapOn:
+    text: "Back"
+- waitForAnimationToEnd
+- longPressOn:
+    id: "entry_item"
+- waitForAnimationToEnd
+- assertVisible:
+    text: "Delete Entry"
+- tapOn:
+    text: "Delete"
+- waitForAnimationToEnd
+- takeScreenshot: r1-entry-deleted

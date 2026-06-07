@@ -1,0 +1,34 @@
+# R-5: Insights — create entry first (insights empty state hides sections), then verify sections
+appId: com.blinking.blinking
+---
+- runFlow: ../../subflows/launch.yaml
+
+# Create an entry so insights has data to display (total entries > 0)
+- runFlow:
+    file: ../../subflows/create-entry.yaml
+    env:
+      ENTRY_TEXT: "Insights test entry"
+
+- tapOn:
+    id: "nav_insights"
+- waitForAnimationToEnd
+- assertVisible:
+    text: "Insights"
+- takeScreenshot: r5-insights-top
+
+# Wait for SummaryProvider to update (may be async after entry creation)
+- extendedWaitUntil:
+    visible:
+      text: ".*Writing Activity.*"
+    timeout: 10000
+- assertVisible:
+    text: ".*Writing Stats.*"
+# Mood Distribution header is visible at bottom edge here — assert before scrolling past it
+- assertVisible:
+    text: ".*Mood Distribution.*"
+- takeScreenshot: r5-insights-stats
+
+# Scroll to show Mood Distribution donut chart
+- scroll
+- waitForAnimationToEnd
+- takeScreenshot: r5-insights-mood

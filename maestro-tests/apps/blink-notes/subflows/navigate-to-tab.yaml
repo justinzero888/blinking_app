@@ -1,0 +1,11 @@
+# env: { TAB_ID: "nav_moments", SCREEN_TITLE: "Moments" }
+# TAB_ID options: nav_my_day | nav_moments | nav_routine | nav_insights | nav_settings
+appId: com.blinking.blinking
+---
+- tapOn:
+    id: ${TAB_ID}
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible:
+      text: ${SCREEN_TITLE}
+    timeout: 5000
